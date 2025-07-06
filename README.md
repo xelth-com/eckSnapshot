@@ -1,5 +1,4 @@
 
-````markdown
 # eckSnapshot
 
 A CLI tool to create a single-file text snapshot of a Git repository. It generates a single `.txt` file containing the directory structure and the content of all text-based files, which is ideal for providing context to Large Language Models (LLMs) like GPT or Claude.
@@ -77,6 +76,3 @@ export default {
 ## License
 
 This project is licensed under the MIT License.
-
-```
-```
