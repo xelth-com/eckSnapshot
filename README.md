@@ -16,10 +16,9 @@ A CLI tool to create a single-file text snapshot of a Git repository. It generat
 To install the tool globally, run the following command:
 
 ```bash
-npm install -g @username/eck-snapshot
+npm install -g @xelth/eck-snapshot
 ````
 
-*(Note: Replace `@username/eck-snapshot` with the actual package name you publish to npm).*
 
 ## Usage
 

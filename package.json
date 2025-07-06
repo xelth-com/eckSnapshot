@@ -1,36 +1,41 @@
 {
-  "name": "ecksnapshot",
-  "version": "2.0.0",
-  "description": "A CLI tool to create a single text snapshot of a local Git repository with advanced features",
+  "name": "@xelth/eck-snapshot",
+  "version": "1.5.0",
+  "description": "A CLI tool to create a single-file text snapshot of a Git repository, ideal for providing context to LLMs.",
   "main": "index.js",
   "type": "module",
   "bin": {
     "eck-snapshot": "./index.js"
   },
+  "files": [
+    "index.js",
+    ".ecksnapshot.config.js",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node index.js"
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [
-    "git",
-    "repository",
     "snapshot",
+    "repository",
     "cli",
-    "backup",
-    "text",
-    "code"
+    "git",
+    "llm",
+    "context"
   ],
-  "author": "",
-  "license": "ISC",
-  "dependencies": {
-    "cli-progress": "^3.12.0",
-    "commander": "^14.0.0",
-    "execa": "^9.6.0",
-    "ignore": "^6.0.2",
-    "is-binary-path": "^3.0.0",
-    "p-limit": "^6.2.0"
+  "author": "xelth-com",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/xelth-com/eckSnapshot.git"
   },
-  "engines": {
-    "node": ">=18.0.0"
+  "dependencies": {
+    "commander": "^12.1.0",
+    "execa": "^8.0.1",
+    "is-binary-path": "^2.1.0",
+    "ignore": "^5.3.1",
+    "cli-progress": "^3.12.0",
+    "p-limit": "^5.0.0"
   }
 }
