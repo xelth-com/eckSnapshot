@@ -1,7 +1,7 @@
 {
   "name": "@xelth/eck-snapshot",
-  "version": "1.5.0",
-  "description": "A CLI tool to create a single-file text snapshot of a Git repository, ideal for providing context to LLMs.",
+  "version": "2.1.0",
+  "description": "A CLI tool to create and restore single-file text snapshots of a Git repository.",
   "main": "index.js",
   "type": "module",
   "bin": {
@@ -16,14 +16,6 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [
-    "snapshot",
-    "repository",
-    "cli",
-    "git",
-    "llm",
-    "context"
-  ],
   "author": "xelth-com",
   "license": "MIT",
   "repository": {
@@ -36,6 +28,7 @@
     "is-binary-path": "^2.1.0",
     "ignore": "^5.3.1",
     "cli-progress": "^3.12.0",
-    "p-limit": "^5.0.0"
+    "p-limit": "^5.0.0",
+    "inquirer": "^9.2.20"
   }
 }

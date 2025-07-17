@@ -11,9 +11,12 @@ import { SingleBar, Presets } from 'cli-progress';
 import pLimit from 'p-limit';
 import zlib from 'zlib';
 import { promisify } from 'util';
+// NEW: Import inquirer for user prompts
+import inquirer from 'inquirer';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const gzip = promisify(zlib.gzip);
+const gunzip = promisify(zlib.gunzip);
 
 const DEFAULT_CONFIG = {
   filesToIgnore: ['package-lock.json', '*.log', 'yarn.lock'],
@@ -24,6 +27,9 @@ const DEFAULT_CONFIG = {
   maxDepth: 10,
   concurrency: 10
 };
+
+// ... (остальные существующие функции: parseSize, formatSize, matchesPattern, loadConfig, и т.д. остаются без изменений)
+// --- НАЧАЛО СУЩЕСТВУЮЩИХ ФУНКЦИЙ ---
 
 function parseSize(sizeStr) {
   const units = { B: 1, KB: 1024, MB: 1024 ** 2, GB: 1024 ** 3 };
@@ -44,19 +50,9 @@ function formatSize(bytes) {
   return `${size.toFixed(1)} ${units[unitIndex]}`;
 }
 
-/**
- * Correctly matches a file path against glob-like patterns.
- * @param {string} filePath - The path of the file to check.
- * @param {string[]} patterns - An array of patterns to match against.
- * @returns {boolean} - True if the file path matches any of the patterns.
- */
 function matchesPattern(filePath, patterns) {
     const fileName = path.basename(filePath);
     return patterns.some(pattern => {
-        // This is a robust way to convert simple globs to regex
-        // 1. Escape all special regex characters.
-        // 2. Convert the glob star '*' into the regex '.*'.
-        // 3. Anchor the pattern to match the whole string.
         const regexPattern = '^' + pattern.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*') + '$';
         try {
             const regex = new RegExp(regexPattern);
@@ -253,8 +249,13 @@ async function processFile(filePath, config, gitignore, stats) {
     return { skipped: true, reason: error.message };
   }
 }
+// --- КОНЕЦ СУЩЕСТВУЮЩИХ ФУНКЦИЙ ---
+
+
+// --- ОСНОВНЫЕ ФУНКЦИИ ДЛЯ КОМАНД ---
 
 async function createRepoSnapshot(repoPath, options) {
+  // ... (эта функция остается без изменений)
   const absoluteRepoPath = path.resolve(repoPath);
   const absoluteOutputPath = path.resolve(options.output);
   const originalCwd = process.cwd();
@@ -508,24 +509,268 @@ async function createRepoSnapshot(repoPath, options) {
   }
 }
 
-// CLI setup
+async function restoreSnapshot(snapshotFile, targetDir, options) {
+  const absoluteSnapshotPath = path.resolve(snapshotFile);
+  const absoluteTargetDir = path.resolve(targetDir);
+
+  console.log(`🔄 Starting restore from snapshot: ${absoluteSnapshotPath}`);
+  console.log(`📁 Target directory: ${absoluteTargetDir}`);
+
+  try {
+    let rawContent;
+    if (snapshotFile.endsWith('.gz')) {
+      const compressedBuffer = await fs.readFile(absoluteSnapshotPath);
+      rawContent = (await gunzip(compressedBuffer)).toString('utf-8');
+      console.log('✅ Decompressed gzipped snapshot');
+    } else {
+      rawContent = await fs.readFile(absoluteSnapshotPath, 'utf-8');
+    }
+
+    let filesToRestore;
+    try {
+      const jsonData = JSON.parse(rawContent);
+      if (jsonData.content) {
+        console.log('📄 Detected JSON format, extracting content');
+        filesToRestore = parseSnapshotContent(jsonData.content);
+      } else {
+        throw new Error('JSON format detected, but no "content" key found');
+      }
+    } catch (e) {
+      console.log('📄 Treating snapshot as plain text format');
+      filesToRestore = parseSnapshotContent(rawContent);
+    }
+    
+    if (filesToRestore.length === 0) {
+      console.warn('⚠️  No files found to restore in the snapshot');
+      return;
+    }
+
+    // Apply filters if specified
+    if (options.include || options.exclude) {
+      filesToRestore = filterFilesToRestore(filesToRestore, options);
+      if (filesToRestore.length === 0) {
+        console.warn('⚠️  No files remaining after applying filters');
+        return;
+      }
+    }
+
+    // Validate file paths for security
+    const invalidFiles = validateFilePaths(filesToRestore, absoluteTargetDir);
+    if (invalidFiles.length > 0) {
+      console.error('❌ Invalid file paths detected (potential directory traversal):');
+      invalidFiles.forEach(file => console.error(`  ${file}`));
+      process.exit(1);
+    }
+
+    console.log(`📊 Found ${filesToRestore.length} files to restore`);
+
+    if (options.dryRun) {
+      console.log('\n🔍 Dry run mode - files that would be restored:');
+      filesToRestore.forEach(file => {
+        const fullPath = path.join(absoluteTargetDir, file.path);
+        console.log(`  ${fullPath}`);
+      });
+      return;
+    }
+
+    if (!options.force) {
+      const { confirm } = await inquirer.prompt([{
+        type: 'confirm',
+        name: 'confirm',
+        message: `You are about to write ${filesToRestore.length} files to ${absoluteTargetDir}. Existing files will be overwritten. Continue?`,
+        default: false
+      }]);
+
+      if (!confirm) {
+        console.log('🚫 Restore operation cancelled by user');
+        return;
+      }
+    }
+
+    await fs.mkdir(absoluteTargetDir, { recursive: true });
+
+    const stats = {
+      totalFiles: filesToRestore.length,
+      restoredFiles: 0,
+      failedFiles: 0,
+      errors: []
+    };
+
+    const progressBar = options.verbose ? null : new SingleBar({
+      format: 'Restoring |{bar}| {percentage}% | {value}/{total} files',
+      barCompleteChar: '\u2588',
+      barIncompleteChar: '\u2591',
+      hideCursor: true
+    }, Presets.shades_classic);
+
+    if (progressBar) progressBar.start(filesToRestore.length, 0);
+
+    const limit = pLimit(options.concurrency || 10);
+    const filePromises = filesToRestore.map((file, index) => 
+      limit(async () => {
+        try {
+          const fullPath = path.join(absoluteTargetDir, file.path);
+          const dir = path.dirname(fullPath);
+
+          await fs.mkdir(dir, { recursive: true });
+          await fs.writeFile(fullPath, file.content, 'utf-8');
+          
+          stats.restoredFiles++;
+          
+          if (progressBar) {
+            progressBar.update(index + 1);
+          } else if (options.verbose) {
+            console.log(`✅ Restored: ${file.path}`);
+          }
+          
+          return { success: true, file: file.path };
+        } catch (error) {
+          stats.failedFiles++;
+          stats.errors.push({ file: file.path, error: error.message });
+          
+          if (options.verbose) {
+            console.log(`❌ Failed to restore: ${file.path} - ${error.message}`);
+          }
+          
+          return { success: false, file: file.path, error: error.message };
+        }
+      })
+    );
+
+    await Promise.allSettled(filePromises);
+    if (progressBar) progressBar.stop();
+
+    console.log('\n📊 Restore Summary');
+    console.log('='.repeat(50));
+    console.log(`🎉 Restore completed!`);
+    console.log(`✅ Successfully restored: ${stats.restoredFiles} files`);
+    if (stats.failedFiles > 0) {
+      console.log(`❌ Failed to restore: ${stats.failedFiles} files`);
+      if (stats.errors.length > 0) {
+        console.log('\n⚠️  Errors encountered:');
+        stats.errors.slice(0, 5).forEach(({ file, error }) => {
+          console.log(`  ${file}: ${error}`);
+        });
+        if (stats.errors.length > 5) {
+          console.log(`  ... and ${stats.errors.length - 5} more errors`);
+        }
+      }
+    }
+    console.log(`📁 Target directory: ${absoluteTargetDir}`);
+    console.log('='.repeat(50));
+
+  } catch (error) {
+    console.error('\n❌ An error occurred during restore:');
+    console.error(error.message);
+    if (options.verbose) {
+      console.error(error.stack);
+    }
+    process.exit(1);
+  }
+}
+
+function parseSnapshotContent(content) {
+  const files = [];
+  const fileRegex = /--- File: \/(.+) ---/g;
+  const sections = content.split(fileRegex);
+  
+  for (let i = 1; i < sections.length; i += 2) {
+    const filePath = sections[i].trim();
+    let fileContent = sections[i + 1] || '';
+
+    if (fileContent.startsWith('\n\n')) {
+      fileContent = fileContent.substring(2);
+    }
+    if (fileContent.endsWith('\n\n')) {
+      fileContent = fileContent.substring(0, fileContent.length - 2);
+    }
+    
+    files.push({ path: filePath, content: fileContent });
+  }
+
+  return files;
+}
+
+function filterFilesToRestore(files, options) {
+  let filtered = files;
+  
+  if (options.include) {
+    const includePatterns = Array.isArray(options.include) ? options.include : [options.include];
+    filtered = filtered.filter(file => 
+      includePatterns.some(pattern => {
+        const regex = new RegExp(pattern.replace(/\*/g, '.*'));
+        return regex.test(file.path);
+      })
+    );
+  }
+  
+  if (options.exclude) {
+    const excludePatterns = Array.isArray(options.exclude) ? options.exclude : [options.exclude];
+    filtered = filtered.filter(file => 
+      !excludePatterns.some(pattern => {
+        const regex = new RegExp(pattern.replace(/\*/g, '.*'));
+        return regex.test(file.path);
+      })
+    );
+  }
+  
+  return filtered;
+}
+
+function validateFilePaths(files, targetDir) {
+  const invalidFiles = [];
+  
+  for (const file of files) {
+    const normalizedPath = path.normalize(file.path);
+    
+    if (normalizedPath.includes('..') || 
+        normalizedPath.startsWith('/') || 
+        normalizedPath.includes('\0') ||
+        /[<>:"|?*]/.test(normalizedPath)) {
+      invalidFiles.push(file.path);
+    }
+  }
+  
+  return invalidFiles;
+}
+
+
+// --- CLI SETUP ---
 const program = new Command();
 
 program
   .name('eck-snapshot')
-  .description('A CLI tool to create a single text snapshot of a local Git repository.')
-  .version('2.0.0')
+  .description('A CLI tool to create and restore single-file text snapshots of a Git repository.')
+  .version('2.1.0');
+
+// Snapshot command (existing)
+program
+  .command('snapshot', { isDefault: true })
+  .description('Create a snapshot of a Git repository (default command).')
   .argument('[repoPath]', 'Path to the git repository to snapshot.', process.cwd())
-  .option('-o, --output <dir>', 'Output directory for the snapshot file.', path.join(__dirname, 'snapshots'))
+  .option('-o, --output <dir>', 'Output directory for the snapshot file.', path.join(process.cwd(), 'snapshots'))
   .option('--no-tree', 'Do not include the directory tree in the snapshot.')
   .option('-v, --verbose', 'Show detailed processing information, including skipped files.')
   .option('--max-file-size <size>', 'Maximum file size to include (e.g., 10MB)', '10MB')
   .option('--max-total-size <size>', 'Maximum total snapshot size (e.g., 100MB)', '100MB')
-  .option('--max-depth <number>', 'Maximum directory depth for tree generation', parseInt, 10)
+  .option('--max-depth <number>', 'Maximum directory depth for tree generation', (val) => parseInt(val), 10)
   .option('--config <path>', 'Path to configuration file')
   .option('--compress', 'Compress output file with gzip')
   .option('--include-hidden', 'Include hidden files (starting with .)')
   .option('--format <type>', 'Output format: txt, json', 'txt')
-  .action(createRepoSnapshot);
+  .action((repoPath, options) => createRepoSnapshot(repoPath, options));
+
+program
+  .command('restore')
+  .description('Restore files and directories from a snapshot file')
+  .argument('<snapshot_file>', 'Path to the snapshot file (.txt, .json, or .gz)')
+  .argument('[target_directory]', 'Directory to restore the files into', process.cwd())
+  .option('-f, --force', 'Force overwrite of existing files without confirmation')
+  .option('-v, --verbose', 'Show detailed processing information')
+  .option('--dry-run', 'Show what would be restored without actually writing files')
+  .option('--include <patterns...>', 'Include only files matching these patterns (supports wildcards)')
+  .option('--exclude <patterns...>', 'Exclude files matching these patterns (supports wildcards)')
+  .option('--concurrency <number>', 'Number of concurrent file operations', (val) => parseInt(val), 10)
+  .action((snapshotFile, targetDir, options) => restoreSnapshot(snapshotFile, targetDir, options));
 
 program.parse(process.argv);
