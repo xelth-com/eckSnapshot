@@ -3,140 +3,124 @@
 [![npm version](https://badge.fury.io/js/%40xelth%2Feck-snapshot.svg)](https://www.npmjs.com/package/@xelth/eck-snapshot)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/xelth-com/eckSnapshot/blob/main/LICENSE)
 
-A CLI tool to create and restore single-file text snapshots of a Git repository. It generates a single `.txt` file containing the directory structure and the content of all text-based files, which is ideal for providing context to Large Language Models (LLMs).
+A powerful CLI tool to create and restore single-file text snapshots of Git repositories and directories. Generate comprehensive snapshots containing directory structure and file contents, optimized for providing context to Large Language Models (LLMs) like Claude, Gemini, and ChatGPT.
+
+## ✨ What's New in v3.0.0
+
+🎯 **Universal Directory Support**: Works with any directory, not just Git repositories  
+🤖 **Enhanced AI Instructions**: Improved headers with detailed guidance for AI assistants  
+⚡ **Auto-Detection**: Automatically switches to directory mode when Git isn't available  
+🧹 **Clean Mode**: Option to create snapshots without AI instructions  
 
 ## Why eck-snapshot?
 
-When working with Large Language Models (LLMs), providing the full context of your project is crucial for getting accurate results. Manually copying and pasting dozens of files is tedious and inefficient.
+When working with Large Language Models (LLMs), providing complete project context is crucial for accurate results. Manually copying and pasting dozens of files is tedious and error-prone.
 
-eck-snapshot automates this by generating a single, comprehensive text file of your entire repository. This is particularly effective with models that support large context windows (like Google's Gemini), as it often allows the entire project snapshot to be analyzed at once—a task that can be challenging with smaller context windows.
+eck-snapshot automates this by generating a single, comprehensive text file of your entire project. This is particularly effective with models that support large context windows (like Gemini 2.0 Pro with 1M tokens), allowing the entire project to be analyzed at once.
 
-## Key Features
+## 🚀 Key Features
 
-  * **Git Integration**: Automatically includes all files tracked by Git.
-  * **Intelligent Ignoring**: Respects `.gitignore` rules and has its own configurable ignore lists for files, extensions, and directories.
-  * **Advanced Restore**: Powerful `restore` command with filtering, dry-run mode, and parallel processing.
-  * **Directory Tree**: Generates a clean, readable tree of the repository structure at the top of the snapshot.
-  * **Multiple Formats**: Supports both plain text and JSON output formats.
-  * **Configurable**: Customize behavior using an `.ecksnapshot.config.js` file.
-  * **Progress and Stats**: Provides a progress bar and a detailed summary of what was included and skipped.
-  * **Compression**: Supports gzipped (`.gz`) snapshots for smaller file sizes.
-  * **Security**: Built-in path validation to prevent directory traversal attacks during restore.
+### 📁 **Universal Compatibility**
+- **Git Repositories**: Leverages `git ls-files` and respects `.gitignore`
+- **Any Directory**: Recursively scans any folder structure
+- **Auto-Detection**: Automatically switches modes based on Git availability
 
-## Demo
+### 🤖 **AI-Optimized**
+- **Structured Headers**: Detailed instructions for AI assistants
+- **Clean Mode**: Option to skip AI headers for general use
+- **LLM-Ready Format**: Optimized for Claude, Gemini, ChatGPT, and other models
 
-Here's an example of `eck-snapshot` in action:
+### ⚡ **Advanced Features**
+- **Multiple Formats**: Plain text (Markdown) and JSON output
+- **Compression**: Built-in gzip support for smaller files
+- **Smart Filtering**: Configurable ignore patterns and size limits
+- **Restore Capability**: Recreate entire project structures from snapshots
+- **Progress Tracking**: Real-time progress bars and detailed statistics
 
-```
-🚀 Starting snapshot for repository: /path/to/your/project
-✅ .gitignore patterns loaded
-📊 Found 152 total files in the repository
-🌳 Generating directory tree...
-📝 Processing files...
-Progress |██████████████████████████████| 100% | 152/152 files
+### 🔒 **Security & Performance**
+- **Path Validation**: Prevents directory traversal attacks
+- **Parallel Processing**: Concurrent file handling for speed
+- **Memory Efficient**: Handles large projects without memory issues
 
-📊 Snapshot Summary
-==================================================
-🎉 Snapshot created successfully!
-📄 File saved to: /path/to/your/project/snapshots/project_snapshot_...txt
-📈 Included text files: 130 of 152
-⏭️  Skipped files: 22
-...
-==================================================
-```
-
-The beginning of the generated file will look like this:
-
-```text
-Directory Structure:
-
-├── .github/
-│   └── workflows/
-│       └── publish.yml
-├── src/
-│   ├── utils/
-│   │   └── formatters.js
-│   └── index.js
-├── .gitignore
-├── package.json
-└── README.md
-
-
---- File: /src/index.js ---
-
-#!/usr/bin/env node
-import { Command } from 'commander';
-// ... rest of the file content
-
---- File: /package.json ---
-
-{
-  "name": "eck-snapshot",
-  "version": "2.1.0",
-  // ... rest of the file content
-```
-
-## Installation
-
-To install the tool globally, run the following command:
+## 📦 Installation
 
 ```bash
 npm install -g @xelth/eck-snapshot
 ```
 
-## Usage
+## 🎯 Quick Start
 
-Once installed, you can run the tool from any directory in your terminal.
-
-### Creating a Snapshot
+### Create Snapshots
 
 ```bash
-# Create a snapshot of the current directory
+# Git repository (default mode)
 eck-snapshot
 
-# Specify a path to another repository
-eck-snapshot /path/to/your/other/project
+# Any directory (auto-detects non-git folders)
+eck-snapshot /path/to/any/folder
 
-# Save the snapshot to a different directory and exclude the tree view
-eck-snapshot --output ./backups --no-tree
+# Force directory mode (ignores git)
+eck-snapshot --dir .
 
-# Create a compressed JSON snapshot
+# Clean snapshot without AI instructions
+eck-snapshot --no-ai-header
+
+# Compressed JSON format
 eck-snapshot --format json --compress
-
-# Include hidden files and set custom size limits
-eck-snapshot --include-hidden --max-file-size 5MB --max-total-size 50MB
 ```
 
-### Restoring from a Snapshot
+### Restore from Snapshots
 
 ```bash
-# Basic restore to current directory
-eck-snapshot restore ./snapshots/project_snapshot_...txt
+# Basic restore
+eck-snapshot restore snapshot.md
 
-# Restore to a specific directory without confirmation
-eck-snapshot restore snapshot.txt ./restored-project --force
+# Restore to specific directory
+eck-snapshot restore snapshot.md ./restored-project
 
-# Preview what would be restored (dry run)
-eck-snapshot restore snapshot.txt --dry-run
+# Preview without writing files
+eck-snapshot restore snapshot.md --dry-run
 
-# Restore only specific files using patterns
-eck-snapshot restore snapshot.txt --include "*.js" "*.json"
-
-# Restore everything except certain files
-eck-snapshot restore snapshot.txt --exclude "*.log" "node_modules/*"
-
-# Restore with custom concurrency and verbose output
-eck-snapshot restore snapshot.txt --concurrency 20 --verbose
-
-# Restore compressed snapshots
-eck-snapshot restore project_snapshot.txt.gz ./restored
+# Restore only specific files
+eck-snapshot restore snapshot.md --include "*.js" "*.json"
 ```
 
-## Configuration
+## 📋 Usage Examples
 
-You can create a `.ecksnapshot.config.js` file in your project's root directory to customize the tool's behavior.
+### For AI Development
 
-**Example `.ecksnapshot.config.js`:**
+```bash
+# Create AI-optimized snapshot for Gemini/Claude
+eck-snapshot --format md --compress
+# Result: project_snapshot_2025-01-19_12-00-00.md.gz
+
+# Clean snapshot for general documentation
+eck-snapshot --no-ai-header --output ./docs
+```
+
+### Project Backup & Migration
+
+```bash
+# Full project backup
+eck-snapshot --include-hidden --format json --compress
+
+# Selective restore
+eck-snapshot restore backup.json.gz --exclude "node_modules/*" --include "src/*"
+```
+
+### Cross-Platform Development
+
+```bash
+# Create snapshot on Windows
+eck-snapshot --output ./transfer
+
+# Restore on Linux/Mac
+eck-snapshot restore transfer/project_snapshot.md ./project
+```
+
+## ⚙️ Configuration
+
+Create `.ecksnapshot.config.js` in your project root:
 
 ```javascript
 export default {
@@ -144,19 +128,29 @@ export default {
   filesToIgnore: [
     'package-lock.json',
     '*.log',
+    '*.tmp'
   ],
+  
   // File extensions to ignore
   extensionsToIgnore: [
     '.sqlite3',
     '.env',
+    '.DS_Store',
+    '.ico',
+    '.png',
+    '.jpg'
   ],
-  // Directories to ignore (must have a trailing slash)
+  
+  // Directories to ignore
   dirsToIgnore: [
     'node_modules/',
     '.git/',
     'dist/',
+    'build/',
+    'coverage/'
   ],
-  // Size and performance settings
+  
+  // Size and performance limits
   maxFileSize: '10MB',
   maxTotalSize: '100MB',
   maxDepth: 10,
@@ -164,63 +158,135 @@ export default {
 };
 ```
 
-## Advanced Features
-
-### Restore Command Options
-
-The restore command offers powerful filtering and control options:
-
-- **`--dry-run`**: Preview what files would be restored without actually writing them
-- **`--include <patterns>`**: Only restore files matching the specified patterns (supports wildcards)
-- **`--exclude <patterns>`**: Skip files matching the specified patterns (supports wildcards)
-- **`--concurrency <number>`**: Control how many files are processed simultaneously (default: 10)
-- **`--force`**: Skip confirmation prompts and overwrite existing files
-- **`--verbose`**: Show detailed information about each file being processed
-
-### Supported Formats
-
-- **Plain Text** (`.txt`): Human-readable format, ideal for LLM context
-- **JSON** (`.json`): Structured format with metadata and statistics
-- **Compressed** (`.gz`): Any format can be gzipped for smaller file sizes
-
-### Security Features
-
-- **Path Validation**: Prevents directory traversal attacks during restore operations
-- **File Sanitization**: Validates file paths and names for security
-- **Confirmation Prompts**: Requires user confirmation before overwriting files (unless `--force` is used)
-
-## Command Reference
+## 📖 Command Reference
 
 ### Snapshot Command
+
 ```bash
-eck-snapshot [options] [repoPath]
+eck-snapshot [options] [path]
 ```
 
-**Options:**
-- `-o, --output <dir>`: Output directory for snapshots
-- `--no-tree`: Exclude directory tree from output
-- `-v, --verbose`: Show detailed processing information
-- `--max-file-size <size>`: Maximum individual file size (e.g., 10MB)
-- `--max-total-size <size>`: Maximum total snapshot size (e.g., 100MB)
-- `--max-depth <number>`: Maximum directory depth for tree generation
-- `--config <path>`: Path to custom configuration file
-- `--compress`: Create gzipped output
-- `--include-hidden`: Include hidden files (starting with .)
-- `--format <type>`: Output format: txt or json
+**Core Options:**
+- `-o, --output <dir>` - Output directory (default: ./snapshots)
+- `-d, --dir` - Directory mode: scan any folder recursively
+- `--no-ai-header` - Skip AI instruction header (clean mode)
+- `-v, --verbose` - Show detailed processing information
+
+**Format & Compression:**
+- `--format <type>` - Output format: md (default) or json
+- `--compress` - Create gzipped output (.gz extension)
+- `--no-tree` - Exclude directory tree from output
+
+**Filtering:**
+- `--include-hidden` - Include hidden files (starting with .)
+- `--max-file-size <size>` - Maximum individual file size (e.g., 5MB)
+- `--max-total-size <size>` - Maximum total snapshot size (e.g., 50MB)
+- `--config <path>` - Path to custom configuration file
 
 ### Restore Command
+
 ```bash
 eck-snapshot restore [options] <snapshot_file> [target_directory]
 ```
 
-**Options:**
-- `-f, --force`: Force overwrite without confirmation
-- `-v, --verbose`: Show detailed processing information
-- `--dry-run`: Preview without actually writing files
-- `--include <patterns>`: Include only matching files
-- `--exclude <patterns>`: Exclude matching files
-- `--concurrency <number>`: Number of concurrent operations
+**Control Options:**
+- `-f, --force` - Skip confirmation prompts
+- `--dry-run` - Preview without writing files
+- `-v, --verbose` - Show detailed processing information
 
-## License
+**Filtering:**
+- `--include <patterns>` - Include only matching files (wildcards supported)
+- `--exclude <patterns>` - Exclude matching files (wildcards supported)
+- `--concurrency <number>` - Number of concurrent operations (default: 10)
 
-This project is licensed under the MIT License.
+## 🎭 Working with AI Models
+
+### For Gemini 2.0 Pro (1M context)
+```bash
+# Create comprehensive snapshot with AI instructions
+eck-snapshot --format md --compress
+```
+The generated file includes detailed instructions for Gemini to analyze your project and provide structured commands for Claude Code.
+
+### For Claude Code
+```bash
+# Clean, focused snapshot
+eck-snapshot --no-ai-header --max-total-size 200MB
+```
+
+### For ChatGPT/Other Models
+```bash
+# Standard snapshot with moderate size limits
+eck-snapshot --max-total-size 50MB --no-ai-header
+```
+
+## 🔧 Advanced Use Cases
+
+### Monorepo Support
+```bash
+# Snapshot specific package in monorepo
+eck-snapshot ./packages/core --dir --output ./snapshots/core
+
+# Multiple packages
+eck-snapshot ./packages/api --dir && eck-snapshot ./packages/web --dir
+```
+
+### CI/CD Integration
+```bash
+# Create release snapshot
+eck-snapshot --format json --compress --output ./artifacts
+
+# Documentation generation
+eck-snapshot --no-ai-header --format md --output ./docs/snapshots
+```
+
+### Migration & Archival
+```bash
+# Complete project archive
+eck-snapshot --include-hidden --format json --compress --max-total-size 1GB
+
+# Selective migration
+eck-snapshot restore archive.json.gz --include "src/*" "docs/*" --exclude "*.test.*"
+```
+
+## 📊 Output Formats
+
+### Markdown Format (Default)
+- Human-readable structure
+- AI instruction headers (optional)
+- Directory tree visualization
+- File content with clear delimiters
+
+### JSON Format
+- Structured metadata
+- Programmatic processing friendly
+- Includes statistics and file information
+- Perfect for automation workflows
+
+## 🛡️ Security Features
+
+- **Path Validation**: Prevents directory traversal during restore
+- **File Sanitization**: Validates all file paths and names
+- **Confirmation Prompts**: Requires approval before overwriting files
+- **Size Limits**: Protects against extremely large operations
+
+## 🚀 Performance
+
+- **Parallel Processing**: Concurrent file operations for speed
+- **Progress Tracking**: Real-time progress bars for long operations
+- **Memory Efficient**: Streams large files to avoid memory issues
+- **Smart Caching**: Optimized for repeated operations
+
+## 📝 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🤝 Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## 📞 Support
+
+- **Issues**: [GitHub Issues](https://github.com/xelth-com/eckSnapshot/issues)
+- **Documentation**: This README and `--help` commands
+- **Examples**: See the examples directory in the repository

@@ -1,7 +1,7 @@
 {
   "name": "@xelth/eck-snapshot",
-  "version": "2.2.0",
-  "description": "A CLI tool to create and restore single-file text snapshots of a Git repository.",
+  "version": "3.0.0",
+  "description": "A powerful CLI tool to create and restore single-file text snapshots of Git repositories and directories. Optimized for AI context and LLM workflows.",
   "main": "index.js",
   "type": "module",
   "bin": {
