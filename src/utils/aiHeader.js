@@ -1,4 +1,4 @@
-import { loadConfig } from './fileUtils.js';
+import { DEFAULT_CONFIG } from '../config.js';
 
 // A simple template renderer
 function render(template, data) {
@@ -31,14 +31,9 @@ function buildAgentDefinitions(agentsConfig) {
   return definitions;
 }
 
-export async function generateEnhancedAIHeader(context) {
-  const config = await loadConfig(); // Load from ecksnapshot.config.js
-  const { aiInstructions } = config;
-  if (!aiInstructions) {
-    console.warn('Warning: `aiInstructions` not found in config. Using default header.');
-    return `# Snapshot for ${context.repoName}\n`;
-  }
-
+export function generateEnhancedAIHeader(context) {
+  const { aiInstructions } = DEFAULT_CONFIG;
+  
   const { architectPersona, executionAgents, promptTemplates } = aiInstructions;
 
   const template = context.mode === 'vector' 
