@@ -243,6 +243,187 @@ export default {
 - **Error Prevention**: Avoids GUI commands on servers, interactive prompts in CI, etc.
 - **Flexible Configuration**: Easily add new environments and detection rules
 
+## 🤖 Agent Environment Awareness
+
+**NEW in v3.0.0+**: Advanced environment detection and code ownership protocols ensure AI agents operate safely and appropriately in any execution context.
+
+### Environment Configuration
+
+Define execution environments in your `.ecksnapshot.config.js`:
+
+```javascript
+environments: {
+  local_dev: {
+    name: "Local Development Environment",
+    description: "Local development machine with full GUI and development tools",
+    capabilities: [
+      "Full GUI access", "Browser automation", "IDE/editor launching",
+      "Interactive development", "File system access", "Network access"
+    ],
+    uniqueSignature: "AGENT_ENV_LOCAL_DEV",
+    detectionPatterns: {
+      USER: ["xelth", "developer", "dev", "admin"],
+      NODE_ENV: ["development", "dev", ""],
+      DISPLAY: ["*"],
+      checkDisplayVariable: true,
+      operatingSystem: ["Windows_NT", "Darwin", "Linux"]
+    },
+    allowedOperations: [
+      "npm install", "npm run dev", "git operations", 
+      "browser automation", "interactive prompts"
+    ],
+    prohibitedOperations: [
+      "systemctl", "service commands", "production deployments"
+    ]
+  },
+  web_server: {
+    name: "Web Server Environment", 
+    description: "Headless web server without GUI capabilities",
+    capabilities: [
+      "Command line operations", "File system access", "Network access",
+      "Package installation", "Process management", "Database operations"
+    ],
+    uniqueSignature: "AGENT_ENV_WEB_SERVER",
+    detectionPatterns: {
+      USER: ["root", "www-data", "nginx", "ubuntu", "ec2-user"],
+      NODE_ENV: ["production", "prod", "staging"],
+      checkDisplayVariable: false,
+      operatingSystem: ["Linux"]
+    },
+    allowedOperations: [
+      "npm install --production", "systemctl", "docker", 
+      "database commands", "log analysis"
+    ],
+    prohibitedOperations: [
+      "GUI applications", "browser automation", "interactive prompts",
+      "development servers", "npm run dev"
+    ]
+  }
+}
+```
+
+### Code Ownership Protocol
+
+Configure code boundary markers and ownership rules:
+
+```javascript
+codeOwnership: {
+  boundaryMarkers: {
+    start: "AGENT_BOUNDARY_START",
+    end: "AGENT_BOUNDARY_END"
+  },
+  ownershipRules: {
+    respectExisting: true,
+    requireConfirmation: true,
+    trackChanges: true
+  }
+}
+```
+
+**Benefits:**
+- **Safe Multi-Agent Collaboration**: Multiple AI agents can work on the same codebase without conflicts
+- **Change Tracking**: Clear attribution of code modifications
+- **Ownership Respect**: Agents check for existing boundaries before making changes
+- **Confirmation Requirements**: Critical changes require explicit approval
+
+## 🧠 LLM Consilium Workflow
+
+**NEW in v3.0.0+**: Generate structured requests for multi-LLM collaboration on complex tasks requiring diverse expertise.
+
+### Consilium Configuration
+
+Define expert roles and capabilities:
+
+```javascript
+consilium: {
+  defaultMembers: {
+    architect: {
+      role: "System Architect",
+      expertise: ["system design", "architecture patterns", "scalability"],
+      preferredModel: "claude-3.5-sonnet"
+    },
+    security: {
+      role: "Security Specialist", 
+      expertise: ["security vulnerabilities", "authentication", "data protection"],
+      preferredModel: "gpt-4"
+    },
+    performance: {
+      role: "Performance Engineer",
+      expertise: ["optimization", "caching", "database performance"],
+      preferredModel: "claude-3.5-sonnet"
+    },
+    ux: {
+      role: "UX/UI Specialist",
+      expertise: ["user experience", "interface design", "accessibility"],
+      preferredModel: "gpt-4"
+    }
+  },
+  taskComplexityThresholds: {
+    lowComplexity: ["bug fixes", "simple features", "documentation"],
+    mediumComplexity: ["feature implementation", "refactoring", "integration"],
+    highComplexity: ["architecture changes", "system redesign", "security implementation"]
+  }
+}
+```
+
+### Using the Consilium Command
+
+Generate structured collaboration requests:
+
+```bash
+# Generate consilium request for complex architectural task
+eck-snapshot consilium "Design a real-time notification system with WebSocket support" \
+  --file src/server.js --file package.json \
+  --complexity high \
+  --output ./consilium_request.json
+
+# Specify particular expert members
+eck-snapshot consilium "Optimize database query performance" \
+  --members architect performance \
+  --file src/database.js \
+  --complexity medium
+
+# Simple task requiring minimal expertise
+eck-snapshot consilium "Add input validation to user registration" \
+  --members security \
+  --complexity low
+```
+
+### Consilium Workflow
+
+1. **Generate Request**: Use the `consilium` command to create a structured JSON request
+2. **Distribute to LLMs**: Share the JSON with your chosen AI tools/models
+3. **Collect Responses**: Each LLM responds as their assigned expert role
+4. **Analyze Consensus**: Review all expert opinions and recommendations
+5. **Implement Solution**: Execute the agreed-upon approach
+
+**Example Generated Request Structure:**
+```json
+{
+  "request_type": "consilium_request",
+  "task": {
+    "description": "Design a real-time notification system",
+    "complexity": "high",
+    "domain": "backend"
+  },
+  "consilium_members": [
+    {
+      "member_id": "architect",
+      "role": "System Architect",
+      "expertise_areas": ["system design", "architecture patterns"],
+      "preferred_model": "claude-3.5-sonnet"
+    }
+  ],
+  "response_requirements": {
+    "format": "structured_json",
+    "response_sections": [
+      "analysis", "recommendations", "implementation_steps",
+      "risks_and_considerations", "success_metrics"
+    ]
+  }
+}
+```
+
 ## 📖 Command Reference
 
 ### Snapshot Command
@@ -283,6 +464,31 @@ eck-snapshot restore [options] <snapshot_file> [target_directory]
 - `--include <patterns>` - Include only matching files (wildcards supported)
 - `--exclude <patterns>` - Exclude matching files (wildcards supported)
 - `--concurrency <number>` - Number of concurrent operations (default: 10)
+
+### Consilium Command
+
+```bash
+eck-snapshot consilium [options] <task_description>
+```
+
+**Core Options:**
+- `-f, --file <files...>` - Specific files to include in consilium context
+- `-o, --output <path>` - Output path for consilium request JSON (default: ./consilium_request.json)
+- `--members <members...>` - Specify members: architect, security, performance, ux
+- `--complexity <level>` - Task complexity: low, medium, high (default: medium)
+- `--config <path>` - Path to configuration file
+
+**Examples:**
+```bash
+# Generate consilium for architectural task
+eck-snapshot consilium "Design microservices architecture" --complexity high
+
+# Include specific files for context
+eck-snapshot consilium "Optimize API performance" --file src/api.js --members architect performance
+
+# Output to custom location
+eck-snapshot consilium "Implement authentication" --members security --output ./auth_consilium.json
+```
 
 ## 🎭 Working with AI Models
 
