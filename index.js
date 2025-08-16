@@ -37,9 +37,11 @@ const DEFAULT_CONFIG = {
  * This header contains the full operational instructions for the AI model.
  * @param {object} stats - The statistics object from the snapshot process.
  * @param {string} repoName - The name of the repository.
+ * @param {boolean} includeAiInstructions - Whether to include AI instructions.
+ * @param {object} config - The configuration object containing environment definitions.
  * @returns {string} A formatted Markdown string with comprehensive AI instructions.
  */
-function generateSnapshotHeader(stats, repoName, includeAiInstructions = true) {
+function generateSnapshotHeader(stats, repoName, includeAiInstructions = true, config = null) {
   const timestamp = new Date().toISOString();
   
   if (!includeAiInstructions) {
@@ -54,6 +56,7 @@ function generateSnapshotHeader(stats, repoName, includeAiInstructions = true) {
 
 `;
   }
+
   
   return `# AI Instructions
 
@@ -70,7 +73,43 @@ This document is a self-contained, single-file snapshot of the **${repoName}** s
 
 ---
 
-## 2. Your Core Operational Workflow
+## 2. Environment Self-Detection Protocol
+
+**CRITICAL:** Before proceeding with any operations, you MUST determine your execution environment by running the following detection commands and comparing the results to the environment patterns defined in this project's configuration.
+
+### Detection Commands to Run:
+\`\`\`bash
+whoami
+echo $NODE_ENV
+echo $USER
+echo $HOSTNAME
+echo $CI
+echo $GITHUB_ACTIONS
+echo $DISPLAY
+\`\`\`
+
+### Environment Definitions:
+${config && config.environments ? Object.entries(config.environments).map(([key, env]) => `
+**${env.name} (${key})**
+- Description: ${env.description}
+- GUI Available: ${env.hasGUI ? 'Yes' : 'No'}
+- Detection Patterns: ${JSON.stringify(env.detectionPatterns || {}, null, 2)}
+- Allowed Commands: ${env.allowedCommands?.join(', ') || 'Standard operations'}
+- Prohibited Commands: ${env.prohibitedCommands?.join(', ') || 'None'}
+`).join('\n') : 'No environment definitions found in config'}
+
+### Self-Detection Steps:
+1. **Run the detection commands above**
+2. **Compare output** to the detection patterns for each environment
+3. **Identify your environment** based on matching patterns
+4. **Follow the constraints** for your identified environment throughout the session
+5. **If no environment matches**, assume a restrictive server environment and avoid GUI operations
+
+**⚠️ CRITICAL WARNING:** If you detect a headless/server environment (no DISPLAY variable, production NODE_ENV, CI environment), do NOT attempt to run GUI applications, browser automation, or interactive development tools. Focus on server-appropriate commands only.
+
+---
+
+## 3. Your Core Operational Workflow
 
 You are the Project Manager and Solution Architect AI. Your primary goal is to translate user requests into technical plans and then generate precise commands for a code-execution AI agent.
 
@@ -247,6 +286,7 @@ async function loadConfig(configPath) {
   
   return config;
 }
+
 
 async function checkGitAvailability() {
   try {
@@ -562,7 +602,7 @@ async function createRepoSnapshot(repoPath, options) {
     
     // Add the header to the beginning of the file content
     const repoName = path.basename(absoluteRepoPath);
-    const header = generateSnapshotHeader(stats, repoName, options.aiHeader !== false);
+    const header = generateSnapshotHeader(stats, repoName, options.aiHeader !== false, config);
     snapshotContent = header + snapshotContent + contentArray.join('');
 
     const totalChars = snapshotContent.length;

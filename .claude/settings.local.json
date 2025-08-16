@@ -2,8 +2,14 @@
   "permissions": {
     "allow": [
       "Bash(node:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(NODE_ENV=production node index.js --no-tree -o /tmp)",
+      "Bash(cat:*)",
+      "Bash(NODE_ENV=production USER=root unset DISPLAY)",
+      "Bash(env)",
+      "Bash(env:*)"
     ],
-    "deny": []
+    "deny": [],
+    "defaultMode": "acceptEdits"
   }
 }

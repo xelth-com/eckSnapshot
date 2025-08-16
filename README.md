@@ -154,9 +154,94 @@ export default {
   maxFileSize: '10MB',
   maxTotalSize: '100MB',
   maxDepth: 10,
-  concurrency: 10
+  concurrency: 10,
+  
+  // Environment-aware AI instructions (NEW in v3.0.0+)
+  environments: {
+    local_dev: {
+      name: "Local Development",
+      description: "Local development environment with full GUI and development tools available",
+      hasGUI: true,
+      allowedCommands: [
+        "npm install", "npm run dev", "npm run build", "npm test",
+        "git commands", "file operations", "IDE/editor commands",
+        "browser automation", "GUI applications", "electron apps"
+      ],
+      prohibitedCommands: [],
+      detectionPatterns: {
+        NODE_ENV: ["development", "dev"],
+        USER: ["developer", "dev", "admin"],
+        checkDisplayVariable: true
+      }
+    },
+    production_server: {
+      name: "Production Server",
+      description: "Headless production server environment without GUI capabilities",
+      hasGUI: false,
+      allowedCommands: [
+        "npm install --production", "npm run start", "npm run build",
+        "systemctl commands", "docker commands", "file operations",
+        "database operations", "API testing", "log analysis"
+      ],
+      prohibitedCommands: [
+        "GUI applications", "electron apps", "browser automation",
+        "IDE/editor launching", "display-dependent commands",
+        "npm run dev", "development servers with hot reload"
+      ],
+      detectionPatterns: {
+        NODE_ENV: ["production", "prod"],
+        USER: ["root", "app", "deploy", "ubuntu", "ec2-user"],
+        HOSTNAME: ["*-server", "*-prod", "*production*"],
+        checkDisplayVariable: false
+      }
+    },
+    ci_cd: {
+      name: "CI/CD Pipeline",
+      description: "Continuous integration/deployment environment",
+      hasGUI: false,
+      allowedCommands: [
+        "npm ci", "npm run build", "npm test", "npm run lint",
+        "docker build", "docker push", "deployment scripts",
+        "artifact generation", "static analysis tools"
+      ],
+      prohibitedCommands: [
+        "interactive commands", "GUI applications", "development servers",
+        "watch modes", "interactive prompts", "browser automation"
+      ],
+      detectionPatterns: {
+        CI: ["true"],
+        GITHUB_ACTIONS: ["true"],
+        JENKINS_URL: ["*"],
+        GITLAB_CI: ["true"],
+        TRAVIS: ["true"],
+        checkDisplayVariable: false
+      }
+    }
+  }
 };
 ```
+
+### Environment Self-Detection Protocol
+
+**NEW in v3.0.0+**: eckSnapshot embeds a self-detection protocol in AI snapshots that instructs AI agents to determine their execution environment at runtime. This prevents common issues like AI agents trying to run GUI commands on headless servers.
+
+**How It Works:**
+1. **Configuration**: Define environments with `detectionPatterns` in your config
+2. **Snapshot Generation**: The protocol is embedded in the AI instruction header
+3. **Runtime Detection**: AI agents run detection commands (`whoami`, `echo $NODE_ENV`, etc.)
+4. **Pattern Matching**: Agents compare output to patterns and identify their environment
+5. **Constraint Enforcement**: Agents follow environment-specific allowed/prohibited commands
+
+**Detection Patterns:**
+- **Environment Variables**: `NODE_ENV`, `USER`, `HOSTNAME`, `CI`, `GITHUB_ACTIONS`, etc.
+- **Display Availability**: `checkDisplayVariable` detects GUI availability via `DISPLAY` or `WAYLAND_DISPLAY`
+- **Wildcard Support**: Hostname patterns like `*-server`, `*-prod`, `*production*`
+
+**Benefits:**
+- **Portable Snapshots**: Same snapshot works across different environments
+- **Automatic Adaptation**: AI agents adapt behavior based on their runtime context
+- **Error Prevention**: Avoids GUI commands on servers, interactive prompts in CI, etc.
+- **Flexible Configuration**: Easily add new environments and detection rules
 
 ## 📖 Command Reference
 
