@@ -206,7 +206,9 @@ export async function createRepoSnapshot(repoPath, options) {
     const repoName = path.basename(absoluteRepoPath);
     
     // Use enhanced header with agent support
-    const header = generateEnhancedAIHeader(stats, repoName, options.aiHeader !== false, config);
+    const header = options.noAiHeader 
+      ? '' 
+      : await generateEnhancedAIHeader({ stats, repoName, mode: 'file' });
     
     snapshotContent = header + snapshotContent + contentArray.join('');
 

@@ -1,0 +1,26 @@
+{
+  "consilium_request": {
+    "request_id": "cons-1755371667176-nih8bjmxd",
+    "timestamp": "2025-08-16T19:14:27.176Z",
+    "requesting_agent": "AGENT_ORCHESTRATOR",
+    "complexity_score": 7,
+    "task": {
+      "type": "technical_decision",
+      "title": "Test Decision",
+      "description": "This is a test",
+      "current_implementation": "N/A",
+      "proposed_solution": "To be determined",
+      "constraints": [],
+      "success_criteria": []
+    },
+    "consilium_instructions": "\n        You are a technical expert participating in a consilium decision.\n        \n        RESPOND WITH:\n        1. Your expert opinion on the best approach\n        2. Specific technical recommendations\n        3. Potential risks and mitigation strategies\n        4. Your confidence level (0-100%)\n        \n        FORMAT YOUR RESPONSE AS JSON:\n        {\n          \"expert\": \"[Your Model Name]\",\n          \"role\": \"[Your assigned role]\",\n          \"recommendation\": {\n            \"approach\": \"Detailed technical solution\",\n            \"implementation_steps\": [\"step1\", \"step2\"],\n            \"key_benefits\": [\"benefit1\", \"benefit2\"],\n            \"risks\": [\"risk1\", \"risk2\"],\n            \"mitigation\": [\"strategy1\", \"strategy2\"]\n          },\n          \"alternatives_considered\": [\"alt1\", \"alt2\"],\n          \"confidence\": 85,\n          \"critical_warnings\": []\n        }\n      ",
+    "aggregation_rules": {
+      "minimum_confidence_required": 60,
+      "consensus_threshold": 0.66,
+      "veto_roles": [
+        "security_auditor"
+      ],
+      "conflict_resolution": "weighted_average_with_discussion"
+    }
+  }
+}

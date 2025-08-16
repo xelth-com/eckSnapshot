@@ -3,6 +3,7 @@ import path from 'path';
 import fs from 'fs/promises';
 import { embeddingService } from '../../services/embedding.js';
 import { LocalIndex } from 'vectra';
+import { generateEnhancedAIHeader } from '../../utils/aiHeader.js';
 
 export async function queryProject(query, options) {
   const spinner = ora('Initializing context-aware query...').start();
@@ -26,7 +27,12 @@ export async function queryProject(query, options) {
     }
 
     spinner.text = 'Assembling context-aware snapshot...';
-    let snapshotContent = `# Context-Aware Snapshot for Query: "${query}"\n\n---\n\n`;
+    const header = await generateEnhancedAIHeader({
+      repoName: path.basename(process.cwd()),
+      userQuery: query,
+      mode: 'vector'
+    });
+    let snapshotContent = header;
     const includedFiles = new Set();
     for (const result of results) {
       includedFiles.add(result.item.metadata.filePath);

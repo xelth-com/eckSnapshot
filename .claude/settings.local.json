@@ -7,7 +7,9 @@
       "Bash(cat:*)",
       "Bash(NODE_ENV=production USER=root unset DISPLAY)",
       "Bash(env)",
-      "Bash(env:*)"
+      "Bash(env:*)",
+      "Bash(mkdir:*)",
+      "Bash(npm install)"
     ],
     "deny": [],
     "defaultMode": "acceptEdits"
