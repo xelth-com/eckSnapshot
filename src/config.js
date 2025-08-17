@@ -1,78 +1,36 @@
-export const DEFAULT_CONFIG = {
-  // --- Core Behavior ---
-  smartModeTokenThreshold: 200000,
+import fs from 'fs/promises';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
-  // --- File Filtering ---
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+let cachedConfig = null;
+
+export async function loadSetupConfig() {
+  if (cachedConfig) {
+    return cachedConfig;
+  }
+
+  try {
+    const setupPath = path.join(__dirname, '..', 'setup.json');
+    const setupContent = await fs.readFile(setupPath, 'utf-8');
+    cachedConfig = JSON.parse(setupContent);
+    return cachedConfig;
+  } catch (error) {
+    console.error('Error loading setup.json:', error.message);
+    throw new Error('Failed to load setup.json configuration file');
+  }
+}
+
+// Fallback default config for backwards compatibility
+export const DEFAULT_CONFIG = {
+  smartModeTokenThreshold: 200000,
   filesToIgnore: ['package-lock.json', '*.log', 'yarn.lock'],
-  extensionsToIgnore: ['.sqlite3', '.db', '.DS_Store', '.env', '.pyc', '.class', '.o', '.so', '.dylib'],
-  dirsToIgnore: ['node_modules/', '.git/', 'dist/', 'build/', '.next/', '.nuxt/', 'target/', 'bin/', 'obj/'],
-  
-  // --- Size & Performance Limits ---
+  extensionsToIgnore: ['.sqlite3', '.db', '.DS_Store', '.env', '.pyc'],
+  dirsToIgnore: ['node_modules/', '.git/', 'dist/', 'build/'],
   maxFileSize: '10MB',
   maxTotalSize: '100MB',
   maxDepth: 10,
-  concurrency: 10,
-
-  // --- Internal AI Instruction Configuration ---
-  aiInstructions: {
-    architectPersona: {
-        role: "Project Manager and Solution Architect AI",
-        goal: "Translate user requests into technical plans and then generate precise commands for a code-execution AI agent.",
-        workflow: [
-            "Analyze User Request in their native language.",
-            "Formulate a high-level technical plan.",
-            "Propose the plan and await user confirmation before generating commands.",
-            "Generate a JSON command block for an execution agent upon approval.",
-            "Communicate with the user in their language, but generate agent commands in ENGLISH."
-        ]
-    },
-    executionAgents: {
-        local_dev: {
-            active: true,
-            name: "Local Development Agent (AGENT_LOCAL_DEV)",
-            description: "Development environment with full GUI support and development tools.",
-            guiSupport: true
-        },
-        production_server: {
-            active: true,
-            name: "Production Server Agent (AGENT_PROD_SERVER)",
-            description: "Headless production server without GUI capabilities.",
-            guiSupport: false
-        }
-    },
-    promptTemplates: {
-        fileMode: `
-# AI Instructions: Project Architect (File Mode)
-
-## 1. Snapshot Overview
-- **Project:** {{repoName}}
-- **Mode:** Full Project Snapshot (Single File)
-- **Generated:** {{timestamp}}
-- **Files Included:** {{stats.includedFiles}} of {{stats.totalFiles}}
-
-## 2. Your Role: {{architectPersona.role}}
-- **Your Goal:** {{architectPersona.goal}}
-
-## 3. Available Execution Agents
-This section describes the agents you can command. Base your technical plan on their capabilities.
-{{agentDefinitions}}
-`,
-        vectorMode: `
-# AI Instructions: Project Architect (Vector Query Mode)
-
-## 1. Snapshot Overview
-- **Project:** {{repoName}}
-- **Mode:** Context-Aware Snapshot (from Vector Search)
-- **User Query:** "{{userQuery}}"
-- **Generated:** {{timestamp}}
-
-## 2. Your Role: {{architectPersona.role}}
-- **Your Goal:** {{architectPersona.goal}}
-
-## 3. Available Execution Agents
-This section describes the agents you can command. The provided code context is tailored for your query.
-{{agentDefinitions}}
-`
-    }
-  }
+  concurrency: 10
 };

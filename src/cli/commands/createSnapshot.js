@@ -15,7 +15,7 @@ import {
 } from '../../utils/fileUtils.js';
 import { generateEnhancedAIHeader } from '../../utils/aiHeader.js';
 import { indexProject } from './indexProject.js';
-import { DEFAULT_CONFIG } from '../../config.js';
+import { loadSetupConfig, DEFAULT_CONFIG } from '../../config.js';
 
 const gzip = promisify(zlib.gzip);
 
@@ -66,7 +66,7 @@ async function runFileSnapshot(repoPath, options, config) {
     const results = await Promise.all(allFiles.map(fp => limit(() => processFile(fp))));
     const contentArray = results.filter(Boolean);
 
-    const header = options.noAiHeader ? '' : generateEnhancedAIHeader({ stats, repoName: path.basename(repoPath), mode: 'file' });
+    const header = options.noAiHeader ? '' : await generateEnhancedAIHeader({ stats, repoName: path.basename(repoPath), mode: 'file' });
     let snapshotContent = header + contentArray.join('');
 
     const timestamp = new Date().toISOString().slice(0, 19).replace('T', '_').replace(/:/g, '-');
@@ -84,8 +84,17 @@ async function runFileSnapshot(repoPath, options, config) {
 export async function createRepoSnapshot(repoPath, options) {
   const spinner = ora('Analyzing project...').start();
   try {
+    const setupConfig = await loadSetupConfig();
     const userConfig = await loadConfig(options.config);
-    const config = { ...DEFAULT_CONFIG, ...userConfig, ...options };
+    
+    // Merge configs: setup.json base, user overrides, command options
+    const config = {
+      ...setupConfig.fileFiltering,
+      ...setupConfig.performance,
+      smartModeTokenThreshold: setupConfig.smartMode.tokenThreshold,
+      ...userConfig,
+      ...options
+    };
 
     const estimatedTokens = await estimateProjectTokens(repoPath, config);
     spinner.info(`Estimated project size: ~${Math.round(estimatedTokens).toLocaleString()} tokens.`);
