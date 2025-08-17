@@ -263,3 +263,22 @@ export async function loadConfig(configPath) {
   
   return config;
 }
+
+export function generateTimestamp() {
+  const now = new Date();
+  const YYYY = now.getFullYear();
+  const MM = String(now.getMonth() + 1).padStart(2, '0');
+  const DD = String(now.getDate()).padStart(2, '0');
+  const hh = String(now.getHours()).padStart(2, '0');
+  const mm = String(now.getMinutes()).padStart(2, '0');
+  const ss = String(now.getSeconds()).padStart(2, '0');
+  return `${YYYY}-${MM}-${DD}_${hh}-${mm}-${ss}`;
+}
+
+export function sanitizeForFilename(text) {
+  return text
+    .toLowerCase()
+    .replace(/\s+/g, '-') // Replace spaces with hyphens
+    .replace(/[^a-z0-9-]/g, '') // Remove invalid characters
+    .substring(0, 50); // Truncate to a reasonable length
+}

@@ -290,13 +290,13 @@ export async function createRepoSnapshot(repoPath, options) {
     
     // Merge configs: setup.json base, user overrides, command options
     const config = {
-      ...setupConfig.fileFiltering,
+      ...userConfig, // Start with old defaults
+      ...setupConfig.fileFiltering, // Overwrite with setup.json values
       ...setupConfig.performance,
       smartModeTokenThreshold: setupConfig.smartMode.tokenThreshold,
       defaultFormat: setupConfig.output?.defaultFormat || 'md',
       aiHeaderEnabled: setupConfig.aiInstructions?.header?.defaultEnabled ?? true,
-      ...userConfig,
-      ...options
+      ...options // Command-line options have the final say
     };
     
     // Apply defaults for options that may not be provided via command line

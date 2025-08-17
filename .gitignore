@@ -33,3 +33,15 @@ Thumbs.db
 *.njsproj
 *.sln
 *.sw?
+
+# EckSnapshot Index
+/.ecksnapshot_index/
+
+# Generated snapshot files
+*_vectors.json
+*_rag_*.md
+
+# Environment variables
+.env
+.env.local
+.env.production

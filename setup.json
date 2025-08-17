@@ -2,8 +2,12 @@
   "_comment": "Central configuration file for eck-snapshot. ALL settings are configured here.",
   
   "smartMode": {
-    "tokenThreshold": 700000,
+    "tokenThreshold": 7000,
     "_comment": "Projects over this token count will use vector indexing instead of single file snapshots"
+  },
+  "vectorIndex": {
+    "autoExportOnIndex": true,
+    "_comment": "Automatically export the vector index to a file after every successful 'index' command."
   },
 
   "fileFiltering": {
@@ -12,7 +16,10 @@
       "yarn.lock", 
       "pnpm-lock.yaml",
       "*.log",
-      "*.tmp"
+      "*.tmp",
+      ".env",
+      ".env.local",
+      ".env.production"
     ],
     "extensionsToIgnore": [
       ".sqlite3",
