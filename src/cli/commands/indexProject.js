@@ -128,21 +128,30 @@ export async function indexProject(projectPath, options) {
     indexSpinner.text = 'Comparing current state with manifest...';
     const toAdd = [];
     const toUpdate = [];
-    const toDelete = new Set(Object.keys(manifest));
+    const manifestIds = new Set(Object.keys(manifest));
 
     for (const [id, segment] of currentState.entries()) {
-      toDelete.delete(id); // This segment exists, so don't delete it
-      if (!manifest[id]) {
-        toAdd.push(segment);
-      } else if (manifest[id] !== segment.contentHash) {
-        toUpdate.push(segment);
-      }
+        if (!manifestIds.has(id)) {
+            toAdd.push(segment);
+        } else if (manifest[id] !== segment.contentHash) {
+            toUpdate.push(segment);
+        }
+        manifestIds.delete(id);
     }
+    const toDelete = manifestIds;
+    const upToDateCount = currentState.size - toAdd.length - toUpdate.length;
+
+    indexSpinner.succeed('Comparison complete. Sync Details:');
+    console.log(`  - Total segments found:        ${chalk.bold(currentState.size)}`);
+    console.log(`  - Segments to add:             ${chalk.green(toAdd.length)}`);
+    console.log(`  - Segments to update:          ${chalk.yellow(toUpdate.length)}`);
+    console.log(`  - Segments to delete:          ${chalk.red(toDelete.size)}`);
+    console.log(`  - Segments up-to-date:         ${chalk.cyan(upToDateCount)}`);
 
     if (toAdd.length === 0 && toUpdate.length === 0 && toDelete.size === 0) {
-      indexSpinner.succeed(chalk.green('Index is already up to date.'));
+      console.log(chalk.green('✅ Index is already up to date.'));
     } else {
-      indexSpinner.succeed('Comparison complete. Starting index update.');
+      console.log('Starting index update...');
 
       const segmentsToProcess = [...toAdd, ...toUpdate];
       if (segmentsToProcess.length > 0) {

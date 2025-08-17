@@ -5,8 +5,8 @@ import fs from 'fs/promises';
 import path from 'path';
 import crypto from 'crypto';
 
-function generateId(filePath, startLine) {
-  return crypto.createHash('md5').update(`${filePath}:${startLine}`).digest('hex');
+function generateId(filePath, segmentName, occurrence) {
+  return crypto.createHash('md5').update(`${filePath}:${segmentName}:${occurrence}`).digest('hex');
 }
 
 function generateHash(content) {
@@ -15,19 +15,25 @@ function generateHash(content) {
 
 async function segmentJavaScript(content, filePath) {
   const segments = [];
+  const nameOccurrences = new Map();
+
   try {
     const ast = parse(content, {
       sourceType: 'module',
-      plugins: ['typescript', 'jsx', 'importMeta'], // <--- FIX: Added 'importMeta'
+      plugins: ['typescript', 'jsx', 'importMeta'],
       errorRecovery: true,
     });
 
     const createSegment = (pathNode, type, name) => {
+      const segmentName = name || 'anonymous';
+      const occurrence = (nameOccurrences.get(segmentName) || 0) + 1;
+      nameOccurrences.set(segmentName, occurrence);
+
       const segmentContent = content.slice(pathNode.start, pathNode.end);
       return {
-        id: generateId(filePath, pathNode.loc.start.line),
+        id: generateId(filePath, segmentName, occurrence),
         type,
-        name,
+        name: segmentName,
         filePath,
         content: segmentContent,
         contentHash: generateHash(segmentContent),
@@ -36,7 +42,7 @@ async function segmentJavaScript(content, filePath) {
 
     traverse(ast, {
       FunctionDeclaration(path) {
-        segments.push(createSegment(path.node, 'function', path.node.id?.name || 'anonymous'));
+        segments.push(createSegment(path.node, 'function', path.node.id?.name));
       },
       ClassDeclaration(path) {
         segments.push(createSegment(path.node, 'class', path.node.id?.name));
@@ -44,11 +50,10 @@ async function segmentJavaScript(content, filePath) {
     });
   
     if (segments.length === 0) {
-        segments.push({ id: generateId(filePath, 1), type: 'file', name: path.basename(filePath), filePath, content, contentHash: generateHash(content) });
+        segments.push({ id: generateId(filePath, 'file', 1), type: 'file', name: path.basename(filePath), filePath, content, contentHash: generateHash(content) });
     }
 
   } catch (e) {
-    // <--- FIX: Implement 'fail-fast' on parse error
     throw new Error(`Failed to parse ${filePath} with AST. Please check the file for syntax errors or unsupported JavaScript features. Original error: ${e.message}`);
   }
   return segments;
@@ -62,7 +67,7 @@ export async function segmentFile(filePath) {
       return segmentJavaScript(content, filePath);
     }
     const fileContent = content;
-    return [{ id: generateId(filePath, 1), type: 'file', name: path.basename(filePath), filePath, content: fileContent, contentHash: generateHash(fileContent) }];
+    return [{ id: generateId(filePath, 'file', 1), type: 'file', name: path.basename(filePath), filePath, content: fileContent, contentHash: generateHash(fileContent) }];
   } catch (error) {
       if (error.message.startsWith('Failed to parse')) {
           throw error; // Re-throw the specific parser error
