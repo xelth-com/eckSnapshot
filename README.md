@@ -23,21 +23,22 @@ Special thanks to those who can also bring their own ideas to life. Contribution
 
 My own project, the original inspiration for this tool, eventually outgrew Gemini's 1M token context window. This challenge sparked the evolution to v4.0.
 
-- **Intelligent Search**: Instead of creating massive snapshots, you can now index your entire project and use natural language to query for the most relevant code. This feature is new and will be actively improved, but it's the future for working with truly large codebases.
+- **Intelligent Search**: Instead of creating massive snapshots, you can now index your entire project and use natural language to query for the most relevant code. This is the future for working with truly large codebases.
 - **Vector-Based Context**: Powered by Google Gemini embeddings, `eck-snapshot` performs semantic searches to find the code that's contextually related to your task.
-- **Modular Architecture**: A complete internal refactor makes the tool more stable, maintainable, and extensible.
+- **Smart Mode**: Automatically detects large projects and uses vector indexing instead of single-file snapshots to provide the most relevant context without overwhelming the AI.
 
-For smaller projects (under ~700k tokens), the classic snapshot mode works just as it always has. We've also added multi-agent support, allowing you to orchestrate agents across different environments (e.g., one local instance, another on a web server). You can configure all of this to fit your needs in the `setup.json` file.
+For smaller projects, the classic snapshot mode works just as it always has.
 
 ---
 
 ## 🚀 Key Features
 
 - **Dual-Mode Operation**:
+  - **`index` & `query`**: The new intelligent mode to perform semantic searches and generate task-specific, context-aware snapshots.
   - **`snapshot`**: The classic mode to generate a single-file snapshot of an entire project.
-  - **`index` & `query`**: The new intelligent mode to perform semantic searches and generate task-specific snapshots.
+- **Portable Indexes**: Export the entire vector index into a single, shareable file. Run queries offline or on different machines without needing an API key.
 - **AI-Driven Philosophy**: Generates clean, structured output perfect for providing context to LLMs and is built to be used in an AI-assisted workflow.
-- **Local First**: Vector indexes are stored locally in a `.ecksnapshot_index` directory in your project.
+- **Local First**: Vector indexes are stored locally in a `.ecksnapshot_index` directory in your project. You own your data.
 - **Deeply Configurable**: Smartly ignores `node_modules`, `.git`, and respects your `.gitignore` file. Nearly all behavior can be customized via `setup.json`.
 
 ---
@@ -50,9 +51,9 @@ For smaller projects (under ~700k tokens), the classic snapshot mode works just 
 npm install -g @xelth/eck-snapshot
 ```
 
-### 2. API Key Setup (Required for New Features)
+### 2. API Key Setup (Required for `index` command)
 
-The new `index` and `query` commands use the Google Gemini API to generate embeddings.
+The `index` command uses the Google Gemini API to generate embeddings.
 
 1.  Obtain an API key from [Google AI Studio](https://aistudio.google.com/app/apikey).
 2.  Create a `.env` file in your project's root directory.
@@ -67,7 +68,7 @@ The new `index` and `query` commands use the Google Gemini API to generate embed
 
 ## 🎯 Usage Workflows
 
-Choose the workflow that best fits your needs.
+Choose the workflow that best fits your project's size and your needs.
 
 ### Workflow 1: Intelligent Search (Recommended for Large Projects)
 
@@ -81,23 +82,20 @@ Navigate to your project's root directory and run:
 eck-snapshot index
 ```
 
-This command will scan your files, break them into smart segments, generate embeddings for each, and save them to a local `.ecksnapshot_index` folder.
+This command scans your files, breaks them into smart segments (functions, classes), generates embeddings for each, and saves them to a local `.ecksnapshot_index` folder.
 
 **Step B: Query for Context**
 
-When you have a task (e.g., fixing a bug, adding a feature), ask `eck-snapshot` for the relevant code:
+When you have a task (e.g., "fixing a bug in the user authentication flow"), ask `eck-snapshot` for the relevant code:
 
 ```bash
 # Ask for code related to user authentication
 eck-snapshot query "user authentication logic"
 
-# Generate a snapshot and save it to a specific file
-eck-snapshot query "implement a new React component for the dashboard" -o dashboard_context.md
+# The result is a small, highly relevant snapshot file containing only the code you need.
 ```
 
-The result is a small, highly relevant snapshot file containing only the code you need for your task.
-
-### Workflow 2: Classic Full Snapshot
+### Workflow 2: Classic Full Snapshot (For Smaller Projects)
 
 Useful for smaller projects or when you need a complete picture.
 
@@ -105,11 +103,29 @@ Useful for smaller projects or when you need a complete picture.
 # Create a snapshot of the current directory
 eck-snapshot snapshot
 
-# Specify a path
-eck-snapshot snapshot /path/to/your/project
+# This command automatically detects project size. If it's too large,
+# it will run the 'index' command for you.
+```
 
-# Create a snapshot and save it to a specific directory
-eck-snapshot snapshot . -o ./my_snapshots
+### Workflow 3: Portable Indexes (For Collaboration & Offline Use)
+
+**Step A: Create a Portable Index**
+
+After indexing, create a shareable JSON file of your vector database.
+
+```bash
+# This runs a sync and then exports the result
+eck-snapshot index --export
+# Creates a file like: YourProject_2025-08-17_22-30-00_vectors.json
+```
+
+**Step B: Query Using the Portable Index**
+
+Anyone can now use this file to perform queries without needing an API key.
+
+```bash
+# The --import flag tells the query command to use the file
+eck-snapshot query "database connection logic" --import YourProject_..._vectors.json
 ```
 
 ---
@@ -117,22 +133,33 @@ eck-snapshot snapshot . -o ./my_snapshots
 ## 📖 Command Reference
 
 ### `index`
-Indexes a project for semantic search.
-`eck-snapshot index [path]`
+Indexes a project for semantic search. It uses a smart sync mechanism to only update what has changed.
+`eck-snapshot index [path] [options]`
 - `[path]`: (Optional) Path to the project. Defaults to the current directory.
+- `--export [filename]`: (Optional) Export the synchronized index to a JSON file. If no filename is given, a default one is generated.
 
 ### `query`
 Generates a context-aware snapshot from an indexed project.
 `eck-snapshot query "<your query>" [options]`
 - `"<your query>"`: A description of the code you're looking for.
-- `-o, --output <file>`: (Optional) The output file name.
+- `-o, --output <file>`: (Optional) The output file name for the RAG snapshot.
 - `-k <number>`: (Optional) Number of results to retrieve. Default: 10.
+- `--import <filename>`: (Optional) Use a portable index file for the query. No API key is needed when using this flag.
 
 ### `snapshot`
-Creates a full snapshot of a repository.
+Creates a full snapshot of a repository. Automatically switches to `index` mode for large projects.
 `eck-snapshot snapshot [path] [options]`
 - Refer to `--help` for all filtering and formatting options.
 
 ### `restore`
-Restores a project from a snapshot file.
+Restores a project from a classic snapshot file.
 `eck-snapshot restore <snapshot_file> [target_directory] [options]`
+
+---
+
+## ⚙️ Configuration
+
+All configuration is now centralized in the `setup.json` file in the project root. Here you can configure:
+- `tokenThreshold`: The project size at which to automatically switch to vector indexing.
+- `autoExportOnIndex`: Set to `true` to automatically create a portable index file after every successful sync.
+- File filtering rules, performance settings, and more.
