@@ -3,10 +3,11 @@ import path from 'path';
 import fs from 'fs/promises';
 import ora from 'ora';
 import chalk from 'chalk';
+import isBinaryPath from 'is-binary-path';
 import { segmentFile } from '../../core/segmenter.js';
 import { embeddingService } from '../../services/embedding.js';
 import { LocalIndex } from 'vectra';
-import { generateTimestamp } from '../../utils/fileUtils.js';
+import { generateTimestamp, formatSize, matchesPattern, loadGitignore } from '../../utils/fileUtils.js';
 import { loadSetupConfig } from '../../config.js';
 
 async function getProjectFiles(projectPath) {
@@ -53,20 +54,70 @@ export async function indexProject(projectPath, options) {
 
   try {
     const config = await loadSetupConfig();
+    const gitignore = await loadGitignore(projectPath);
+
+    mainSpinner.text = 'Scanning project files...';
+    const allFiles = (await execa('git', ['ls-files', '--exclude-standard', '-co'], { cwd: projectPath })).stdout.split('\n').filter(Boolean);
+
+    const stats = {
+        totalFiles: allFiles.length,
+        includedFiles: 0,
+        skippedFiles: 0,
+        binaryFiles: 0,
+        gitignoredFiles: 0,
+        configignoredFiles: 0,
+        totalSize: 0,
+        includedFileTypes: new Map(),
+        skipReasons: new Map()
+    };
+
+    const filesToIndex = [];
+
+    for (const file of allFiles) {
+        const fullPath = path.join(projectPath, file);
+        const fileStats = await fs.stat(fullPath).catch(() => ({ size: 0 }));
+        stats.totalSize += fileStats.size;
+        const fileExt = path.extname(file) || 'no-extension';
+
+        if (gitignore.ignores(file)) {
+            stats.skippedFiles++;
+            stats.gitignoredFiles++;
+            stats.skipReasons.set('gitignore', (stats.skipReasons.get('gitignore') || 0) + 1);
+            continue;
+        }
+        if (isBinaryPath(file)) {
+            stats.skippedFiles++;
+            stats.binaryFiles++;
+            stats.skipReasons.set('binary', (stats.skipReasons.get('binary') || 0) + 1);
+            continue;
+        }
+        if (config.fileFiltering.extensionsToIgnore.includes(fileExt) || matchesPattern(file, config.fileFiltering.filesToIgnore)) {
+            stats.skippedFiles++;
+            stats.configignoredFiles++;
+            stats.skipReasons.set('config', (stats.skipReasons.get('config') || 0) + 1);
+            continue;
+        }
+
+        filesToIndex.push(file);
+        stats.includedFiles++;
+        stats.includedFileTypes.set(fileExt, (stats.includedFileTypes.get(fileExt) || 0) + 1);
+    }
+
+    mainSpinner.succeed('File scan complete.');
+
     await fs.mkdir(indexPath, { recursive: true });
     const index = new LocalIndex(indexPath);
     if (!await index.isIndexCreated()) {
       await index.createIndex();
     }
 
-    mainSpinner.text = 'Reading index manifest...';
+    const indexSpinner = ora('Reading index manifest...').start();
     const manifest = await readManifest(manifestPath);
 
-    mainSpinner.text = 'Scanning project files and calculating hashes...';
-    const files = await getProjectFiles(projectPath);
+    indexSpinner.text = 'Calculating file segments and hashes...';
     const currentState = new Map();
     
-    for (const file of files) {
+    for (const file of filesToIndex) {
       const fullPath = path.join(projectPath, file);
       const segments = await segmentFile(fullPath);
       for (const segment of segments) {
@@ -74,7 +125,7 @@ export async function indexProject(projectPath, options) {
       }
     }
 
-    mainSpinner.text = 'Comparing current state with manifest...';
+    indexSpinner.text = 'Comparing current state with manifest...';
     const toAdd = [];
     const toUpdate = [];
     const toDelete = new Set(Object.keys(manifest));
@@ -89,35 +140,35 @@ export async function indexProject(projectPath, options) {
     }
 
     if (toAdd.length === 0 && toUpdate.length === 0 && toDelete.size === 0) {
-      mainSpinner.succeed(chalk.green('Index is already up to date.'));
-      return;
-    }
+      indexSpinner.succeed(chalk.green('Index is already up to date.'));
+    } else {
+      indexSpinner.succeed('Comparison complete. Starting index update.');
 
-    mainSpinner.succeed('Comparison complete. Starting index update.');
-
-    const segmentsToProcess = [...toAdd, ...toUpdate];
-    if (segmentsToProcess.length > 0) {
-      const embedSpinner = ora(`Generating embeddings for ${segmentsToProcess.length} modified/new segments...`).start();
-      const embeddings = await embeddingService.generateBatchEmbeddings(segmentsToProcess);
-      for (let i = 0; i < segmentsToProcess.length; i++) {
-        const segment = segmentsToProcess[i];
-        await index.upsertItem({ id: segment.id, vector: embeddings[i], metadata: { ...segment } });
-        manifest[segment.id] = segment.contentHash;
-      }
-      embedSpinner.succeed(`${segmentsToProcess.length} segments added or updated in the index.`);
-    }
-
-    if (toDelete.size > 0) {
-        const deleteSpinner = ora(`Pruning ${toDelete.size} obsolete segments...`).start();
-        for (const id of toDelete) {
-            await index.deleteItem(id);
-            delete manifest[id];
+      const segmentsToProcess = [...toAdd, ...toUpdate];
+      if (segmentsToProcess.length > 0) {
+        const embedSpinner = ora(`Generating embeddings for ${segmentsToProcess.length} modified/new segments...`).start();
+        const embeddings = await embeddingService.generateBatchEmbeddings(segmentsToProcess);
+        for (let i = 0; i < segmentsToProcess.length; i++) {
+          const segment = segmentsToProcess[i];
+          await index.upsertItem({ id: segment.id, vector: embeddings[i], metadata: { ...segment } });
+          manifest[segment.id] = segment.contentHash;
         }
-        deleteSpinner.succeed(`${toDelete.size} obsolete segments pruned from the index.`);
+        embedSpinner.succeed(`${segmentsToProcess.length} segments added or updated in the index.`);
+      }
+
+      if (toDelete.size > 0) {
+          const deleteSpinner = ora(`Pruning ${toDelete.size} obsolete segments...`).start();
+          for (const id of toDelete) {
+              await index.deleteItem(id);
+              delete manifest[id];
+          }
+          deleteSpinner.succeed(`${toDelete.size} obsolete segments pruned from the index.`);
+      }
+
+      await writeManifest(manifestPath, manifest);
     }
 
-    await writeManifest(manifestPath, manifest);
-    console.log(chalk.green.bold('\n✅ Index synchronization complete!'));
+    console.log(`✅ Index synchronization complete!`);
 
     // Check for export condition
     const shouldExport = (options && options.export) || (config.vectorIndex && config.vectorIndex.autoExportOnIndex);
@@ -133,6 +184,26 @@ export async function indexProject(projectPath, options) {
         const exportPath = typeof (options && options.export) === 'string' ? options.export : finalDefaultPath;
         await exportIndex(index, manifest, path.resolve(exportPath));
     }
+
+    // Print final statistics
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log(chalk.bold('📊 Index Synced. File Statistics:'));
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log(`- Total files in repository:      ${chalk.yellow(stats.totalFiles)}`);
+    console.log(`- Files included in index:        ${chalk.green(stats.includedFiles)}`);
+    console.log(`- Skipped (binary):               ${chalk.red(stats.binaryFiles)}`);
+    console.log(`- Skipped (gitignore):            ${chalk.red(stats.gitignoredFiles)}`);
+    console.log(`- Skipped (config rule):          ${chalk.red(stats.configignoredFiles)}`);
+    console.log(`- Total project size:             ${chalk.yellow(formatSize(stats.totalSize))}`);
+
+    if (stats.includedFileTypes.size > 0) {
+        console.log(chalk.bold('\n📋 Included File Types Distribution:'));
+        const sortedTypes = [...stats.includedFileTypes.entries()].sort((a, b) => b[1] - a[1]);
+        for (const [ext, count] of sortedTypes) {
+            console.log(`  ${ext.padEnd(10)} ${chalk.green(count)} files`);
+        }
+    }
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
   } catch (error) {
     mainSpinner.fail(chalk.red(`Indexing failed: ${error.message}`));
