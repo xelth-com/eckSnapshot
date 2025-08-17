@@ -99,10 +99,9 @@ To ensure error-free execution, all tasks for the agent must be presented in a s
 \`\`\``;
       
       template = template.replace('{{multiAgentSection}}', multiAgentSection);
-    } else if (isMultiAgent) {
-      template = promptTemplates.multiAgent;
     } else {
-      template = promptTemplates.singleAgent;
+      // Always use multiAgent template for file snapshots
+      template = promptTemplates.multiAgent;
     }
 
     const agentDefinitions = buildAgentDefinitions(executionAgents);

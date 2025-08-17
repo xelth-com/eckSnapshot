@@ -11,7 +11,7 @@ import ora from 'ora';
 import {
   parseSize, formatSize, matchesPattern, checkGitRepository, 
   scanDirectoryRecursively, loadGitignore, readFileWithSizeCheck, 
-  loadConfig
+  generateDirectoryTree, loadConfig
 } from '../../utils/fileUtils.js';
 import { generateEnhancedAIHeader } from '../../utils/aiHeader.js';
 import { indexProject } from './indexProject.js';
@@ -41,41 +41,242 @@ async function estimateProjectTokens(projectPath, config) {
 }
 
 async function runFileSnapshot(repoPath, options, config) {
-  // This contains the original logic for creating a single file
   const originalCwd = process.cwd();
-  const spinner = ora('Creating single-file snapshot...').start();
+  console.log(`\n📸 Creating snapshot of: ${path.basename(repoPath)}`);
+  console.log(`📁 Repository path: ${repoPath}`);
+  
+  // Initialize detailed stats with skip tracking
+  const stats = {
+    totalFiles: 0,
+    includedFiles: 0,
+    excludedFiles: 0,
+    binaryFiles: 0,
+    oversizedFiles: 0,
+    ignoredFiles: 0,
+    totalSize: 0,
+    processedSize: 0,
+    errors: [],
+    skipReasons: new Map(),
+    skippedFilesDetails: new Map()
+  };
+
   try {
     process.chdir(repoPath);
+    
+    // Get all files and setup gitignore
+    console.log('🔍 Scanning repository...');
     const allFiles = await getProjectFiles(repoPath, config);
     const gitignore = await loadGitignore(repoPath);
-    const stats = { totalFiles: allFiles.length, includedFiles: 0 };
+    stats.totalFiles = allFiles.length;
+    
+    console.log(`📊 Found ${stats.totalFiles} files`);
+    
+    // Generate directory tree if enabled (config.tree can be overridden by --no-tree flag)
+    let directoryTree = '';
+    const shouldIncludeTree = config.tree && !options.noTree;
+    if (shouldIncludeTree) {
+      console.log('🌳 Generating directory tree...');
+      directoryTree = await generateDirectoryTree(repoPath, '', allFiles, 0, config.maxDepth || 10, config);
+    }
+    
+    // Setup progress bar
+    const progressBar = new SingleBar({
+      format: '📄 Processing |{bar}| {percentage}% | {value}/{total} files | {filename}',
+      barCompleteChar: '\u2588',
+      barIncompleteChar: '\u2591',
+      hideCursor: true
+    }, Presets.rect);
+    progressBar.start(allFiles.length, 0);
+    
+    // Helper function to track skipped files
+    const trackSkippedFile = (filePath, reason) => {
+      if (!stats.skippedFilesDetails.has(reason)) {
+        stats.skippedFilesDetails.set(reason, []);
+      }
+      stats.skippedFilesDetails.get(reason).push(filePath);
+      stats.skipReasons.set(reason, (stats.skipReasons.get(reason) || 0) + 1);
+    };
     
     const limit = pLimit(config.concurrency);
-    const processFile = async (filePath) => {
+    const processFile = async (filePath, index) => {
       const normalizedPath = filePath.replace(/\\/g, '/');
-      if (config.dirsToIgnore.some(dir => normalizedPath.startsWith(dir)) || gitignore.ignores(normalizedPath) || isBinaryPath(filePath)) {
+      progressBar.update(index + 1, { filename: normalizedPath.slice(0, 50) });
+      
+      try {
+        // Check if file should be ignored by directory patterns
+        if (config.dirsToIgnore.some(dir => normalizedPath.startsWith(dir))) {
+          stats.ignoredFiles++;
+          trackSkippedFile(normalizedPath, 'Directory ignore patterns');
+          return null;
+        }
+        
+        // Check gitignore patterns
+        if (gitignore.ignores(normalizedPath)) {
+          stats.ignoredFiles++;
+          trackSkippedFile(normalizedPath, 'Gitignore rules');
+          return null;
+        }
+        
+        // Check if binary file
+        if (isBinaryPath(filePath)) {
+          stats.binaryFiles++;
+          trackSkippedFile(normalizedPath, 'Binary files');
+          return null;
+        }
+        
+        // Check extensions and file patterns
+        const fileExtension = path.extname(filePath);
+        if (config.extensionsToIgnore.includes(fileExtension)) {
+          stats.excludedFiles++;
+          trackSkippedFile(normalizedPath, `File extension filter (${fileExtension})`);
+          return null;
+        }
+        
+        if (matchesPattern(normalizedPath, config.filesToIgnore)) {
+          stats.excludedFiles++;
+          trackSkippedFile(normalizedPath, 'File pattern filter');
+          return null;
+        }
+        
+        // Read file with size check
+        const fullPath = path.join(repoPath, filePath);
+        const fileStats = await fs.stat(fullPath);
+        stats.totalSize += fileStats.size;
+        
+        const maxFileSize = parseSize(config.maxFileSize);
+        if (fileStats.size > maxFileSize) {
+          stats.oversizedFiles++;
+          trackSkippedFile(normalizedPath, `File too large (${formatSize(fileStats.size)} > ${formatSize(maxFileSize)})`);
+          return null;
+        }
+        
+        const content = await readFileWithSizeCheck(fullPath, maxFileSize);
+        stats.includedFiles++;
+        stats.processedSize += fileStats.size;
+        
+        return `--- File: /${normalizedPath} ---\n\n${content}\n\n`;
+      } catch (error) {
+        stats.errors.push(`${normalizedPath}: ${error.message}`);
+        trackSkippedFile(normalizedPath, `Error: ${error.message}`);
         return null;
       }
-      try {
-        const content = await readFileWithSizeCheck(filePath, parseSize(config.maxFileSize));
-        stats.includedFiles++;
-        return `--- File: /${normalizedPath} ---\n\n${content}\n\n`;
-      } catch { return null; }
     };
 
-    const results = await Promise.all(allFiles.map(fp => limit(() => processFile(fp))));
+    const results = await Promise.all(allFiles.map((fp, index) => limit(() => processFile(fp, index))));
+    progressBar.stop();
+    
     const contentArray = results.filter(Boolean);
-
-    const header = options.noAiHeader ? '' : await generateEnhancedAIHeader({ stats, repoName: path.basename(repoPath), mode: 'file' });
-    let snapshotContent = header + contentArray.join('');
-
+    
+    // Prepare basic info
     const timestamp = new Date().toISOString().slice(0, 19).replace('T', '_').replace(/:/g, '-');
-    const outputFilename = `${path.basename(repoPath)}_snapshot_${timestamp}.md`;
-    const outputPath = options.output || path.join(process.cwd(), 'snapshots');
+    const repoName = path.basename(repoPath);
+    
+    // Determine if AI header should be included
+    // Priority: command line flag (aiHeader) overrides config setting (aiHeaderEnabled)
+    // Commander.js converts --no-ai-header to aiHeader: false
+    const shouldIncludeAiHeader = config.aiHeaderEnabled && (options.aiHeader !== false);
+    
+    // Generate AI header if needed (for both formats)
+    let aiHeader = '';
+    if (shouldIncludeAiHeader) {
+      aiHeader = await generateEnhancedAIHeader({ stats, repoName, mode: 'file' });
+    }
+    
+    // Prepare content based on format
+    const outputPath = options.output || path.resolve(originalCwd, config.output);
     await fs.mkdir(outputPath, { recursive: true });
+    
+    let outputContent = '';
+    let outputFilename = '';
+    let fileExtension = options.format || config.defaultFormat || 'md';
+    
+    if (fileExtension === 'json') {
+      // JSON format - convert Maps to objects for serialization
+      const serializableStats = {
+        ...stats,
+        skipReasons: Object.fromEntries(stats.skipReasons),
+        skippedFilesDetails: Object.fromEntries(stats.skippedFilesDetails)
+      };
+      
+      const jsonOutput = {
+        metadata: {
+          repoName,
+          timestamp: new Date().toISOString(),
+          toolVersion: '4.0.0',
+          format: 'json'
+        },
+        statistics: serializableStats,
+        directoryTree: directoryTree,
+        aiInstructionsHeader: aiHeader,
+        files: contentArray.map(content => {
+          const match = content.match(/--- File: \/(.+) ---\n\n([\s\S]*?)\n\n$/);
+          return {
+            path: match[1],
+            content: match[2]
+          };
+        })
+      };
+      outputContent = JSON.stringify(jsonOutput, null, 2);
+      outputFilename = `${repoName}_snapshot_${timestamp}.json`;
+    } else {
+      // Markdown format (default)
+      outputContent = aiHeader;
+      
+      if (directoryTree) {
+        outputContent += '\n## Directory Structure\n\n```\n' + directoryTree + '```\n\n';
+      }
+      
+      outputContent += contentArray.join('');
+      outputFilename = `${repoName}_snapshot_${timestamp}.md`;
+    }
+    
     const fullOutputFilePath = path.join(outputPath, outputFilename);
-    await fs.writeFile(fullOutputFilePath, snapshotContent);
-    spinner.succeed(`Snapshot created: ${fullOutputFilePath}`);
+    await fs.writeFile(fullOutputFilePath, outputContent);
+    
+    // Print detailed summary
+    console.log('\n✅ Snapshot completed successfully!');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log(`📄 Output file: ${fullOutputFilePath}`);
+    console.log(`📊 Files processed: ${stats.includedFiles}/${stats.totalFiles}`);
+    console.log(`📏 Total size: ${formatSize(stats.totalSize)}`);
+    console.log(`📦 Processed size: ${formatSize(stats.processedSize)}`);
+    console.log(`📋 Format: ${fileExtension.toUpperCase()}`);
+    
+    if (stats.excludedFiles > 0) {
+      console.log(`🚫 Excluded files: ${stats.excludedFiles}`);
+    }
+    if (stats.binaryFiles > 0) {
+      console.log(`📱 Binary files skipped: ${stats.binaryFiles}`);
+    }
+    if (stats.oversizedFiles > 0) {
+      console.log(`📏 Oversized files skipped: ${stats.oversizedFiles}`);
+    }
+    if (stats.ignoredFiles > 0) {
+      console.log(`🙈 Ignored files: ${stats.ignoredFiles}`);
+    }
+    if (stats.errors.length > 0) {
+      console.log(`❌ Errors: ${stats.errors.length}`);
+      if (options.verbose) {
+        stats.errors.forEach(err => console.log(`   ${err}`));
+      }
+    }
+    
+    // Print detailed skip reasons report
+    if (stats.skippedFilesDetails.size > 0) {
+      console.log('\n📋 Skip Reasons:');
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      
+      for (const [reason, files] of stats.skippedFilesDetails.entries()) {
+        console.log(`\n🔸 ${reason} (${files.length} files):`);
+        files.forEach(file => {
+          console.log(`   • ${file}`);
+        });
+      }
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    } else {
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    }
+    
   } finally {
     process.chdir(originalCwd);
   }
@@ -92,9 +293,26 @@ export async function createRepoSnapshot(repoPath, options) {
       ...setupConfig.fileFiltering,
       ...setupConfig.performance,
       smartModeTokenThreshold: setupConfig.smartMode.tokenThreshold,
+      defaultFormat: setupConfig.output?.defaultFormat || 'md',
+      aiHeaderEnabled: setupConfig.aiInstructions?.header?.defaultEnabled ?? true,
       ...userConfig,
       ...options
     };
+    
+    // Apply defaults for options that may not be provided via command line
+    if (!config.output) {
+      config.output = setupConfig.output?.defaultPath || './snapshots';
+    }
+    // For tree option, we need to check if --no-tree was explicitly passed
+    // Commander.js sets tree to false when --no-tree is passed, true otherwise
+    // We only want to use the config default if the user didn't specify --no-tree
+    if (!('noTree' in options)) {
+      // User didn't pass --no-tree, so we can use the config default
+      config.tree = setupConfig.output?.includeTree ?? true;
+    }
+    if (config.includeHidden === undefined) {
+      config.includeHidden = setupConfig.fileFiltering?.includeHidden ?? false;
+    }
 
     const estimatedTokens = await estimateProjectTokens(repoPath, config);
     spinner.info(`Estimated project size: ~${Math.round(estimatedTokens).toLocaleString()} tokens.`);
