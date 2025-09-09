@@ -7,6 +7,7 @@ import { restoreSnapshot } from './commands/restoreSnapshot.js';
 import { generateConsilium } from './commands/consilium.js';
 import { indexProject } from './commands/indexProject.js';
 import { queryProject } from './commands/queryProject.js';
+import { detectProject, testAndroidParsing } from './commands/detectProject.js';
 
 /**
  * Check code boundaries in a file
@@ -127,6 +128,22 @@ export function run() {
     .option('-o, --output <file>', 'Output file for snapshot')
     .option('--import <filename>', 'Use a portable index file for the query instead of the local database.')
     .action(queryProject);
+
+  // Project detection command
+  program
+    .command('detect')
+    .description('Detect and display project type and configuration')
+    .argument('[projectPath]', 'Path to the project', process.cwd())
+    .option('-v, --verbose', 'Show detailed detection results')
+    .action(detectProject);
+
+  // Android parsing test command
+  program
+    .command('test-android')
+    .description('Test Android file parsing capabilities')
+    .argument('<filePath>', 'Path to Android source file (.kt or .java)')
+    .option('--show-content', 'Show content preview of parsed segments')
+    .action(testAndroidParsing);
 
   program.parse(process.argv);
 }

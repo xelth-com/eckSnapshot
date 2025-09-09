@@ -2,6 +2,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import { execa } from 'execa';
 import ignore from 'ignore';
+import { detectProjectType, getProjectSpecificFiltering } from './projectDetector.js';
 
 export function parseSize(sizeStr) {
   const units = { B: 1, KB: 1024, MB: 1024 ** 2, GB: 1024 ** 3 };
@@ -53,8 +54,24 @@ export async function checkGitRepository(repoPath) {
   }
 }
 
-export async function scanDirectoryRecursively(dirPath, config, relativeTo = dirPath) {
+export async function scanDirectoryRecursively(dirPath, config, relativeTo = dirPath, projectType = null) {
   const files = [];
+  
+  // Get project-specific filtering if not provided
+  if (!projectType) {
+    const detection = await detectProjectType(relativeTo);
+    projectType = detection.type;
+  }
+  
+  const projectSpecific = await getProjectSpecificFiltering(projectType);
+  
+  // Merge project-specific filters with global config
+  const effectiveConfig = {
+    ...config,
+    dirsToIgnore: [...(config.dirsToIgnore || []), ...(projectSpecific.dirsToIgnore || [])],
+    filesToIgnore: [...(config.filesToIgnore || []), ...(projectSpecific.filesToIgnore || [])],
+    extensionsToIgnore: [...(config.extensionsToIgnore || []), ...(projectSpecific.extensionsToIgnore || [])]
+  };
   
   try {
     const entries = await fs.readdir(dirPath, { withFileTypes: true });
@@ -63,23 +80,23 @@ export async function scanDirectoryRecursively(dirPath, config, relativeTo = dir
       const fullPath = path.join(dirPath, entry.name);
       const relativePath = path.relative(relativeTo, fullPath).replace(/\\/g, '/');
       
-      if (config.dirsToIgnore.some(dir => 
+      if (effectiveConfig.dirsToIgnore.some(dir => 
         entry.name === dir.replace('/', '') || 
         relativePath.startsWith(dir)
       )) {
         continue;
       }
       
-      if (!config.includeHidden && entry.name.startsWith('.')) {
+      if (!effectiveConfig.includeHidden && entry.name.startsWith('.')) {
         continue;
       }
       
       if (entry.isDirectory()) {
-        const subFiles = await scanDirectoryRecursively(fullPath, config, relativeTo);
+        const subFiles = await scanDirectoryRecursively(fullPath, effectiveConfig, relativeTo, projectType);
         files.push(...subFiles);
       } else {
-        if (config.extensionsToIgnore.includes(path.extname(entry.name)) ||
-            matchesPattern(relativePath, config.filesToIgnore)) {
+        if (effectiveConfig.extensionsToIgnore.includes(path.extname(entry.name)) ||
+            matchesPattern(relativePath, effectiveConfig.filesToIgnore)) {
           continue;
         }
         
@@ -281,4 +298,153 @@ export function sanitizeForFilename(text) {
     .replace(/\s+/g, '-') // Replace spaces with hyphens
     .replace(/[^a-z0-9-]/g, '') // Remove invalid characters
     .substring(0, 50); // Truncate to a reasonable length
+}
+
+/**
+ * Displays project detection information in a user-friendly format
+ * @param {object} detection - Project detection result
+ */
+export function displayProjectInfo(detection) {
+  console.log('\n🔍 Project Detection Results:');
+  console.log(`   Type: ${detection.type} (confidence: ${(detection.confidence * 100).toFixed(0)}%)`);
+  
+  if (detection.details) {
+    const details = detection.details;
+    
+    switch (detection.type) {
+      case 'android':
+        console.log(`   Language: ${details.language || 'unknown'}`);
+        if (details.packageName) {
+          console.log(`   Package: ${details.packageName}`);
+        }
+        if (details.sourceDirs && details.sourceDirs.length > 0) {
+          console.log(`   Source dirs: ${details.sourceDirs.join(', ')}`);
+        }
+        if (details.libFiles && details.libFiles.length > 0) {
+          console.log(`   Libraries: ${details.libFiles.length} .aar/.jar files`);
+        }
+        break;
+        
+      case 'nodejs':
+        if (details.name) {
+          console.log(`   Package: ${details.name}@${details.version || '?'}`);
+        }
+        if (details.framework) {
+          console.log(`   Framework: ${details.framework}`);
+        }
+        if (details.hasTypescript) {
+          console.log(`   TypeScript: enabled`);
+        }
+        break;
+        
+      case 'nodejs-monorepo':
+        if (details.name) {
+          console.log(`   Project: ${details.name}@${details.version || '?'}`);
+        }
+        if (details.monorepoTool) {
+          console.log(`   Monorepo tool: ${details.monorepoTool}`);
+        }
+        if (details.workspaceCount) {
+          console.log(`   Workspaces: ${details.workspaceCount}`);
+        }
+        if (details.framework) {
+          console.log(`   Framework: ${details.framework}`);
+        }
+        break;
+        
+      case 'python-poetry':
+      case 'python-pip':
+      case 'python-conda':
+        if (details.name) {
+          console.log(`   Project: ${details.name}@${details.version || '?'}`);
+        }
+        if (details.packageManager) {
+          console.log(`   Package manager: ${details.packageManager}`);
+        }
+        if (details.dependencies) {
+          console.log(`   Dependencies: ${details.dependencies}`);
+        }
+        if (details.hasVirtualEnv) {
+          console.log(`   Virtual environment: detected`);
+        }
+        break;
+        
+      case 'django':
+        if (details.name) {
+          console.log(`   Project: ${details.name}`);
+        }
+        console.log(`   Framework: Django`);
+        if (details.djangoApps && details.djangoApps.length > 0) {
+          console.log(`   Django apps: ${details.djangoApps.join(', ')}`);
+        }
+        if (details.hasVirtualEnv) {
+          console.log(`   Virtual environment: detected`);
+        }
+        break;
+        
+      case 'flask':
+        if (details.name) {
+          console.log(`   Project: ${details.name}`);
+        }
+        console.log(`   Framework: Flask`);
+        if (details.hasVirtualEnv) {
+          console.log(`   Virtual environment: detected`);
+        }
+        break;
+        
+      case 'rust':
+        if (details.name) {
+          console.log(`   Package: ${details.name}@${details.version || '?'}`);
+        }
+        if (details.edition) {
+          console.log(`   Rust edition: ${details.edition}`);
+        }
+        if (details.isWorkspace) {
+          console.log(`   Cargo workspace: detected`);
+        }
+        break;
+        
+      case 'go':
+        if (details.module) {
+          console.log(`   Module: ${details.module}`);
+        }
+        if (details.goVersion) {
+          console.log(`   Go version: ${details.goVersion}`);
+        }
+        break;
+        
+      case 'dotnet':
+        if (details.language) {
+          console.log(`   Language: ${details.language}`);
+        }
+        if (details.projectFiles && details.projectFiles.length > 0) {
+          console.log(`   Project files: ${details.projectFiles.join(', ')}`);
+        }
+        if (details.hasSolution) {
+          console.log(`   Solution: detected`);
+        }
+        break;
+        
+      case 'flutter':
+        if (details.name) {
+          console.log(`   App: ${details.name}@${details.version || '?'}`);
+        }
+        break;
+        
+      case 'react-native':
+        if (details.name) {
+          console.log(`   App: ${details.name}@${details.version || '?'}`);
+        }
+        if (details.reactNativeVersion) {
+          console.log(`   React Native: ${details.reactNativeVersion}`);
+        }
+        break;
+    }
+  }
+  
+  if (detection.allDetections && detection.allDetections.length > 1) {
+    console.log(`   Other possibilities: ${detection.allDetections.slice(1).map(d => d.type).join(', ')}`);
+  }
+  
+  console.log('');
 }

@@ -11,8 +11,115 @@ import ora from 'ora';
 import {
   parseSize, formatSize, matchesPattern, checkGitRepository, 
   scanDirectoryRecursively, loadGitignore, readFileWithSizeCheck, 
-  generateDirectoryTree, loadConfig
+  generateDirectoryTree, loadConfig, displayProjectInfo
 } from '../../utils/fileUtils.js';
+import { detectProjectType } from '../../utils/projectDetector.js';
+
+/**
+ * Creates dynamic project context based on detection results
+ */
+function createDynamicProjectContext(detection) {
+  const { type, details } = detection;
+  const context = {
+    name: details.name || 'detected-project',
+    type: type,
+    detectedAt: new Date().toISOString()
+  };
+  
+  // Create architecture info based on project type
+  const architecture = {
+    stack: [],
+    structure: type
+  };
+  
+  switch (type) {
+    case 'android':
+      architecture.stack = ['Android', details.language || 'Java', 'Gradle'];
+      if (details.packageName) {
+        context.packageName = details.packageName;
+      }
+      break;
+      
+    case 'nodejs':
+      architecture.stack = ['Node.js'];
+      if (details.framework) {
+        architecture.stack.push(details.framework);
+      }
+      if (details.hasTypescript) {
+        architecture.stack.push('TypeScript');
+      }
+      break;
+      
+    case 'nodejs-monorepo':
+      architecture.stack = ['Node.js', 'Monorepo'];
+      if (details.monorepoTool) {
+        architecture.stack.push(details.monorepoTool);
+      }
+      if (details.framework) {
+        architecture.stack.push(details.framework);
+      }
+      if (details.hasTypescript) {
+        architecture.stack.push('TypeScript');
+      }
+      break;
+      
+    case 'python-poetry':
+    case 'python-pip':
+    case 'python-conda':
+      architecture.stack = ['Python'];
+      if (details.packageManager) {
+        architecture.stack.push(details.packageManager);
+      }
+      break;
+      
+    case 'django':
+      architecture.stack = ['Python', 'Django'];
+      break;
+      
+    case 'flask':
+      architecture.stack = ['Python', 'Flask'];
+      break;
+      
+    case 'rust':
+      architecture.stack = ['Rust', 'Cargo'];
+      if (details.edition) {
+        architecture.stack.push(`Rust ${details.edition}`);
+      }
+      break;
+      
+    case 'go':
+      architecture.stack = ['Go'];
+      if (details.goVersion) {
+        architecture.stack.push(`Go ${details.goVersion}`);
+      }
+      break;
+      
+    case 'dotnet':
+      architecture.stack = ['.NET'];
+      if (details.language) {
+        architecture.stack.push(details.language);
+      }
+      break;
+      
+    case 'flutter':
+      architecture.stack = ['Flutter', 'Dart'];
+      break;
+      
+    case 'react-native':
+      architecture.stack = ['React Native', 'JavaScript'];
+      if (details.hasTypescript) {
+        architecture.stack.push('TypeScript');
+      }
+      break;
+      
+    default:
+      architecture.stack = ['Unknown'];
+  }
+  
+  context.architecture = architecture;
+  
+  return context;
+}
 import { generateEnhancedAIHeader } from '../../utils/aiHeader.js';
 import { indexProject } from './indexProject.js';
 import { loadSetupConfig, DEFAULT_CONFIG } from '../../config.js';
@@ -26,6 +133,19 @@ async function getProjectFiles(projectPath, config) {
     return stdout.split('\n').filter(Boolean);
   }
   return scanDirectoryRecursively(projectPath, config);
+}
+
+async function getGitCommitHash(projectPath) {
+  try {
+    const isGitRepo = await checkGitRepository(projectPath);
+    if (isGitRepo) {
+      const { stdout } = await execa('git', ['rev-parse', '--short=7', 'HEAD'], { cwd: projectPath });
+      return stdout.trim();
+    }
+  } catch (error) {
+    // Ignore errors - not a git repo or no commits
+  }
+  return null;
 }
 
 async function estimateProjectTokens(projectPath, config) {
@@ -170,6 +290,7 @@ async function runFileSnapshot(repoPath, options, config) {
     // Prepare basic info
     const timestamp = new Date().toISOString().slice(0, 19).replace('T', '_').replace(/:/g, '-');
     const repoName = path.basename(repoPath);
+    const gitHash = await getGitCommitHash(repoPath);
     
     // Determine if AI header should be included
     // Priority: command line flag (aiHeader) overrides config setting (aiHeaderEnabled)
@@ -217,7 +338,9 @@ async function runFileSnapshot(repoPath, options, config) {
         })
       };
       outputContent = JSON.stringify(jsonOutput, null, 2);
-      outputFilename = `${repoName}_snapshot_${timestamp}.json`;
+      outputFilename = gitHash 
+        ? `${repoName}_snapshot_${timestamp}_${gitHash}.json`
+        : `${repoName}_snapshot_${timestamp}.json`;
     } else {
       // Markdown format (default)
       outputContent = aiHeader;
@@ -227,7 +350,9 @@ async function runFileSnapshot(repoPath, options, config) {
       }
       
       outputContent += contentArray.join('');
-      outputFilename = `${repoName}_snapshot_${timestamp}.md`;
+      outputFilename = gitHash 
+        ? `${repoName}_snapshot_${timestamp}_${gitHash}.md`
+        : `${repoName}_snapshot_${timestamp}.md`;
     }
     
     const fullOutputFilePath = path.join(outputPath, outputFilename);
@@ -285,8 +410,18 @@ async function runFileSnapshot(repoPath, options, config) {
 export async function createRepoSnapshot(repoPath, options) {
   const spinner = ora('Analyzing project...').start();
   try {
+    // Detect project type first
+    const projectDetection = await detectProjectType(repoPath);
+    spinner.stop();
+    displayProjectInfo(projectDetection);
+    
     const setupConfig = await loadSetupConfig();
     const userConfig = await loadConfig(options.config);
+    
+    // Update project context based on detection
+    if (projectDetection.type !== 'unknown' && projectDetection.details) {
+      setupConfig.projectContext = createDynamicProjectContext(projectDetection);
+    }
     
     // Merge configs: setup.json base, user overrides, command options
     const config = {

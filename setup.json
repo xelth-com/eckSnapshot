@@ -1,29 +1,244 @@
 {
   "_comment": "Central configuration file for eck-snapshot. ALL settings are configured here.",
-  
+  "projectContext": {
+    "name": "eckasse",
+    "type": "monorepo",
+    "architecture": {
+      "workspaces": [
+        "@eckasse/core",
+        "@eckasse/desktop",
+        "@eckasse/adapters",
+        "@eckasse/shared-frontend"
+      ],
+      "stack": [
+        "Node.js",
+        "Express",
+        "Electron",
+        "PostgreSQL",
+        "WebSocket"
+      ],
+      "aiIntegration": "Google Gemini for POS natural language control"
+    }
+  },
+  "projectDetection": {
+    "_comment": "Automatic project type detection based on file structure",
+    "patterns": {
+      "android": {
+        "files": ["build.gradle", "build.gradle.kts", "settings.gradle", "settings.gradle.kts"],
+        "directories": ["app/src/main", "app/src/androidTest"],
+        "manifestFiles": ["AndroidManifest.xml"],
+        "priority": 10
+      },
+      "nodejs-monorepo": {
+        "files": ["package.json"],
+        "directories": ["packages", "apps", "libs"],
+        "patterns": ["workspaces", "lerna", "nx", "rush"],
+        "priority": 7
+      },
+      "nodejs": {
+        "files": ["package.json"],
+        "directories": ["node_modules"],
+        "priority": 6
+      },
+      "python-poetry": {
+        "files": ["pyproject.toml"],
+        "patterns": ["tool.poetry"],
+        "priority": 9
+      },
+      "python-pip": {
+        "files": ["requirements.txt", "setup.py", "setup.cfg"],
+        "directories": ["__pycache__", "venv", ".venv"],
+        "priority": 7
+      },
+      "python-conda": {
+        "files": ["environment.yml", "environment.yaml", "conda.yml"],
+        "priority": 8
+      },
+      "django": {
+        "files": ["manage.py"],
+        "patterns": ["django", "Django"],
+        "priority": 9
+      },
+      "flask": {
+        "files": ["app.py", "application.py"],
+        "patterns": ["flask", "Flask"],
+        "priority": 8
+      },
+      "flutter": {
+        "files": ["pubspec.yaml"],
+        "directories": ["lib", "android", "ios"],
+        "priority": 8
+      },
+      "react-native": {
+        "files": ["package.json"],
+        "directories": ["android", "ios"],
+        "patterns": ["react-native"],
+        "priority": 8
+      },
+      "rust": {
+        "files": ["Cargo.toml"],
+        "directories": ["src", "target"],
+        "priority": 7
+      },
+      "go": {
+        "files": ["go.mod", "go.sum"],
+        "directories": ["cmd", "pkg", "internal"],
+        "priority": 7
+      },
+      "dotnet": {
+        "files": ["*.csproj", "*.sln", "*.fsproj", "*.vbproj"],
+        "directories": ["bin", "obj"],
+        "priority": 7
+      }
+    }
+  },
+  "environmentDetection": {
+    "_comment": "Cross-platform environment detection",
+    "scanCommand": "node -e \"console.log(['ENV', process.platform+'/'+require('os').arch(), process.version, require('fs').existsSync('*.sqlite*')?'SQLite':'none', require('path').basename(process.cwd())].join('|'))\"",
+    "responseFormat": "ENV|OS/arch|NodeVersion|Database|ProjectFolder",
+    "platformMarkers": {
+      "development": {
+        "paths": [
+          "/home/",
+          "/Users/",
+          "\\Users\\",
+          "WSL"
+        ],
+        "database": [
+          "SQLite",
+          "*.sqlite*"
+        ],
+        "process": [
+          "npm",
+          "node"
+        ]
+      },
+      "production": {
+        "paths": [
+          "/var/www/",
+          "/opt/",
+          "/srv/"
+        ],
+        "database": [
+          "PostgreSQL",
+          "eckwms"
+        ],
+        "process": [
+          "PM2",
+          "systemd"
+        ]
+      }
+    }
+  },
   "smartMode": {
-    "tokenThreshold": 7000,
+    "tokenThreshold": 7700000,
     "_comment": "Projects over this token count will use vector indexing instead of single file snapshots"
   },
   "vectorIndex": {
     "autoExportOnIndex": true,
     "_comment": "Automatically export the vector index to a file after every successful 'index' command."
   },
-
+  "contextProfiles": {
+    "backend": {
+      "description": "Backend API, database, business logic",
+      "include": [
+        "packages/backend/**",
+        "packages/core/**",
+        "knexfile.js",
+        "migrations/**"
+      ],
+      "exclude": [
+        "**/*.test.*",
+        "**/*.sqlite*",
+        "node_modules/**"
+      ]
+    },
+    "frontend": {
+      "description": "Electron app and frontend components",
+      "include": [
+        "packages/desktop/**",
+        "packages/shared-frontend/**",
+        "packages/adapters/**"
+      ],
+      "exclude": [
+        "**/dist/**",
+        "**/build/**",
+        "**/node_modules/**"
+      ]
+    },
+    "android-core": {
+      "description": "Android app source code and resources",
+      "include": [
+        "app/src/main/java/**",
+        "app/src/main/kotlin/**",
+        "app/src/main/res/**",
+        "app/src/main/AndroidManifest.xml",
+        "build.gradle*",
+        "settings.gradle*"
+      ],
+      "exclude": [
+        "**/build/**",
+        "**/.gradle/**",
+        "**/generated/**",
+        "app/src/androidTest/**",
+        "app/src/test/**"
+      ]
+    },
+    "android-tests": {
+      "description": "Android test code and configurations",
+      "include": [
+        "app/src/test/**",
+        "app/src/androidTest/**",
+        "**/test/**"
+      ],
+      "exclude": [
+        "**/build/**"
+      ]
+    },
+    "android-config": {
+      "description": "Android build configuration and dependencies",
+      "include": [
+        "build.gradle*",
+        "settings.gradle*",
+        "gradle.properties",
+        "local.properties",
+        "proguard-rules.pro",
+        "gradle/libs.versions.toml"
+      ]
+    },
+    "database": {
+      "description": "Database schema and migrations only",
+      "include": [
+        "**/migrations/**",
+        "**/knexfile.js",
+        "**/schema.sql"
+      ]
+    },
+    "deployment": {
+      "description": "Deployment and PM2 configuration",
+      "include": [
+        "ecosystem.config.js",
+        "pm2.json",
+        ".github/workflows/**"
+      ]
+    }
+  },
   "fileFiltering": {
     "filesToIgnore": [
       "package-lock.json",
-      "yarn.lock", 
+      "yarn.lock",
       "pnpm-lock.yaml",
       "*.log",
       "*.tmp",
       ".env",
       ".env.local",
-      ".env.production"
+      ".env.production",
+      "eckasse_*.sqlite*"
     ],
     "extensionsToIgnore": [
       ".sqlite3",
-      ".db", 
+      ".sqlite",
+      ".db",
       ".DS_Store",
       ".env",
       ".pyc",
@@ -56,122 +271,308 @@
       "snapshots/",
       "coverage/"
     ],
-    "includeHidden": false
+    "includeHidden": false,
+    "projectSpecific": {
+      "android": {
+        "filesToIgnore": [
+          "gradle-wrapper.jar",
+          "local.properties",
+          "*.iml",
+          "*.apk",
+          "*.aab",
+          "*.dex",
+          "R.java",
+          "BuildConfig.java"
+        ],
+        "dirsToIgnore": [
+          "build/",
+          ".gradle/",
+          ".idea/",
+          "app/build/",
+          "app/.cxx/",
+          "**/generated/",
+          "**/intermediates/",
+          "**/outputs/",
+          "**/tmp/"
+        ],
+        "extensionsToIgnore": [
+          ".apk",
+          ".aab",
+          ".dex",
+          ".pro",
+          ".ap_",
+          ".aidl"
+        ]
+      },
+      "nodejs": {
+        "filesToIgnore": [
+          "package-lock.json",
+          "yarn.lock",
+          "pnpm-lock.yaml"
+        ],
+        "dirsToIgnore": [
+          "node_modules/",
+          "dist/",
+          ".next/"
+        ]
+      },
+      "python": {
+        "filesToIgnore": [
+          "*.pyc",
+          "*.pyo",
+          "*.pyd",
+          "__pycache__",
+          "*.egg-info",
+          ".coverage"
+        ],
+        "dirsToIgnore": [
+          "__pycache__/",
+          ".pytest_cache/",
+          ".coverage/",
+          "venv/",
+          ".venv/",
+          "env/",
+          ".env/",
+          "dist/",
+          "build/",
+          "*.egg-info/",
+          ".tox/",
+          ".mypy_cache/"
+        ],
+        "extensionsToIgnore": [
+          ".pyc",
+          ".pyo",
+          ".pyd"
+        ]
+      },
+      "rust": {
+        "filesToIgnore": [
+          "Cargo.lock"
+        ],
+        "dirsToIgnore": [
+          "target/",
+          "debug/",
+          "release/"
+        ]
+      },
+      "go": {
+        "filesToIgnore": [
+          "go.sum"
+        ],
+        "dirsToIgnore": [
+          "vendor/"
+        ]
+      },
+      "dotnet": {
+        "filesToIgnore": [
+          "*.user",
+          "*.suo",
+          "*.cache"
+        ],
+        "dirsToIgnore": [
+          "bin/",
+          "obj/",
+          ".vs/",
+          "packages/"
+        ]
+      }
+    }
   },
-
   "performance": {
     "maxFileSize": "10MB",
-    "maxTotalSize": "100MB", 
+    "maxTotalSize": "100MB",
     "maxDepth": 10,
     "concurrency": 10
   },
-
   "output": {
     "defaultFormat": "md",
     "defaultPath": "./snapshots",
     "includeTree": true,
     "_comment": "Default output format for snapshots: md, json, or txt. defaultPath is the output directory. includeTree controls whether to include directory structure."
   },
-
   "aiInstructions": {
     "architectPersona": {
       "role": "Project Manager and Solution Architect AI",
-      "goal": "Translate user requests into technical plans and then generate precise commands for a code-execution AI agent.",
+      "goal": "Translate user requests into technical plans and generate precise commands for execution agents",
+      "contextRequirement": "ALWAYS check environment context before generating commands",
       "workflow": [
-        "Analyze User Request in their native language.",
-        "Formulate a high-level technical plan.",
-        "Propose the plan and await user confirmation before generating commands.",
-        "Generate a JSON command block for an execution agent upon approval.",
-        "Communicate with the user in their language, but generate agent commands in ENGLISH."
+        "Request ENV scan from agent",
+        "Analyze User Request in their native language",
+        "Formulate environment-appropriate technical plan",
+        "Propose the plan and await user confirmation",
+        "Generate environment-specific JSON command block",
+        "Communicate with user in their language, commands in ENGLISH"
       ]
     },
-
     "executionAgents": {
       "local_dev": {
         "active": true,
         "name": "Local Development Agent (AGENT_LOCAL_DEV)",
-        "description": "Development environment with full GUI support and development tools.",
+        "description": "Cross-platform local development with SQLite",
         "guiSupport": true,
+        "identification": {
+          "markers": [
+            "WSL",
+            "/home/",
+            "/Users/",
+            "\\Users\\",
+            "SQLite"
+          ]
+        },
         "capabilities": [
-          "npm install", "npm run dev", "git operations",
-          "browser automation", "interactive prompts", "file editing"
+          "npm install",
+          "npm run dev",
+          "npm run dev:backend",
+          "git operations",
+          "sqlite3 commands",
+          "electron debug",
+          "file editing",
+          "testing commands",
+          "browser automation"
         ],
         "restrictions": [
-          "no production deployments", "no systemctl commands"
+          "no PM2 commands",
+          "no PostgreSQL production operations",
+          "no systemctl",
+          "no production deployments"
         ]
       },
       "production_server": {
         "active": true,
         "name": "Production Server Agent (AGENT_PROD_SERVER)",
-        "description": "Headless production server without GUI capabilities.",
+        "description": "Linux production server with PostgreSQL and PM2, with development capabilities",
         "guiSupport": false,
+        "identification": {
+          "markers": [
+            "/var/www/",
+            "PostgreSQL",
+            "PM2",
+            "eckwms"
+          ]
+        },
         "capabilities": [
-          "npm install --production", "systemctl", "docker",
-          "database commands", "log analysis", "deployment scripts"
+          "pm2 restart/reload/stop/start",
+          "postgresql queries",
+          "knex migrations --env production",
+          "systemctl",
+          "log analysis",
+          "nginx operations",
+          "deployment scripts",
+          "file editing",
+          "npm install",
+          "git operations"
         ],
         "restrictions": [
-          "no GUI applications", "no browser automation", 
-          "no interactive prompts", "no npm run dev"
+          "no electron",
+          "no GUI apps",
+          "no direct DB schema changes without migrations",
+          "always backup before migrations"
         ]
       },
       "ci_cd": {
         "active": false,
         "name": "CI/CD Pipeline Agent (AGENT_CI_CD)",
-        "description": "Automated testing and deployment pipeline.",
+        "description": "Automated testing and deployment pipeline",
         "guiSupport": false,
         "capabilities": [
-          "npm ci", "npm test", "npm run build",
-          "docker build", "artifact generation"
+          "npm ci",
+          "npm test",
+          "npm run build",
+          "docker build",
+          "artifact generation"
         ],
         "restrictions": [
-          "no interactive commands", "no GUI applications",
-          "no watch modes", "no development servers"
+          "no interactive commands",
+          "no GUI applications",
+          "no watch modes",
+          "no development servers"
         ]
       }
     },
-
     "header": {
       "defaultEnabled": true,
       "_comment": "Controls whether AI instruction headers are included by default in snapshots"
     },
-
     "promptTemplates": {
-      "multiAgent": "\n# AI Instructions\n\n## 1. How to Read This Snapshot\n\nThis document is a self-contained, single-file snapshot of the **{{repoName}}** software repository, generated by the `eck-snapshot` tool on **{{timestamp}}**. It is designed to provide a Large Language Model (LLM) with the complete context of a project.\n\n* **Source of Truth:** Treat this snapshot as the complete and authoritative source code.\n* **Structure:** The file contains a **Directory Structure** tree, followed by the full content of each file, demarcated by `--- File: /path/to/file ---` headers.\n\n**Snapshot Stats:**\n- **Files Included:** {{stats.includedFiles}}\n- **Total Files in Repo:** {{stats.totalFiles}}\n\n---\n\n## 2. Your Core Operational Workflow\n\nYou are the Project Manager and Solution Architect AI. Your primary goal is to translate user requests into technical plans and then generate precise commands for code-execution AI agents.\n\n### PROJECT OVERVIEW\n- **Project:** {{repoName}}\n- **Description:** A CLI tool to create and restore single-file text snapshots of a Git repository, optimized for providing context to Large Language Models (LLMs).\n\n### CORE WORKFLOW: The Interactive Command Cycle\n1. **Analyze User Request:** Understand the user's goal in their native language.\n2. **Formulate a Plan:** Create a high-level technical plan to solve the user's request.\n3. **Propose & Await Confirmation:** Present the plan to the user in their language and ask for approval to generate the command. **CRITICAL: Stop and wait for the user's response. Do NOT generate the command block at this stage.**\n4. **Generate Command on Demand:** This is the execution step, triggered ONLY by a positive user response.\n   - **On Approval:** If the user confirms the plan (e.g., \"yes\", \"proceed\") or provides a minor correction, your *next response* must be **only the command block**. Do not include any conversational text.\n   - **On Direct Order:** If the user explicitly asks for the command (e.g., \"make the command for Claude now\") and you have all the necessary information, you may skip step 3 and directly generate the command block.\n5. **Review & Report:** After the command is executed, analyze the results and report back to the user in their language.\n6. **Iterate:** Continue the cycle based on user feedback.\n\n### COMMUNICATION PROTOCOL\n- **User Interaction:** ALWAYS communicate with the user in the language they use.\n- **Agent Commands:** ALWAYS formulate the JSON payload and technical instructions for the execution agent in **ENGLISH** to ensure technical accuracy.\n\n### AVAILABLE EXECUTION AGENTS\nYou can command multiple specialized agents. **YOU must choose the most appropriate agent** based on the task requirements and target environment:\n\n{{agentDefinitions}}\n\n### COMMAND BLOCK FORMAT\nTo ensure error-free execution, all tasks for agents must be presented in a special block with a \"Copy\" button. **IMPORTANT:** You MUST analyze the task and choose the appropriate agent by its ID, then fill in the agent information:\n\n```json\n{\n  \"target_agent\": \"local_dev\",\n  \"agent_environment\": \"Development environment with full GUI support and development tools\",\n  \"command_for_agent\": \"apply_code_changes\",\n  \"task_id\": \"unique-task-id\",\n  \"payload\": {\n    \"objective\": \"Brief, clear task description\",\n    \"context\": \"Why this change is needed\",\n    \"files_to_modify\": [\n      {\n        \"path\": \"exact/file/path.js\",\n        \"action\": \"specific action (add, modify, replace, delete)\",\n        \"location\": \"line numbers, function name, or search pattern\",\n        \"details\": \"precise description of the change\"\n      }\n    ],\n    \"new_files\": [\n      {\n        \"path\": \"path/to/new/file.js\",\n        \"content_type\": \"javascript/json/markdown/config\",\n        \"purpose\": \"why this file is needed\"\n      }\n    ],\n    \"dependencies\": {\n      \"install\": [\"package-name@version\"],\n      \"remove\": [\"old-package-name\"]\n    },\n    \"validation_steps\": [\n      \"npm run test\",\n      \"node index.js --help\",\n      \"specific command to verify functionality\"\n    ],\n    \"expected_outcome\": \"what should work after changes\"\n  }\n}\n```\n\n**Agent Selection Guidelines:**\n- Choose the agent ID based on task requirements and environment constraints\n- Copy the agent's description to \"agent_environment\" field\n- Ensure the task matches the agent's capabilities and restrictions\n\n### PROJECT CONTEXT (`{{repoName}}`)\n- **Type:** Node.js CLI Application, executed directly.\n- **Module System:** ES Modules (`\"type\": \"module\"` in package.json).\n- **Main File:** `index.js` contains all primary logic.\n- **Configuration:** `setup.json` is used for all configuration and settings.\n- **Key Dependencies:** `commander`, `execa`, `inquirer`, `ignore`, `p-limit`, `cli-progress`.\n\n### ARCHITECTURE DETAILS FOR CLAUDE CODE\n**Core Functions Location:**\n- `createRepoSnapshot()` - Main snapshot creation\n- `restoreSnapshot()` - Snapshot restoration\n- `processFile()` - Individual file processing\n- `generateDirectoryTree()` - Tree generation\n- `generateEnhancedAIHeader()` - AI instruction header\n- CLI setup - Commander.js configuration\n\n**Common Modification Patterns:**\n- CLI options: Modify commander setup\n- Configuration: Update setup.json file\n- File processing: Enhance processFile() function\n- Output formats: Modify generateEnhancedAIHeader() or output logic\n- Dependencies: Update package.json and import statements\n\n**Testing Status:**\n- No test framework currently configured\n- package.json test script returns error\n- Manual testing via `node index.js` commands\n- Consider adding vitest or jest for future testing\n\n**Development Workflow:**\n- Direct execution: `node index.js [command] [options]`\n- Package creation: `npm pack`\n- Local testing: `node index.js --help`\n- Configuration testing: modify `setup.json`\n\n**Critical Implementation Notes:**\n- All file paths normalized to forward slashes\n- ES module imports only (no CommonJS)\n- Error handling with detailed user messages\n- Progress tracking for long operations\n- Security: Path validation prevents directory traversal\n- Cross-platform compatibility maintained\n\n---\n",
-
-      "vectorMode": "\n# AI Instructions\n\n## 1. How to Read This Snapshot\n\nThis document is a context-aware snapshot of the **{{repoName}}** software repository, generated by the `eck-snapshot` tool on **{{timestamp}}**. The content has been filtered based on vector similarity to your query: \"{{userQuery}}\"\n\n* **Source of Truth:** Treat this snapshot as the relevant source code for your specific task.\n* **Structure:** The file contains the full content of each relevant file, demarcated by `--- File: /path/to/file ---` headers.\n\n---\n\n## 2. Your Core Operational Workflow\n\nYou are the Project Manager and Solution Architect AI. Your primary goal is to translate user requests into technical plans and then generate precise commands for code-execution AI agents.\n\n### PROJECT OVERVIEW\n- **Project:** {{repoName}}\n- **User Query:** \"{{userQuery}}\"\n- **Description:** A CLI tool to create and restore single-file text snapshots of a Git repository, optimized for providing context to Large Language Models (LLMs).\n\n### CORE WORKFLOW: The Interactive Command Cycle\n1. **Analyze User Request:** Understand the user's goal in their native language.\n2. **Formulate a Plan:** Create a high-level technical plan to solve the user's request.\n3. **Propose & Await Confirmation:** Present the plan to the user in their language and ask for approval to generate the command. **CRITICAL: Stop and wait for the user's response. Do NOT generate the command block at this stage.**\n4. **Generate Command on Demand:** This is the execution step, triggered ONLY by a positive user response.\n   - **On Approval:** If the user confirms the plan (e.g., \"yes\", \"proceed\") or provides a minor correction, your *next response* must be **only the command block**. Do not include any conversational text.\n   - **On Direct Order:** If the user explicitly asks for the command (e.g., \"make the command for Claude now\") and you have all the necessary information, you may skip step 3 and directly generate the command block.\n5. **Review & Report:** After the command is executed, analyze the results and report back to the user in their language.\n6. **Iterate:** Continue the cycle based on user feedback.\n\n### COMMUNICATION PROTOCOL\n- **User Interaction:** ALWAYS communicate with the user in the language they use.\n- **Agent Commands:** ALWAYS formulate the JSON payload and technical instructions for the execution agent in **ENGLISH** to ensure technical accuracy.\n\n{{multiAgentSection}}\n\n---\n"
+      "envScanRequest": "Run this command and return the output:\n```\nnode -e \"console.log(['ENV', process.platform+'/'+require('os').arch(), process.version, require('fs').readdirSync('.').some(f=>f.endsWith('.sqlite')||f.endsWith('.sqlite3'))?'SQLite':'none', require('path').basename(process.cwd())].join('|'))\"\n```",
+      "multiAgent": "\n# AI Instructions\n\n## 1. How to Read This Snapshot\n\nThis document is a self-contained, single-file snapshot of the **{{repoName}}** software repository, generated by the `eck-snapshot` tool on **{{timestamp}}**. It is designed to provide a Large Language Model (LLM) with the complete context of a project.\n\n* **Source of Truth:** Treat this snapshot as the complete and authoritative source code.\n* **Structure:** The file contains a **Directory Structure** tree, followed by the full content of each file, demarcated by `--- File: /path/to/file ---` headers.\n\n**Snapshot Stats:**\n- **Files Included:** {{stats.includedFiles}}\n- **Total Files in Repo:** {{stats.totalFiles}}\n\n---\n\n## 2. Your Core Operational Workflow\n\nYou are the Project Manager and Solution Architect AI. Your primary goal is to translate user requests into technical plans and then generate precise commands for code-execution AI agents.\n\n### PROJECT OVERVIEW\n- **Project:** {{repoName}}\n- **Description:** A monorepo POS system with Electron frontend and Node.js backend.\n\n### CORE WORKFLOW: The Interactive Command Cycle\n1. **Check Environment:** Request ENV scan from agent first\n2. **Analyze User Request:** Understand the user's goal in their native language.\n3. **Formulate a Plan:** Create a high-level technical plan appropriate for the detected environment.\n4. **Propose & Await Confirmation:** Present the plan to the user in their language and ask for approval to generate the command. **CRITICAL: Stop and wait for the user's response. Do NOT generate the command block at this stage.**\n5. **Generate Command on Demand:** This is the execution step, triggered ONLY by a positive user response.\n   - **On Approval:** If the user confirms the plan (e.g., \"yes\", \"proceed\") or provides a minor correction, your *next response* must be **only the command block**. Do not include any conversational text.\n   - **On Direct Order:** If the user explicitly asks for the command (e.g., \"make the command for Claude now\") and you have all the necessary information, you may skip step 3 and directly generate the command block.\n6. **Review & Report:** After the command is executed, analyze the results and report back to the user in their language.\n7. **Iterate:** Continue the cycle based on user feedback.\n\n### COMMUNICATION PROTOCOL\n- **User Interaction:** ALWAYS communicate with the user in the language they use.\n- **Agent Commands:** ALWAYS formulate the JSON payload and technical instructions for the execution agent in **ENGLISH** to ensure technical accuracy.\n\n### AVAILABLE EXECUTION AGENTS\nYou can command multiple specialized agents. **YOU must choose the most appropriate agent** based on the task requirements and target environment:\n\n{{agentDefinitions}}\n\n### COMMAND BLOCK FORMAT\nTo ensure error-free execution, all tasks for agents must be presented in a special block with a \"Copy\" button. **IMPORTANT:** You MUST analyze the task and choose the appropriate agent by its ID, then fill in the agent information:\n\n```json\n{\n  \"target_agent\": \"local_dev\",\n  \"agent_environment\": \"Development environment with full GUI support and development tools\",\n  \"command_for_agent\": \"apply_code_changes\",\n  \"task_id\": \"unique-task-id\",\n  \"payload\": {\n    \"objective\": \"Brief, clear task description\",\n    \"context\": \"Why this change is needed\",\n    \"files_to_modify\": [\n      {\n        \"path\": \"exact/file/path.js\",\n        \"action\": \"specific action (add, modify, replace, delete)\",\n        \"location\": \"line numbers, function name, or search pattern\",\n        \"details\": \"precise description of the change\"\n      }\n    ],\n    \"new_files\": [\n      {\n        \"path\": \"path/to/new/file.js\",\n        \"content_type\": \"javascript/json/markdown/config\",\n        \"purpose\": \"why this file is needed\"\n      }\n    ],\n    \"dependencies\": {\n      \"install\": [\"package-name@version\"],\n      \"remove\": [\"old-package-name\"]\n    },\n    \"validation_steps\": [\n      \"npm run test\",\n      \"node index.js --help\",\n      \"specific command to verify functionality\"\n    ],\n    \"expected_outcome\": \"what should work after changes\"\n  }\n}\n```\n\n---\n",
+      "vectorMode": "\n# AI Instructions\n\n## 1. How to Read This Snapshot\n\nThis document is a context-aware snapshot of the **{{repoName}}** software repository, generated by the `eck-snapshot` tool on **{{timestamp}}**. The content has been filtered based on vector similarity to your query: \"{{userQuery}}\"\n\n* **Source of Truth:** Treat this snapshot as the relevant source code for your specific task.\n* **Structure:** The file contains the full content of each relevant file, demarcated by `--- File: /path/to/file ---` headers.\n\n---\n\n## 2. Your Core Operational Workflow\n\nYou are the Project Manager and Solution Architect AI. Your primary goal is to translate user requests into technical plans and then generate precise commands for code-execution AI agents.\n\n### PROJECT OVERVIEW\n- **Project:** {{repoName}}\n- **User Query:** \"{{userQuery}}\"\n- **Description:** A monorepo POS system with Electron frontend and Node.js backend.\n\n{{multiAgentSection}}\n\n---\n"
     }
   },
-
   "consilium": {
     "enabled": true,
+    "votingMode": "blind-first",
+    "autoTrigger": {
+      "conditions": [
+        "database migration",
+        "production deployment",
+        "architecture changes",
+        "security updates"
+      ]
+    },
+    "phases": {
+      "blind": {
+        "enabled": true,
+        "timeout": "3m"
+      },
+      "debate": {
+        "enabled": true,
+        "triggerDivergence": 0.3,
+        "rounds": 2
+      }
+    },
     "defaultMembers": {
-      "opos41": {
+      "architect": {
         "active": true,
-        "modelName": "Opos4.1",
-        "description": "Advanced reasoning and problem-solving AI model",
-        "strengths": ["complex logic", "mathematical reasoning", "system analysis"]
+        "modelName": "Claude/Gemini",
+        "role": "System Architecture",
+        "strengths": [
+          "monorepo structure",
+          "workspace dependencies",
+          "API design"
+        ]
       },
-      "chatgpt5": {
+      "database_expert": {
         "active": true,
-        "modelName": "ChatGPT5",
-        "description": "Latest OpenAI model with enhanced capabilities",
-        "strengths": ["natural language processing", "creative solutions", "broad knowledge"]
+        "modelName": "GPT-4/Claude",
+        "role": "Database Specialist",
+        "strengths": [
+          "PostgreSQL optimization",
+          "Knex migrations",
+          "data integrity"
+        ]
       },
-      "grock4": {
+      "devops": {
         "active": true,
-        "modelName": "Grock4",
-        "description": "Powerful AI model for technical tasks",
-        "strengths": ["technical implementation", "code analysis", "debugging"]
+        "modelName": "Any Available",
+        "role": "Deployment & Operations",
+        "strengths": [
+          "PM2 configuration",
+          "environment management",
+          "monitoring"
+        ]
       }
     },
     "complexityThresholds": {
-      "low": ["bug fixes", "simple features", "documentation"],
-      "medium": ["feature implementation", "refactoring", "integration"], 
-      "high": ["architecture changes", "system redesign", "performance optimization", "security implementation"]
+      "low": [
+        "bug fixes",
+        "simple features",
+        "documentation"
+      ],
+      "medium": [
+        "feature implementation",
+        "refactoring",
+        "integration"
+      ],
+      "high": [
+        "architecture changes",
+        "system redesign",
+        "performance optimization",
+        "security implementation"
+      ]
     },
     "prompts": {
-      "requestTemplate": "\n# Consilium Request\n\n## Task Overview\n- **Complexity:** {{complexity}}\n- **Domain:** {{domain}}\n- **Requesting Agent:** {{requestingAgent}}\n\n## Problem Description\n{{problemDescription}}\n\n## Questions for Consilium\n{{#each questions}}\n- {{this}}\n{{/each}}\n\n## Available Context\n{{contextDescription}}\n\n---\n",
-      
+      "requestTemplate": "\n# Consilium Request\n\n## Task Overview\n- **Complexity:** {{complexity}}\n- **Domain:** {{domain}}\n- **Requesting Agent:** {{requestingAgent}}\n- **Environment:** {{envContext}}\n\n## Problem Description\n{{problemDescription}}\n\n## Questions for Consilium\n{{#each questions}}\n- {{this}}\n{{/each}}\n\n## Available Context\n{{contextDescription}}\n\n---\n",
       "responseTemplate": "\n# Consilium Response - {{modelName}}\n\n## Analysis\n{{analysis}}\n\n## Recommendations\n{{recommendations}}\n\n## Implementation Steps\n{{implementationSteps}}\n\n## Risks and Considerations\n{{risks}}\n\n## Success Metrics\n{{successMetrics}}\n\n---\n"
     }
   }

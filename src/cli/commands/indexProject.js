@@ -20,6 +20,16 @@ async function getProjectFiles(projectPath) {
   }
 }
 
+async function getGitCommitHash(projectPath) {
+  try {
+    const { stdout } = await execa('git', ['rev-parse', '--short=7', 'HEAD'], { cwd: projectPath });
+    return stdout.trim();
+  } catch (error) {
+    // Ignore errors - not a git repo or no commits
+    return null;
+  }
+}
+
 async function readManifest(manifestPath) {
   try {
     const content = await fs.readFile(manifestPath, 'utf-8');
@@ -49,11 +59,14 @@ async function exportIndex(index, manifest, exportPath) {
 
 export async function indexProject(projectPath, options) {
   const mainSpinner = ora(chalk.cyan('Starting project index synchronization...')).start();
-  const indexPath = path.resolve(projectPath, './.ecksnapshot_index');
+  
+  // Load config to get the output path
+  const config = await loadSetupConfig();
+  const outputDir = config.output?.defaultPath || './snapshots';
+  const indexPath = path.resolve(outputDir);
   const manifestPath = path.join(indexPath, 'index-manifest.json');
 
   try {
-    const config = await loadSetupConfig();
     const gitignore = await loadGitignore(projectPath);
 
     mainSpinner.text = 'Scanning project files...';
@@ -185,7 +198,10 @@ export async function indexProject(projectPath, options) {
     if (shouldExport) {
         const projectName = path.basename(projectPath);
         const timestamp = generateTimestamp();
-        const defaultFilename = `${projectName}_${timestamp}_vectors.json`;
+        const gitHash = await getGitCommitHash(projectPath);
+        const defaultFilename = gitHash 
+            ? `${projectName}_${timestamp}_${gitHash}_vectors.json`
+            : `${projectName}_${timestamp}_vectors.json`;
         const outputPath = config.output?.defaultPath || './snapshots';
         await fs.mkdir(outputPath, { recursive: true });
         const finalDefaultPath = path.join(outputPath, defaultFilename);

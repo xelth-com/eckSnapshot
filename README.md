@@ -19,13 +19,15 @@ Special thanks to those who can also bring their own ideas to life. Contribution
 
 ---
 
-## ✨ What's New in v4.0: The Road to Infinite Context
+## ✨ What's New in v4.0: The Road to Infinite Context + Multi-Platform Support
 
 My own project, the original inspiration for this tool, eventually outgrew Gemini's 1M token context window. This challenge sparked the evolution to v4.0.
 
 - **Intelligent Search**: Instead of creating massive snapshots, you can now index your entire project and use natural language to query for the most relevant code. This is the future for working with truly large codebases.
 - **Vector-Based Context**: Powered by Google Gemini embeddings, `eck-snapshot` performs semantic searches to find the code that's contextually related to your task.
 - **Smart Mode**: Automatically detects large projects and uses vector indexing instead of single-file snapshots to provide the most relevant context without overwhelming the AI.
+- **Multi-Platform Support**: Now supports Android projects with automatic detection of Kotlin/Java files, Android-specific filtering, and AST-based parsing for better code understanding.
+- **Project Detection**: Automatically detects project type (Android, Node.js, Flutter, React Native) and applies appropriate filtering and parsing rules.
 
 For smaller projects, the classic snapshot mode works just as it always has.
 
@@ -154,6 +156,18 @@ Creates a full snapshot of a repository. Automatically switches to `index` mode 
 ### `restore`
 Restores a project from a classic snapshot file.
 `eck-snapshot restore <snapshot_file> [target_directory] [options]`
+
+### `detect`
+Detects and displays project type and configuration information.
+`eck-snapshot detect [projectPath] [options]`
+- `[projectPath]`: (Optional) Path to the project. Defaults to current directory.
+- `-v, --verbose`: Show detailed detection results including all possible matches.
+
+### `test-android`
+Tests Android file parsing capabilities on a specific file.
+`eck-snapshot test-android <filePath> [options]`
+- `<filePath>`: Path to Android source file (.kt, .kts, or .java).
+- `--show-content`: Show content preview of parsed segments.
 
 ---
 
