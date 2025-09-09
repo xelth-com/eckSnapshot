@@ -1,239 +1,99 @@
-import { execa } from 'execa';
 import path from 'path';
-import fs from 'fs/promises';
+import { execa } from 'execa';
 import ora from 'ora';
-import chalk from 'chalk';
-import isBinaryPath from 'is-binary-path';
 import { segmentFile } from '../../core/segmenter.js';
-import { embeddingService } from '../../services/embedding.js';
-import { LocalIndex } from 'vectra';
-import { generateTimestamp, formatSize, matchesPattern, loadGitignore } from '../../utils/fileUtils.js';
-import { loadSetupConfig } from '../../config.js';
+import { getKnex, initDb, destroyDb } from '../../database/postgresConnector.js';
+import { generateBatchEmbeddings, releaseModel as releaseEmbeddingModel } from '../../services/embeddingService.js';
+import { getCodeSummary } from '../../services/analysisService.js';
+import { releaseModel as releaseAnalysisModel } from '../../services/analysisService.js';
 
 async function getProjectFiles(projectPath) {
-  try {
-    const { stdout } = await execa('git', ['ls-files', '--exclude-standard', '-co'], { cwd: projectPath });
-    return stdout.split('\n').filter(Boolean);
-  } catch (error) {
-    console.error(chalk.red('Error getting project files from git. Make sure you are in a git repository.'));
-    throw error;
-  }
-}
-
-async function getGitCommitHash(projectPath) {
-  try {
-    const { stdout } = await execa('git', ['rev-parse', '--short=7', 'HEAD'], { cwd: projectPath });
-    return stdout.trim();
-  } catch (error) {
-    // Ignore errors - not a git repo or no commits
-    return null;
-  }
-}
-
-async function readManifest(manifestPath) {
-  try {
-    const content = await fs.readFile(manifestPath, 'utf-8');
-    return JSON.parse(content);
-  } catch (error) {
-    return {}; // Return empty object if manifest doesn't exist or is invalid
-  }
-}
-
-async function writeManifest(manifestPath, manifest) {
-  await fs.writeFile(manifestPath, JSON.stringify(manifest, null, 2));
-}
-
-async function exportIndex(index, manifest, exportPath) {
-    const exportSpinner = ora(`Exporting index to ${path.basename(exportPath)}...`).start();
-    const data = [];
-    const ids = Object.keys(manifest);
-    for (const id of ids) {
-        const item = await index.getItem(id);
-        if (item) {
-            data.push(item);
-        }
-    }
-    await fs.writeFile(exportPath, JSON.stringify(data)); // Using more compact format
-    exportSpinner.succeed(`Successfully exported ${data.length} items to ${exportPath}`);
+  const { stdout } = await execa('git', ['ls-files'], { cwd: projectPath });
+  return stdout.split('\n').filter(Boolean);
 }
 
 export async function indexProject(projectPath, options) {
-  const mainSpinner = ora(chalk.cyan('Starting project index synchronization...')).start();
-  
-  // Load config to get the output path
-  const config = await loadSetupConfig();
-  const outputDir = config.output?.defaultPath || './snapshots';
-  const indexPath = path.resolve(outputDir);
-  const manifestPath = path.join(indexPath, 'index-manifest.json');
+  const mainSpinner = ora('Запуск конвейера индексации...').start();
 
   try {
-    const gitignore = await loadGitignore(projectPath);
+    await initDb();
+    const knex = getKnex();
+    mainSpinner.text = 'Сканирование файлов проекта...';
+    const files = await getProjectFiles(projectPath);
+    mainSpinner.succeed(`Найдено ${files.length} файлов для обработки.`);
 
-    mainSpinner.text = 'Scanning project files...';
-    const allFiles = (await execa('git', ['ls-files', '--exclude-standard', '-co'], { cwd: projectPath })).stdout.split('\n').filter(Boolean);
+    const chunkIdToDbId = new Map();
 
-    const stats = {
-        totalFiles: allFiles.length,
-        includedFiles: 0,
-        skippedFiles: 0,
-        binaryFiles: 0,
-        gitignoredFiles: 0,
-        configignoredFiles: 0,
-        totalSize: 0,
-        includedFileTypes: new Map(),
-        skipReasons: new Map()
-    };
+    for (const filePath of files) {
+        const fileSpinner = ora(`Обработка файла: ${filePath}`).start();
+        try {
+            const { chunks, relations } = await segmentFile(path.join(projectPath, filePath));
+            if (chunks.length === 0) {
+                fileSpinner.succeed('Пропущено (нет чанков).');
+                continue;
+            }
 
-    const filesToIndex = [];
+            fileSpinner.text = `[1/3] Анализ кода (${chunks.length} чанков)...`;
+            const summaries = await Promise.all(chunks.map(c => getCodeSummary(c.code)));
+            for (let i = 0; i < chunks.length; i++) { chunks[i].summary = summaries[i]; }
+            await releaseAnalysisModel();
 
-    for (const file of allFiles) {
-        const fullPath = path.join(projectPath, file);
-        const fileStats = await fs.stat(fullPath).catch(() => ({ size: 0 }));
-        stats.totalSize += fileStats.size;
-        const fileExt = path.extname(file) || 'no-extension';
+            fileSpinner.text = `[2/3] Создание эмбеддингов...`;
+            const embeddings = await generateBatchEmbeddings(chunks.map(c => c.code));
+            for (let i = 0; i < chunks.length; i++) { chunks[i].embedding = embeddings[i]; }
+            await releaseEmbeddingModel();
+            
+            fileSpinner.text = `[3/3] Сохранение узлов в БД...`;
+            const insertedRows = await knex('code_chunks').insert(chunks.map(c => ({
+                file_path: c.filePath,
+                chunk_type: c.chunk_type,
+                chunk_name: c.chunk_name,
+                code: c.code,
+                summary: c.summary,
+                tokens: Math.round(c.code.length / 4),
+                embedding: JSON.stringify(c.embedding)
+            }))).returning(['id', 'chunk_name']);
+            
+            insertedRows.forEach((row, i) => {
+              chunkIdToDbId.set(chunks[i].id, row.id);
+              chunkIdToDbId.set(chunks[i].chunk_name, row.id);
+              chunkIdToDbId.set(row.chunk_name, row.id);
+            });
+            
+            // Map relations to database IDs
+            const relationsToInsert = relations
+                .map(rel => {
+                    let fromId, toId;
+                    if (rel.type === 'IMPORTS') {
+                        // For imports, from is file path, to is imported module
+                        fromId = chunkIdToDbId.get(path.basename(rel.from, path.extname(rel.from)));
+                        // For now, skip imports as they need more complex handling
+                        return null;
+                    } else if (rel.type === 'CALLS') {
+                        // For calls, both are function/chunk names
+                        fromId = chunkIdToDbId.get(rel.from);
+                        toId = chunkIdToDbId.get(rel.to);
+                    }
+                    return fromId && toId ? { from_id: fromId, to_id: toId, relation_type: rel.type } : null;
+                })
+                .filter(r => r !== null);
 
-        if (gitignore.ignores(file)) {
-            stats.skippedFiles++;
-            stats.gitignoredFiles++;
-            stats.skipReasons.set('gitignore', (stats.skipReasons.get('gitignore') || 0) + 1);
-            continue;
-        }
-        if (isBinaryPath(file)) {
-            stats.skippedFiles++;
-            stats.binaryFiles++;
-            stats.skipReasons.set('binary', (stats.skipReasons.get('binary') || 0) + 1);
-            continue;
-        }
-        if (config.fileFiltering.extensionsToIgnore.includes(fileExt) || matchesPattern(file, config.fileFiltering.filesToIgnore)) {
-            stats.skippedFiles++;
-            stats.configignoredFiles++;
-            stats.skipReasons.set('config', (stats.skipReasons.get('config') || 0) + 1);
-            continue;
-        }
-
-        filesToIndex.push(file);
-        stats.includedFiles++;
-        stats.includedFileTypes.set(fileExt, (stats.includedFileTypes.get(fileExt) || 0) + 1);
-    }
-
-    mainSpinner.succeed('File scan complete.');
-
-    await fs.mkdir(indexPath, { recursive: true });
-    const index = new LocalIndex(indexPath);
-    if (!await index.isIndexCreated()) {
-      await index.createIndex();
-    }
-
-    const indexSpinner = ora('Reading index manifest...').start();
-    const manifest = await readManifest(manifestPath);
-
-    indexSpinner.text = 'Calculating file segments and hashes...';
-    const currentState = new Map();
-    
-    for (const file of filesToIndex) {
-      const fullPath = path.join(projectPath, file);
-      const segments = await segmentFile(fullPath);
-      for (const segment of segments) {
-        currentState.set(segment.id, segment);
-      }
-    }
-
-    indexSpinner.text = 'Comparing current state with manifest...';
-    const toAdd = [];
-    const toUpdate = [];
-    const manifestIds = new Set(Object.keys(manifest));
-
-    for (const [id, segment] of currentState.entries()) {
-        if (!manifestIds.has(id)) {
-            toAdd.push(segment);
-        } else if (manifest[id] !== segment.contentHash) {
-            toUpdate.push(segment);
-        }
-        manifestIds.delete(id);
-    }
-    const toDelete = manifestIds;
-    const upToDateCount = currentState.size - toAdd.length - toUpdate.length;
-
-    indexSpinner.succeed('Comparison complete. Sync Details:');
-    console.log(`  - Total segments found:        ${chalk.bold(currentState.size)}`);
-    console.log(`  - Segments to add:             ${chalk.green(toAdd.length)}`);
-    console.log(`  - Segments to update:          ${chalk.yellow(toUpdate.length)}`);
-    console.log(`  - Segments to delete:          ${chalk.red(toDelete.size)}`);
-    console.log(`  - Segments up-to-date:         ${chalk.cyan(upToDateCount)}`);
-
-    if (toAdd.length === 0 && toUpdate.length === 0 && toDelete.size === 0) {
-      console.log(chalk.green('✅ Index is already up to date.'));
-    } else {
-      console.log('Starting index update...');
-
-      const segmentsToProcess = [...toAdd, ...toUpdate];
-      if (segmentsToProcess.length > 0) {
-        const embedSpinner = ora(`Generating embeddings for ${segmentsToProcess.length} modified/new segments...`).start();
-        const embeddings = await embeddingService.generateBatchEmbeddings(segmentsToProcess);
-        for (let i = 0; i < segmentsToProcess.length; i++) {
-          const segment = segmentsToProcess[i];
-          await index.upsertItem({ id: segment.id, vector: embeddings[i], metadata: { ...segment } });
-          manifest[segment.id] = segment.contentHash;
-        }
-        embedSpinner.succeed(`${segmentsToProcess.length} segments added or updated in the index.`);
-      }
-
-      if (toDelete.size > 0) {
-          const deleteSpinner = ora(`Pruning ${toDelete.size} obsolete segments...`).start();
-          for (const id of toDelete) {
-              await index.deleteItem(id);
-              delete manifest[id];
-          }
-          deleteSpinner.succeed(`${toDelete.size} obsolete segments pruned from the index.`);
-      }
-
-      await writeManifest(manifestPath, manifest);
-    }
-
-    console.log(`✅ Index synchronization complete!`);
-
-    // Check for export condition
-    const shouldExport = (options && options.export) || (config.vectorIndex && config.vectorIndex.autoExportOnIndex);
-
-    if (shouldExport) {
-        const projectName = path.basename(projectPath);
-        const timestamp = generateTimestamp();
-        const gitHash = await getGitCommitHash(projectPath);
-        const defaultFilename = gitHash 
-            ? `${projectName}_${timestamp}_${gitHash}_vectors.json`
-            : `${projectName}_${timestamp}_vectors.json`;
-        const outputPath = config.output?.defaultPath || './snapshots';
-        await fs.mkdir(outputPath, { recursive: true });
-        const finalDefaultPath = path.join(outputPath, defaultFilename);
-
-        const exportPath = typeof (options && options.export) === 'string' ? options.export : finalDefaultPath;
-        await exportIndex(index, manifest, path.resolve(exportPath));
-    }
-
-    // Print final statistics
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.log(chalk.bold('📊 Index Synced. File Statistics:'));
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.log(`- Total files in repository:      ${chalk.yellow(stats.totalFiles)}`);
-    console.log(`- Files included in index:        ${chalk.green(stats.includedFiles)}`);
-    console.log(`- Skipped (binary):               ${chalk.red(stats.binaryFiles)}`);
-    console.log(`- Skipped (gitignore):            ${chalk.red(stats.gitignoredFiles)}`);
-    console.log(`- Skipped (config rule):          ${chalk.red(stats.configignoredFiles)}`);
-    console.log(`- Total project size:             ${chalk.yellow(formatSize(stats.totalSize))}`);
-
-    if (stats.includedFileTypes.size > 0) {
-        console.log(chalk.bold('\n📋 Included File Types Distribution:'));
-        const sortedTypes = [...stats.includedFileTypes.entries()].sort((a, b) => b[1] - a[1]);
-        for (const [ext, count] of sortedTypes) {
-            console.log(`  ${ext.padEnd(10)} ${chalk.green(count)} files`);
+            if (relationsToInsert.length > 0) {
+                await knex('relations').insert(relationsToInsert);
+            }
+            fileSpinner.succeed(`Сохранено ${chunks.length} чанков и ${relationsToInsert.length} связей.`);
+        } catch (error) {
+            fileSpinner.fail(`Ошибка при обработке ${filePath}: ${error.message}`);
+            // Ensure models are released even on error
+            await releaseAnalysisModel();
+            await releaseEmbeddingModel();
         }
     }
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
   } catch (error) {
-    mainSpinner.fail(chalk.red(`Indexing failed: ${error.message}`));
-    if (!process.env.GEMINI_API_KEY) {
-      console.error(chalk.yellow('Please make sure the GEMINI_API_KEY environment variable is set in your .env file.'));
-    }
+    mainSpinner.fail(`Ошибка в процессе индексации: ${error.message}`);
+  } finally {
+    await destroyDb();
+    mainSpinner.succeed('Индексация завершена. Соединение с БД закрыто.');
   }
 }

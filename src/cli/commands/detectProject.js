@@ -1,6 +1,5 @@
 import { detectProjectType, getProjectSpecificFiltering } from '../../utils/projectDetector.js';
 import { displayProjectInfo } from '../../utils/fileUtils.js';
-import { isAndroidParsingAvailable, getParserInfo } from '../../core/androidParser.js';
 import chalk from 'chalk';
 
 /**
@@ -41,23 +40,9 @@ export async function detectProject(projectPath = '.', options = {}) {
       }
     }
     
-    // Show Android parsing capabilities if it's an Android project
+    // Show Android parsing info if it's an Android project
     if (detection.type === 'android') {
-      console.log(chalk.green('🤖 Android parsing capabilities:'));
-      
-      const isAvailable = await isAndroidParsingAvailable();
-      const parserInfo = await getParserInfo();
-      
-      console.log(`   Tree-sitter parsing: ${isAvailable ? chalk.green('✓ Available') : chalk.red('✗ Not available')}`);
-      console.log(`   Java parser: ${parserInfo.java ? chalk.green('✓') : chalk.red('✗')}`);
-      console.log(`   Kotlin parser: ${parserInfo.kotlin ? chalk.green('✓') : chalk.red('✗')}`);
-      console.log(`   Fallback parsing: ${parserInfo.fallbackAvailable ? chalk.green('✓') : chalk.red('✗')}`);
-      
-      if (!isAvailable) {
-        console.log(chalk.yellow('\n   💡 Install tree-sitter parsers for better Android support:'));
-        console.log(chalk.gray('      npm install tree-sitter-java tree-sitter-kotlin'));
-      }
-      
+      console.log(chalk.green('🤖 Android parsing supported via unified segmenter'));
       console.log('');
     }
     
@@ -93,61 +78,38 @@ export async function detectProject(projectPath = '.', options = {}) {
 }
 
 /**
- * Command to test Android file parsing
- * @param {string} filePath - Path to the Android file to test
+ * Command to test file parsing using the unified segmenter
+ * @param {string} filePath - Path to the file to test
  * @param {object} options - Command options
  */
-export async function testAndroidParsing(filePath, options = {}) {
-  console.log(chalk.blue(`🧪 Testing Android file parsing: ${filePath}\n`));
+export async function testFileParsing(filePath, options = {}) {
+  console.log(chalk.blue(`🧪 Testing file parsing: ${filePath}\n`));
   
   try {
-    const { parseAndroidFile, getFileLanguage } = await import('../../core/androidParser.js');
+    const { segmentFile } = await import('../../core/segmenter.js');
     const fs = await import('fs/promises');
-    
-    // Detect file language
-    const language = getFileLanguage(filePath);
-    if (!language) {
-      console.log(chalk.red('❌ Not an Android source file (expected .kt, .kts, or .java)'));
-      return;
-    }
-    
-    console.log(chalk.green(`✓ Detected language: ${language}`));
     
     // Read file content
     const content = await fs.readFile(filePath, 'utf-8');
     console.log(chalk.blue(`📄 File size: ${content.length} characters`));
     
-    // Parse file
-    const segments = await parseAndroidFile(content, language, filePath);
+    // Parse file using unified segmenter
+    const chunks = await segmentFile(filePath);
     
-    console.log(chalk.green(`\n🎯 Extracted ${segments.length} segments:`));
+    console.log(chalk.green(`\n🎯 Extracted ${chunks.length} chunks:`));
     
-    for (let i = 0; i < segments.length; i++) {
-      const segment = segments[i];
-      console.log(`\n${i + 1}. ${chalk.yellow(segment.name)} (${segment.type})`);
-      
-      if (segment.startLine && segment.endLine) {
-        console.log(`   Lines: ${segment.startLine}-${segment.endLine}`);
-      }
-      
-      if (segment.context) {
-        const context = segment.context;
-        if (context.modifiers && context.modifiers.length > 0) {
-          console.log(`   Modifiers: ${context.modifiers.join(', ')}`);
-        }
-        if (context.annotations && context.annotations.length > 0) {
-          console.log(`   Annotations: ${context.annotations.join(', ')}`);
-        }
-      }
+    for (let i = 0; i < chunks.length; i++) {
+      const chunk = chunks[i];
+      console.log(`\n${i + 1}. ${chalk.yellow(chunk.chunk_name)} (${chunk.chunk_type})`);
       
       if (options.showContent) {
-        const preview = segment.content.substring(0, 200);
-        console.log(chalk.gray(`   Content preview: ${preview}${segment.content.length > 200 ? '...' : ''}`));
+        const preview = chunk.code.substring(0, 200);
+        console.log(chalk.gray(`   Content preview: ${preview}${chunk.code.length > 200 ? '...' : ''}`));
       }
     }
     
   } catch (error) {
-    console.error(chalk.red('❌ Error parsing Android file:'), error.message);
+    console.error(chalk.red('❌ Error parsing file:'), error.message);
     process.exit(1);
   }
 }

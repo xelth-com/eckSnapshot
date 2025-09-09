@@ -131,7 +131,7 @@
     }
   },
   "smartMode": {
-    "tokenThreshold": 7700000,
+    "tokenThreshold": 700000,
     "_comment": "Projects over this token count will use vector indexing instead of single file snapshots"
   },
   "vectorIndex": {

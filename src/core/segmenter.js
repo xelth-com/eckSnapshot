@@ -4,149 +4,130 @@ const traverse = _traverse.default;
 import fs from 'fs/promises';
 import path from 'path';
 import crypto from 'crypto';
-import { parseAndroidFile, getFileLanguage } from './androidParser.js';
+import Parser from 'tree-sitter';
+import Python from 'tree-sitter-python';
+import Java from 'tree-sitter-java';
+import Kotlin from 'tree-sitter-kotlin';
 
-function generateId(filePath, segmentName, occurrence) {
-  return crypto.createHash('md5').update(`${filePath}:${segmentName}:${occurrence}`).digest('hex');
+// --- Utility Functions ---
+function generateId(filePath, segmentName, startLine) {
+  return crypto.createHash('md5').update(`${filePath}:${segmentName}:${startLine}`).digest('hex');
 }
 
-function generateHash(content) {
-  return crypto.createHash('sha256').update(content).digest('hex');
-}
+// --- Tree-sitter Parser Logic ---
+const tsParser = new Parser();
+const languageParsers = {
+    '.py': Python,
+    '.java': Java,
+    '.kt': Kotlin,
+};
 
-async function segmentJavaScript(content, filePath) {
-  const segments = [];
-  const nameOccurrences = new Map();
+async function _segmentWithTreeSitter(content, filePath, language) {
+    tsParser.setLanguage(language);
+    const tree = tsParser.parse(content);
+    const chunks = [];
+    const relations = []; // Not implemented for Tree-sitter yet, but prepared for future
 
-  try {
-    const ast = parse(content, {
-      sourceType: 'module',
-      plugins: ['typescript', 'jsx', 'importMeta'],
-      errorRecovery: true,
-    });
-
-    const createSegment = (pathNode, type, name) => {
-      const segmentName = name || 'anonymous';
-      const occurrence = (nameOccurrences.get(segmentName) || 0) + 1;
-      nameOccurrences.set(segmentName, occurrence);
-
-      const segmentContent = content.slice(pathNode.start, pathNode.end);
-      return {
-        id: generateId(filePath, segmentName, occurrence),
-        type,
-        name: segmentName,
-        filePath,
-        content: segmentContent,
-        contentHash: generateHash(segmentContent),
-      };
-    };
-
-    traverse(ast, {
-      FunctionDeclaration(path) {
-        segments.push(createSegment(path.node, 'function', path.node.id?.name));
-      },
-      ClassDeclaration(path) {
-        segments.push(createSegment(path.node, 'class', path.node.id?.name));
-      }
-    });
-  
-    if (segments.length === 0) {
-        segments.push({ id: generateId(filePath, 'file', 1), type: 'file', name: path.basename(filePath), filePath, content, contentHash: generateHash(content) });
+    function walkTree(node) {
+        const importantTypes = {
+            'function_definition': 'function', // Python
+            'class_definition': 'class', // Python
+            'function_declaration': 'function', // Kotlin
+            'class_declaration': 'class', // Kotlin/Java
+            'method_declaration': 'function', // Java
+        };
+        if (importantTypes[node.type]) {
+            const nameNode = node.childForFieldName('name') || node.child(1);
+            const chunkName = nameNode ? content.slice(nameNode.startIndex, nameNode.endIndex) : 'anonymous';
+            const chunkCode = content.slice(node.startIndex, node.endIndex);
+            const startLine = node.startPosition.row + 1;
+            chunks.push({
+                id: generateId(filePath, chunkName, startLine),
+                filePath,
+                chunk_type: importantTypes[node.type],
+                chunk_name: chunkName,
+                code: chunkCode,
+            });
+        }
+        for (let i = 0; i < node.childCount; i++) {
+            walkTree(node.child(i));
+        }
     }
-
-  } catch (e) {
-    throw new Error(`Failed to parse ${filePath} with AST. Please check the file for syntax errors or unsupported JavaScript features. Original error: ${e.message}`);
-  }
-  return segments;
+    walkTree(tree.rootNode);
+    return { chunks, relations };
 }
 
-async function segmentAndroidFile(content, filePath, language) {
-  const segments = [];
-  const nameOccurrences = new Map();
+// --- Babel Parser for JavaScript ---
+async function _segmentJavaScript(content, filePath) {
+    const chunks = [];
+    const relations = [];
+    const nameToChunkId = {};
 
-  try {
-    const androidSegments = await parseAndroidFile(content, language, filePath);
-    
-    for (const segment of androidSegments) {
-      const segmentName = segment.name || 'anonymous';
-      const occurrence = (nameOccurrences.get(segmentName) || 0) + 1;
-      nameOccurrences.set(segmentName, occurrence);
-      
-      segments.push({
-        id: generateId(filePath, segmentName, occurrence),
-        type: segment.type,
-        name: segmentName,
-        filePath,
-        content: segment.content,
-        contentHash: generateHash(segment.content),
-        language: segment.language,
-        context: segment.context,
-        startLine: segment.startLine,
-        endLine: segment.endLine
-      });
+    try {
+        const ast = parse(content, { sourceType: 'module', plugins: ['typescript', 'jsx'], errorRecovery: true });
+
+        const addChunk = (type, node, name) => {
+            const chunkName = name || 'anonymous';
+            const chunkCode = content.slice(node.start, node.end);
+            const chunkId = generateId(filePath, chunkName, node.loc.start.line);
+            nameToChunkId[chunkName] = chunkId;
+            chunks.push({ id: chunkId, filePath, chunk_type: type, chunk_name: chunkName, code: chunkCode });
+            return chunkId;
+        };
+
+        traverse(ast, {
+            FunctionDeclaration(path) {
+                addChunk('function', path.node, path.node.id?.name);
+            },
+            ClassDeclaration(path) {
+                addChunk('class', path.node, path.node.id?.name);
+            },
+            ImportDeclaration(path) {
+                const sourceFile = path.node.source.value;
+                path.node.specifiers.forEach(specifier => {
+                    if (specifier.type === 'ImportSpecifier') {
+                        relations.push({ from: filePath, to: sourceFile, type: 'IMPORTS' });
+                    }
+                });
+            },
+            CallExpression(path) {
+                const calleeName = path.get('callee').toString();
+                const parentFunction = path.findParent((p) => p.isFunctionDeclaration());
+                if (parentFunction) {
+                    const parentName = parentFunction.node.id?.name;
+                    if (parentName) {
+                        relations.push({ from: parentName, to: calleeName, type: 'CALLS' });
+                    }
+                }
+            },
+        });
+    } catch (e) {
+        console.error(`Babel parsing error in ${filePath}: ${e.message}`);
     }
-    
-    // If no meaningful segments were found, include the whole file
-    if (segments.length === 0) {
-      segments.push({
-        id: generateId(filePath, 'file', 1),
-        type: 'file',
-        name: path.basename(filePath),
-        filePath,
-        content,
-        contentHash: generateHash(content),
-        language
-      });
-    }
-    
-  } catch (error) {
-    console.warn(`⚠️ Failed to parse Android file ${filePath}:`, error.message);
-    // Fallback to whole file
-    segments.push({
-      id: generateId(filePath, 'file', 1),
-      type: 'file',
-      name: path.basename(filePath),
-      filePath,
-      content,
-      contentHash: generateHash(content),
-      language
-    });
-  }
-  
-  return segments;
+    return { chunks, relations };
 }
 
+// --- Main Router Function ---
 export async function segmentFile(filePath) {
-  try {
-    const content = await fs.readFile(filePath, 'utf-8');
-    const ext = path.extname(filePath);
-    
-    // Check if it's an Android file (Kotlin/Java)
-    const androidLanguage = getFileLanguage(filePath);
-    if (androidLanguage) {
-      return segmentAndroidFile(content, filePath, androidLanguage);
+    try {
+        const content = await fs.readFile(filePath, 'utf-8');
+        const extension = path.extname(filePath);
+        let result = { chunks: [], relations: [] };
+
+        if (['.js', '.jsx', '.ts', '.tsx'].includes(extension)) {
+            result = await _segmentJavaScript(content, filePath);
+        } else if (languageParsers[extension]) {
+            result = await _segmentWithTreeSitter(content, filePath, languageParsers[extension]);
+        } 
+        
+        if (result.chunks.length === 0) {
+            const chunkId = generateId(filePath, path.basename(filePath), 1);
+            result.chunks.push({ id: chunkId, filePath, chunk_type: 'file', chunk_name: path.basename(filePath), code: content });
+        }
+
+        return result;
+    } catch (error) {
+        console.error(`Failed to segment file ${filePath}: ${error.message}`);
+        return { chunks: [], relations: [] };
     }
-    
-    // JavaScript/TypeScript files
-    if (['.js', '.jsx', '.ts', '.tsx'].includes(ext)) {
-      return segmentJavaScript(content, filePath);
-    }
-    
-    // Default: treat as single file
-    const fileContent = content;
-    return [{ 
-      id: generateId(filePath, 'file', 1), 
-      type: 'file', 
-      name: path.basename(filePath), 
-      filePath, 
-      content: fileContent, 
-      contentHash: generateHash(fileContent) 
-    }];
-  } catch (error) {
-      if (error.message.startsWith('Failed to parse')) {
-          throw error; // Re-throw the specific parser error
-      }
-      console.error(`Failed to read file ${filePath}: ${error.message}`);
-      return [];
-  }
 }

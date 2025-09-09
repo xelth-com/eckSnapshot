@@ -7,7 +7,7 @@ import { restoreSnapshot } from './commands/restoreSnapshot.js';
 import { generateConsilium } from './commands/consilium.js';
 import { indexProject } from './commands/indexProject.js';
 import { queryProject } from './commands/queryProject.js';
-import { detectProject, testAndroidParsing } from './commands/detectProject.js';
+import { detectProject, testFileParsing } from './commands/detectProject.js';
 
 /**
  * Check code boundaries in a file
@@ -143,7 +143,7 @@ export function run() {
     .description('Test Android file parsing capabilities')
     .argument('<filePath>', 'Path to Android source file (.kt or .java)')
     .option('--show-content', 'Show content preview of parsed segments')
-    .action(testAndroidParsing);
+    .action(testFileParsing);
 
   program.parse(process.argv);
 }

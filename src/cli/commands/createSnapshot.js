@@ -14,6 +14,8 @@ import {
   generateDirectoryTree, loadConfig, displayProjectInfo
 } from '../../utils/fileUtils.js';
 import { detectProjectType } from '../../utils/projectDetector.js';
+import { indexProject } from './indexProject.js';
+import { loadSetupConfig } from '../../config.js';
 
 /**
  * Creates dynamic project context based on detection results
@@ -121,8 +123,6 @@ function createDynamicProjectContext(detection) {
   return context;
 }
 import { generateEnhancedAIHeader } from '../../utils/aiHeader.js';
-import { indexProject } from './indexProject.js';
-import { loadSetupConfig, DEFAULT_CONFIG } from '../../config.js';
 
 const gzip = promisify(zlib.gzip);
 
