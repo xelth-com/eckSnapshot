@@ -1,0 +1,56 @@
+{
+  "coefficients": {
+    "android": [
+      4388.725796624385,
+      0.2507418280225041,
+      0,
+      0
+    ],
+    "nodejs": [
+      0,
+      0.2,
+      0,
+      0
+    ],
+    "python": [
+      0,
+      0.22,
+      0,
+      0
+    ],
+    "rust": [
+      0,
+      0.18,
+      0,
+      0
+    ],
+    "go": [
+      0,
+      0.19,
+      0,
+      0
+    ],
+    "unknown": [
+      0,
+      0.25,
+      0,
+      0
+    ]
+  },
+  "trainingPoints": {
+    "android": [
+      {
+        "fileSizeInBytes": 276377,
+        "estimatedTokens": 68882,
+        "actualTokens": 73688,
+        "timestamp": "2025-09-10T10:52:55.067Z"
+      },
+      {
+        "fileSizeInBytes": 150000,
+        "estimatedTokens": 37500,
+        "actualTokens": 42000,
+        "timestamp": "2025-09-10T10:54:22.647Z"
+      }
+    ]
+  }
+}

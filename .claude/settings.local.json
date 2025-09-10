@@ -19,7 +19,10 @@
       "Bash(git checkout:*)",
       "Bash(timeout:*)",
       "Bash(git rm:*)",
-      "Bash(git reset:*)"
+      "Bash(git reset:*)",
+      "Bash(npm run build:*)",
+      "Bash(npm run:*)",
+      "Bash(./bin/eck-snapshot.js:*)"
     ],
     "deny": [],
     "defaultMode": "acceptEdits"

@@ -8,6 +8,7 @@ import { generateConsilium } from './commands/consilium.js';
 import { indexProject } from './commands/indexProject.js';
 import { queryProject } from './commands/queryProject.js';
 import { detectProject, testFileParsing } from './commands/detectProject.js';
+import { trainTokens, showTokenStats } from './commands/trainTokens.js';
 
 /**
  * Check code boundaries in a file
@@ -146,6 +147,22 @@ export function run() {
     .argument('<filePath>', 'Path to Android source file (.kt or .java)')
     .option('--show-content', 'Show content preview of parsed segments')
     .action(testFileParsing);
+
+  // Token training command
+  program
+    .command('train-tokens')
+    .description('Train token estimation with actual results')
+    .argument('<projectType>', 'Project type (android, nodejs, python, etc.)')
+    .argument('<fileSizeBytes>', 'File size in bytes')
+    .argument('<estimatedTokens>', 'Estimated token count')
+    .argument('<actualTokens>', 'Actual token count from LLM')
+    .action(trainTokens);
+
+  // Token statistics command
+  program
+    .command('token-stats')
+    .description('Show token estimation statistics and accuracy')
+    .action(showTokenStats);
 
   program.parse(process.argv);
 }

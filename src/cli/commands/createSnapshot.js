@@ -13,7 +13,8 @@ import {
   scanDirectoryRecursively, loadGitignore, readFileWithSizeCheck, 
   generateDirectoryTree, loadConfig, displayProjectInfo
 } from '../../utils/fileUtils.js';
-import { detectProjectType } from '../../utils/projectDetector.js';
+import { detectProjectType, getProjectSpecificFiltering } from '../../utils/projectDetector.js';
+import { estimateTokensWithPolynomial, generateTrainingCommand } from '../../utils/tokenEstimator.js';
 import { indexProject } from './indexProject.js';
 import { loadSetupConfig } from '../../config.js';
 
@@ -148,19 +149,72 @@ async function getGitCommitHash(projectPath) {
   return null;
 }
 
-async function estimateProjectTokens(projectPath, config) {
-  const files = await getProjectFiles(projectPath, config);
+async function estimateProjectTokens(projectPath, config, projectType = null) {
+  // Get project-specific filtering if not provided
+  if (!projectType) {
+    const detection = await detectProjectType(projectPath);
+    projectType = detection.type;
+  }
+  
+  const projectSpecific = await getProjectSpecificFiltering(projectType);
+  
+  // Merge project-specific filters with global config (same as in scanDirectoryRecursively)
+  const effectiveConfig = {
+    ...config,
+    dirsToIgnore: [...(config.dirsToIgnore || []), ...(projectSpecific.dirsToIgnore || [])],
+    filesToIgnore: [...(config.filesToIgnore || []), ...(projectSpecific.filesToIgnore || [])],
+    extensionsToIgnore: [...(config.extensionsToIgnore || []), ...(projectSpecific.extensionsToIgnore || [])]
+  };
+  
+  const files = await getProjectFiles(projectPath, effectiveConfig);
+  const gitignore = await loadGitignore(projectPath);
+  const maxFileSize = parseSize(effectiveConfig.maxFileSize);
   let totalSize = 0;
+  let includedFiles = 0;
+  
   for (const file of files) {
     try {
+      const normalizedPath = file.replace(/\\/g, '/');
+      
+      // Apply the same filtering logic as in runFileSnapshot
+      if (effectiveConfig.dirsToIgnore.some(dir => normalizedPath.startsWith(dir))) {
+        continue;
+      }
+      
+      if (gitignore.ignores(normalizedPath)) {
+        continue;
+      }
+      
+      if (isBinaryPath(file)) {
+        continue;
+      }
+      
+      const fileExtension = path.extname(file);
+      if (effectiveConfig.extensionsToIgnore.includes(fileExtension)) {
+        continue;
+      }
+      
+      if (matchesPattern(normalizedPath, effectiveConfig.filesToIgnore)) {
+        continue;
+      }
+      
       const stats = await fs.stat(path.join(projectPath, file));
+      if (stats.size > maxFileSize) {
+        continue;
+      }
+      
       totalSize += stats.size;
+      includedFiles++;
     } catch (e) { /* ignore errors for estimation */ }
   }
-  return totalSize / 4; // Rough estimate of tokens
+  
+  // Use adaptive polynomial estimation
+  const estimatedTokens = await estimateTokensWithPolynomial(projectType, totalSize);
+  
+  return { estimatedTokens, totalSize, includedFiles };
 }
 
-async function runFileSnapshot(repoPath, options, config) {
+async function runFileSnapshot(repoPath, options, config, estimation = null, projectType = null) {
   const originalCwd = process.cwd();
   console.log(`\n📸 Creating snapshot of: ${path.basename(repoPath)}`);
   console.log(`📁 Repository path: ${repoPath}`);
@@ -402,6 +456,14 @@ async function runFileSnapshot(repoPath, options, config) {
       console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     }
     
+    // Generate training command string if estimation data is available
+    if (estimation && projectType) {
+      const trainingCommand = generateTrainingCommand(projectType, estimation.estimatedTokens, estimation.totalSize, repoPath);
+      console.log('\n🎯 To improve token estimation accuracy, run this command after checking actual tokens:');
+      console.log(`${trainingCommand}[ACTUAL_TOKENS_HERE]`);
+      console.log('   Replace [ACTUAL_TOKENS_HERE] with the real token count from your LLM');
+    }
+    
   } finally {
     process.chdir(originalCwd);
   }
@@ -449,15 +511,15 @@ export async function createRepoSnapshot(repoPath, options) {
       config.includeHidden = setupConfig.fileFiltering?.includeHidden ?? false;
     }
 
-    const estimatedTokens = await estimateProjectTokens(repoPath, config);
-    spinner.info(`Estimated project size: ~${Math.round(estimatedTokens).toLocaleString()} tokens.`);
+    const estimation = await estimateProjectTokens(repoPath, config, projectDetection.type);
+    spinner.info(`Estimated project size: ~${Math.round(estimation.estimatedTokens).toLocaleString()} tokens.`);
 
-    if (estimatedTokens > config.smartModeTokenThreshold) {
+    if (estimation.estimatedTokens > config.smartModeTokenThreshold) {
       spinner.succeed('Project is large. Switching to vector indexing mode.');
       await indexProject(repoPath, options);
     } else {
       spinner.succeed('Project is small. Creating a single-file snapshot.');
-      await runFileSnapshot(repoPath, options, config);
+      await runFileSnapshot(repoPath, options, config, estimation, projectDetection.type);
     }
   } catch (error) {
     spinner.fail(`Operation failed: ${error.message}`);
