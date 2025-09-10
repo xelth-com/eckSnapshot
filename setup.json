@@ -131,7 +131,7 @@
     }
   },
   "smartMode": {
-    "tokenThreshold": 700000,
+    "tokenThreshold": 7000000,
     "_comment": "Projects over this token count will use vector indexing instead of single file snapshots"
   },
   "vectorIndex": {
@@ -221,6 +221,20 @@
         "pm2.json",
         ".github/workflows/**"
       ]
+    },
+    "test-frontend": {
+      "description": "Test frontend profile",
+      "include": [
+        "frontend/**"
+      ],
+      "exclude": []
+    },
+    "test-backend": {
+      "description": "Test backend profile",
+      "include": [
+        "backend/**"
+      ],
+      "exclude": []
     }
   },
   "fileFiltering": {
@@ -243,6 +257,11 @@
       ".env",
       ".pyc",
       ".class",
+      ".jar",
+      ".aar",
+      ".apk",
+      ".aab",
+      ".dex",
       ".o",
       ".so",
       ".dylib",
@@ -280,6 +299,8 @@
           "*.iml",
           "*.apk",
           "*.aab",
+          "*.aar",
+          "*.jar",
           "*.dex",
           "R.java",
           "BuildConfig.java"
@@ -298,6 +319,8 @@
         "extensionsToIgnore": [
           ".apk",
           ".aab",
+          ".aar",
+          ".jar",
           ".dex",
           ".pro",
           ".ap_",

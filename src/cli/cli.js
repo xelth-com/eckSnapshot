@@ -116,6 +116,7 @@ export function run() {
     .command('index')
     .description('Index the project for intelligent search')
     .argument('[projectPath]', 'Path to the project', process.cwd())
+    .option('--profile <name>', 'Use a specific context profile for indexing')
     .option('--export [filename]', 'Export the synchronized index to a JSON file. If no filename is provided, one will be generated.')
     .action(indexProject);
 
@@ -126,6 +127,7 @@ export function run() {
     .argument('<query>', 'Search query')
     .option('-k, --top-k <number>', 'Number of top results', (val) => parseInt(val), 10)
     .option('-o, --output <file>', 'Output file for snapshot')
+    .option('--profile <name>', 'Use a specific context profile for querying')
     .option('--import <filename>', 'Use a portable index file for the query instead of the local database.')
     .action(queryProject);
 

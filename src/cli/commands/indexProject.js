@@ -1,11 +1,13 @@
 import path from 'path';
 import { execa } from 'execa';
 import ora from 'ora';
+import micromatch from 'micromatch';
 import { segmentFile } from '../../core/segmenter.js';
 import { getKnex, initDb, destroyDb } from '../../database/postgresConnector.js';
 import { generateBatchEmbeddings, releaseModel as releaseEmbeddingModel } from '../../services/embeddingService.js';
 import { getCodeSummary } from '../../services/analysisService.js';
 import { releaseModel as releaseAnalysisModel } from '../../services/analysisService.js';
+import { loadSetupConfig } from '../../config.js';
 
 async function getProjectFiles(projectPath) {
   const { stdout } = await execa('git', ['ls-files'], { cwd: projectPath });
@@ -14,86 +16,105 @@ async function getProjectFiles(projectPath) {
 
 export async function indexProject(projectPath, options) {
   const mainSpinner = ora('Запуск конвейера индексации...').start();
-
   try {
     await initDb();
     const knex = getKnex();
-    mainSpinner.text = 'Сканирование файлов проекта...';
-    const files = await getProjectFiles(projectPath);
-    mainSpinner.succeed(`Найдено ${files.length} файлов для обработки.`);
+    const config = await loadSetupConfig();
+    
+    let files = await getProjectFiles(projectPath);
+    const profileName = options.profile || 'default';
+    if (options.profile) {
+        const profile = config.contextProfiles[options.profile];
+        if (!profile) throw new Error(`Profile '${options.profile}' not found in setup.json`);
+        mainSpinner.info(`Using profile: '${options.profile}'.`);
+        files = micromatch(files, profile.include, { ignore: profile.exclude });
+    }
 
-    const chunkIdToDbId = new Map();
+    mainSpinner.text = 'Получение кэша из базы данных...';
+    const existingRows = await knex('code_chunks').where({ profile: profileName }).select('content_hash', 'summary', 'embedding');
+    const cache = new Map(existingRows.map(r => [r.content_hash, { summary: r.summary, embedding: r.embedding }]));
+    mainSpinner.succeed(`Найдено ${cache.size} кэшированных записей.`);
 
+    const allProjectChunks = [];
+    const allProjectRelations = [];
     for (const filePath of files) {
-        const fileSpinner = ora(`Обработка файла: ${filePath}`).start();
-        try {
-            const { chunks, relations } = await segmentFile(path.join(projectPath, filePath));
-            if (chunks.length === 0) {
-                fileSpinner.succeed('Пропущено (нет чанков).');
-                continue;
+        const { chunks, relations } = await segmentFile(path.join(projectPath, filePath));
+        allProjectChunks.push(...chunks);
+        allProjectRelations.push(...relations);
+    }
+
+    const chunksToProcessAI = allProjectChunks.filter(c => !cache.has(c.contentHash));
+    mainSpinner.info(`Всего чанков: ${allProjectChunks.length}. Новых/измененных для ИИ-обработки: ${chunksToProcessAI.length}.`);
+
+    if (chunksToProcessAI.length > 0) {
+        mainSpinner.text = `[1/2] Анализ кода (${chunksToProcessAI.length} чанков)...`;
+        const summaries = await Promise.all(chunksToProcessAI.map(c => getCodeSummary(c.code)));
+        for (let i = 0; i < chunksToProcessAI.length; i++) { chunksToProcessAI[i].summary = summaries[i]; }
+        await releaseAnalysisModel();
+
+        mainSpinner.text = `[2/2] Создание эмбеддингов...`;
+        const embeddings = await generateBatchEmbeddings(chunksToProcessAI.map(c => c.code));
+        for (let i = 0; i < chunksToProcessAI.length; i++) { chunksToProcessAI[i].embedding = embeddings[i]; }
+        await releaseEmbeddingModel();
+    }
+
+    mainSpinner.text = 'Сохранение данных в БД...';
+    const allChunksData = allProjectChunks.map(c => {
+        const cached = cache.get(c.contentHash);
+        const finalEmbedding = c.embedding || (cached?.embedding ? JSON.parse(cached.embedding) : null);
+        return {
+            file_path: c.filePath,
+            chunk_type: c.chunk_type,
+            chunk_name: c.chunk_name,
+            code: c.code,
+            summary: c.summary || cached?.summary,
+            tokens: Math.round(c.code.length / 4),
+            embedding: finalEmbedding ? JSON.stringify(finalEmbedding) : null,
+            content_hash: c.contentHash,
+            profile: profileName,
+        };
+    });
+
+    if (allChunksData.length > 0) {
+      await knex('code_chunks')
+          .insert(allChunksData)
+          .onConflict('content_hash')
+          .merge();
+    }
+
+    mainSpinner.text = 'Построение графа связей...';
+    const allDbChunks = await knex('code_chunks').where({ profile: profileName }).select('id', 'chunk_name', 'file_path');
+    const nameToDbId = new Map(allDbChunks.map(c => [c.chunk_name, c.id]));
+    const pathToDbId = new Map(allDbChunks.filter(c => c.chunk_type === 'file').map(c => [c.file_path, c.id]));
+
+    const relationsToInsert = allProjectRelations
+        .map(rel => {
+            const fromId = nameToDbId.get(rel.from) || pathToDbId.get(rel.from);
+            const toId = nameToDbId.get(rel.to);
+            if (fromId && toId) {
+                return { from_id: fromId, to_id: toId, relation_type: rel.type };
             }
+            return null;
+        })
+        .filter(Boolean);
+    
+    if (relationsToInsert.length > 0) {
+        await knex('relations').del(); // Clear old relations for simplicity
+        await knex('relations').insert(relationsToInsert);
+        mainSpinner.info(`Сохранено ${relationsToInsert.length} связей в графе.`);
+    }
 
-            fileSpinner.text = `[1/3] Анализ кода (${chunks.length} чанков)...`;
-            const summaries = await Promise.all(chunks.map(c => getCodeSummary(c.code)));
-            for (let i = 0; i < chunks.length; i++) { chunks[i].summary = summaries[i]; }
-            await releaseAnalysisModel();
-
-            fileSpinner.text = `[2/3] Создание эмбеддингов...`;
-            const embeddings = await generateBatchEmbeddings(chunks.map(c => c.code));
-            for (let i = 0; i < chunks.length; i++) { chunks[i].embedding = embeddings[i]; }
-            await releaseEmbeddingModel();
-            
-            fileSpinner.text = `[3/3] Сохранение узлов в БД...`;
-            const insertedRows = await knex('code_chunks').insert(chunks.map(c => ({
-                file_path: c.filePath,
-                chunk_type: c.chunk_type,
-                chunk_name: c.chunk_name,
-                code: c.code,
-                summary: c.summary,
-                tokens: Math.round(c.code.length / 4),
-                embedding: JSON.stringify(c.embedding)
-            }))).returning(['id', 'chunk_name']);
-            
-            insertedRows.forEach((row, i) => {
-              chunkIdToDbId.set(chunks[i].id, row.id);
-              chunkIdToDbId.set(chunks[i].chunk_name, row.id);
-              chunkIdToDbId.set(row.chunk_name, row.id);
-            });
-            
-            // Map relations to database IDs
-            const relationsToInsert = relations
-                .map(rel => {
-                    let fromId, toId;
-                    if (rel.type === 'IMPORTS') {
-                        // For imports, from is file path, to is imported module
-                        fromId = chunkIdToDbId.get(path.basename(rel.from, path.extname(rel.from)));
-                        // For now, skip imports as they need more complex handling
-                        return null;
-                    } else if (rel.type === 'CALLS') {
-                        // For calls, both are function/chunk names
-                        fromId = chunkIdToDbId.get(rel.from);
-                        toId = chunkIdToDbId.get(rel.to);
-                    }
-                    return fromId && toId ? { from_id: fromId, to_id: toId, relation_type: rel.type } : null;
-                })
-                .filter(r => r !== null);
-
-            if (relationsToInsert.length > 0) {
-                await knex('relations').insert(relationsToInsert);
-            }
-            fileSpinner.succeed(`Сохранено ${chunks.length} чанков и ${relationsToInsert.length} связей.`);
-        } catch (error) {
-            fileSpinner.fail(`Ошибка при обработке ${filePath}: ${error.message}`);
-            // Ensure models are released even on error
-            await releaseAnalysisModel();
-            await releaseEmbeddingModel();
-        }
+    const currentHashes = new Set(allProjectChunks.map(c => c.contentHash));
+    const hashesToDelete = existingRows.filter(r => !currentHashes.has(r.content_hash)).map(r => r.content_hash);
+    if (hashesToDelete.length > 0) {
+        await knex('code_chunks').whereIn('content_hash', hashesToDelete).del();
+        mainSpinner.info(`Удалено ${hashesToDelete.length} устаревших чанков.`);
     }
 
   } catch (error) {
     mainSpinner.fail(`Ошибка в процессе индексации: ${error.message}`);
   } finally {
     await destroyDb();
-    mainSpinner.succeed('Индексация завершена. Соединение с БД закрыто.');
+    mainSpinner.succeed('Индексация завершена.');
   }
 }

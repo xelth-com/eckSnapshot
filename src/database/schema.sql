@@ -18,7 +18,9 @@ CREATE TABLE IF NOT EXISTS code_chunks (
     code TEXT NOT NULL,
     summary TEXT, -- Сюда будет писать "Аналитик кода"
     tokens INT,
-    embedding VECTOR(768) -- Размерность для Jina Code v2
+    embedding VECTOR(768), -- Размерность для Jina Code v2
+    content_hash TEXT NOT NULL UNIQUE, -- Для кэширования
+    profile VARCHAR(100) -- Профиль контекста
 );
 
 -- Таблица для хранения связей (ребер графа)

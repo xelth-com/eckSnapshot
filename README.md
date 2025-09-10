@@ -1,179 +1,124 @@
+
 # eck-snapshot
 
-### A Note from the Creator
+[](https://www.google.com/search?q=https://www.npmjs.com/package/%40xelth/eck-snapshot)
+[](https://opensource.org/licenses/MIT)
 
-Hello! `eck-snapshot` is a tool I originally created for my own needs while "vibecoding" my first project, eckWms, and its initial module, ecKasse. As I delved deeper into the project, new ideas and requirements for this tool began to emerge.
+**`eck-snapshot` is a local-first, AI-powered intelligence platform for your codebase. It transforms any code repository into a sophisticated, queryable database, enabling a new workflow for AI-assisted development called "Vibecoding".**
 
-Today, the development "team" consists of:
-- **The Client** (that's you!)
-- **The Software Architect** (Gemini)
-- **The Coder** (a Claude Code agent)
+## The Philosophy: What is Vibecoding?
 
-We've also added a "Consilium" feature. When the Architect faces a particularly tough problem, it can issue a request to all the top-tier models you have access to, forming a council of experts to find the best solution.
+Modern AI development tools often fail because they operate on a narrow context, forcing the AI to guess and hallucinate. **Vibecoding** is a developer workflow focused on maintaining a creative flow by providing AI agents with a near-perfect, holistic understanding of the entire codebase.
 
-### Contributing & Ideas
+Instead of manually feeding snippets of code to an AI, `eck-snapshot` allows you to ask high-level questions and receive a comprehensive, context-aware "snapshot" that includes all semantically and structurally relevant code. This allows the developer to act as the **Architect**, guiding the project's vision, while the AI acts as a flawless **Executor**.
 
-I'm always open to hearing your ideas for improving `eck-snapshot`. If you have a suggestion that aligns with my workflow, there's a good chance it will be implemented quickly—not in days, but in hours.
+## Key Features
 
-Special thanks to those who can also bring their own ideas to life. Contributions are welcome! Please feel free to submit a Pull Request.
+  - **🧠 Multi-Language Intelligence:** Deeply understands your code using advanced parsers for **JavaScript/TypeScript** (Babel), **Python**, and **Android (Java/Kotlin)** (Tree-sitter).
+  - **🗄️ Hybrid Database Backend:** Creates a powerful local knowledge base using **PostgreSQL**, combining:
+      - **Vector Search** (`pgvector`) for finding code by semantic meaning.
+      - **Graph Database** (`Apache AGE`) for understanding the structural relationships between code.
+  - **🔐 Local-First AI:** All AI models for code analysis (summarization) and indexing (embeddings) run **100% locally** on your machine via `Transformers.js`. Your code never leaves your computer.
+  - **🤖 Hybrid RAG Search:** A powerful `query` command that combines vector and graph search to produce incredibly rich, context-aware code snapshots for your LLM.
+  - **📸 Classic Snapshot Mode:** The original `snapshot` command is still available for creating single-file snapshots of smaller projects.
 
----
+## How It Works
 
-## ✨ What's New in v4.0: The Road to Infinite Context + Multi-Platform Support
+`eck-snapshot` implements a sophisticated pipeline to analyze and index your code:
 
-My own project, the original inspiration for this tool, eventually outgrew Gemini's 1M token context window. This challenge sparked the evolution to v4.0.
+`[Codebase] -> [Multi-Language Parsers] -> [Local AI Enrichment (Summaries & Embeddings)] -> [PostgreSQL (Vectors + Graph)] -> [Hybrid RAG Query]`
 
-- **Intelligent Search**: Instead of creating massive snapshots, you can now index your entire project and use natural language to query for the most relevant code. This is the future for working with truly large codebases.
-- **Vector-Based Context**: Powered by Google Gemini embeddings, `eck-snapshot` performs semantic searches to find the code that's contextually related to your task.
-- **Smart Mode**: Automatically detects large projects and uses vector indexing instead of single-file snapshots to provide the most relevant context without overwhelming the AI.
-- **Multi-Platform Support**: Now supports Android projects with automatic detection of Kotlin/Java files, Android-specific filtering, and AST-based parsing for better code understanding.
-- **Project Detection**: Automatically detects project type (Android, Node.js, Flutter, React Native) and applies appropriate filtering and parsing rules.
-
-For smaller projects, the classic snapshot mode works just as it always has.
-
----
-
-## 🚀 Key Features
-
-- **Dual-Mode Operation**:
-  - **`index` & `query`**: The new intelligent mode to perform semantic searches and generate task-specific, context-aware snapshots.
-  - **`snapshot`**: The classic mode to generate a single-file snapshot of an entire project.
-- **Portable Indexes**: Export the entire vector index into a single, shareable file. Run queries offline or on different machines without needing an API key.
-- **AI-Driven Philosophy**: Generates clean, structured output perfect for providing context to LLMs and is built to be used in an AI-assisted workflow.
-- **Local First**: Vector indexes are stored locally in a `.ecksnapshot_index` directory in your project. You own your data.
-- **Deeply Configurable**: Smartly ignores `node_modules`, `.git`, and respects your `.gitignore` file. Nearly all behavior can be customized via `setup.json`.
-
----
-
-## 📦 Installation & Setup
-
-### 1. Installation
+## Installation
 
 ```bash
 npm install -g @xelth/eck-snapshot
 ```
 
-### 2. API Key Setup (Required for `index` command)
+## Setup
 
-The `index` command uses the Google Gemini API to generate embeddings.
+`eck-snapshot` uses a powerful local database and AI models. Follow these steps for the initial setup.
 
-1.  Obtain an API key from [Google AI Studio](https://aistudio.google.com/app/apikey).
-2.  Create a `.env` file in your project's root directory.
-3.  Add your API key to the `.env` file:
+### Step 1: Set up PostgreSQL
+
+A running PostgreSQL instance with the `pgvector` and `Apache AGE` extensions is required. The easiest way to get this running is with Docker.
+
+1.  Create a `docker-compose.yml` file in an empty directory:
+    ```yaml
+    version: '3.8'
+    services:
+      postgres-db:
+        image: ivans-big-data/pg-vector-and-graph:16
+        container_name: eck-snapshot-db
+        ports:
+          - "5432:5432"
+        environment:
+          - POSTGRES_USER=myuser
+          - POSTGRES_PASSWORD=mypassword
+          - POSTGRES_DB=eck_snapshot_db
+        volumes:
+          - ./pg_data:/var/lib/postgresql/data
     ```
-    GEMINI_API_KEY="YOUR_API_KEY_HERE"
+2.  Run `docker-compose up -d` in that directory. This will start your database.
+
+### Step 2: Configure Environment
+
+`eck-snapshot` needs to know how to connect to your database.
+
+1.  Find the `eck-snapshot` installation directory.
+2.  Copy the `.env.example` file to a new file named `.env` in that same directory.
+3.  Edit the `.env` file with the database credentials you set in `docker-compose.yml`.
+    ```dotenv
+    # PostgreSQL Connection Details
+    DB_HOST=127.0.0.1
+    DB_PORT=5432
+    DB_USER=myuser
+    DB_PASSWORD=mypassword
+    DB_DATABASE=eck_snapshot_db
     ```
 
-`eck-snapshot` will automatically load this key.
+### Step 3: AI Model Caching
 
----
+The first time you run the `index` command, `Transformers.js` will automatically download the open-source AI models (several GBs). This is a one-time process; the models will be cached for all future use.
 
-## 🎯 Usage Workflows
+## Usage Workflow
 
-Choose the workflow that best fits your project's size and your needs.
+### Step 1: Index Your Project
 
-### Workflow 1: Intelligent Search (Recommended for Large Projects)
-
-This is the most powerful way to use `eck-snapshot`.
-
-**Step A: Index Your Project (One-time per major change)**
-
-Navigate to your project's root directory and run:
+Navigate to your project's root directory and run the `index` command. This will kick off the full analysis pipeline.
 
 ```bash
-eck-snapshot index
+# This will scan, parse, analyze, and store your entire project in PostgreSQL.
+# This may take a long time on the first run.
+eck-snapshot index .
 ```
 
-This command scans your files, breaks them into smart segments (functions, classes), generates embeddings for each, and saves them to a local `.ecksnapshot_index` folder.
+### Step 2: Query Your Codebase
 
-**Step B: Query for Context**
-
-When you have a task (e.g., "fixing a bug in the user authentication flow"), ask `eck-snapshot` for the relevant code:
+Once your project is indexed, you can ask questions in natural language.
 
 ```bash
-# Ask for code related to user authentication
+# Ask for all code related to user authentication
 eck-snapshot query "user authentication logic"
 
-# The result is a small, highly relevant snapshot file containing only the code you need.
+# Ask for code related to scanner functionality, getting more results
+eck-snapshot query "scanner functionality" -k 15
 ```
 
-### Workflow 2: Classic Full Snapshot (For Smaller Projects)
+This will perform the hybrid vector-and-graph search and generate a `rag_snapshot_... .md` file in your current directory, containing all the relevant code needed for your task.
 
-Useful for smaller projects or when you need a complete picture.
+## Command Reference
 
-```bash
-# Create a snapshot of the current directory
-eck-snapshot snapshot
+  - `eck-snapshot index [path]`: Scans and indexes a repository into the PostgreSQL database.
+  - `eck-snapshot query "<your query>"`: Performs a hybrid search and generates a context-aware RAG snapshot.
+  - `eck-snapshot snapshot [path]`: Creates a classic single-file snapshot of an entire project.
+  - `eck-snapshot detect [path]`: Detects the project type and configuration.
 
-# This command automatically detects project size. If it's too large,
-# it will run the 'index' command for you.
-```
+For more options on any command, run it with the `--help` flag.
 
-### Workflow 3: Portable Indexes (For Collaboration & Offline Use)
+## Contributing
 
-**Step A: Create a Portable Index**
+Contributions are welcome\! This project was built with the help of AI and is a testament to a new way of building software. Please feel free to submit a Pull Request or open an issue on our GitHub repository.
 
-After indexing, create a shareable JSON file of your vector database.
+## License
 
-```bash
-# This runs a sync and then exports the result
-eck-snapshot index --export
-# Creates a file like: YourProject_2025-08-17_22-30-00_vectors.json
-```
-
-**Step B: Query Using the Portable Index**
-
-Anyone can now use this file to perform queries without needing an API key.
-
-```bash
-# The --import flag tells the query command to use the file
-eck-snapshot query "database connection logic" --import YourProject_..._vectors.json
-```
-
----
-
-## 📖 Command Reference
-
-### `index`
-Indexes a project for semantic search. It uses a smart sync mechanism to only update what has changed.
-`eck-snapshot index [path] [options]`
-- `[path]`: (Optional) Path to the project. Defaults to the current directory.
-- `--export [filename]`: (Optional) Export the synchronized index to a JSON file. If no filename is given, a default one is generated.
-
-### `query`
-Generates a context-aware snapshot from an indexed project.
-`eck-snapshot query "<your query>" [options]`
-- `"<your query>"`: A description of the code you're looking for.
-- `-o, --output <file>`: (Optional) The output file name for the RAG snapshot.
-- `-k <number>`: (Optional) Number of results to retrieve. Default: 10.
-- `--import <filename>`: (Optional) Use a portable index file for the query. No API key is needed when using this flag.
-
-### `snapshot`
-Creates a full snapshot of a repository. Automatically switches to `index` mode for large projects.
-`eck-snapshot snapshot [path] [options]`
-- Refer to `--help` for all filtering and formatting options.
-
-### `restore`
-Restores a project from a classic snapshot file.
-`eck-snapshot restore <snapshot_file> [target_directory] [options]`
-
-### `detect`
-Detects and displays project type and configuration information.
-`eck-snapshot detect [projectPath] [options]`
-- `[projectPath]`: (Optional) Path to the project. Defaults to current directory.
-- `-v, --verbose`: Show detailed detection results including all possible matches.
-
-### `test-android`
-Tests Android file parsing capabilities on a specific file.
-`eck-snapshot test-android <filePath> [options]`
-- `<filePath>`: Path to Android source file (.kt, .kts, or .java).
-- `--show-content`: Show content preview of parsed segments.
-
----
-
-## ⚙️ Configuration
-
-All configuration is now centralized in the `setup.json` file in the project root. Here you can configure:
-- `tokenThreshold`: The project size at which to automatically switch to vector indexing.
-- `autoExportOnIndex`: Set to `true` to automatically create a portable index file after every successful sync.
-- File filtering rules, performance settings, and more.
+This project is licensed under the MIT License. See the [LICENSE](https://www.google.com/search?q=https://github.com/xelth-com/eckSnapshot/blob/main/LICENSE) file for details.

@@ -9,7 +9,9 @@ CREATE TABLE IF NOT EXISTS code_chunks (
     code TEXT NOT NULL,
     summary TEXT, -- Сюда будет писать "Аналитик кода"
     tokens INT,
-    embedding TEXT -- JSON string representation for now
+    embedding TEXT, -- JSON string representation for now
+    content_hash TEXT NOT NULL UNIQUE, -- Для кэширования
+    profile VARCHAR(100) -- Профиль контекста
 );
 
 -- Таблица для хранения связей

@@ -36,7 +36,15 @@ export async function queryProject(query, options) {
 
     // Step 2: Vector Search (using cosine similarity with JSON embeddings)
     mainSpinner.text = 'Векторный поиск релевантных фрагментов...';
-    const allChunks = await knex('code_chunks').select('id', 'embedding', 'file_path', 'code');
+    let chunksQuery = knex('code_chunks').select('id', 'embedding', 'file_path', 'code');
+    
+    // Filter by profile if specified
+    if (options.profile) {
+        chunksQuery = chunksQuery.where('profile', options.profile);
+        mainSpinner.info(`Поиск в профиле: '${options.profile}'`);
+    }
+    
+    const allChunks = await chunksQuery;
     
     // Calculate cosine similarity in JavaScript since we don't have pgvector
     const similarities = allChunks.map(chunk => {
