@@ -51,6 +51,14 @@
         "actualTokens": 42000,
         "timestamp": "2025-09-10T10:54:22.647Z"
       }
+    ],
+    "nodejs": [
+      {
+        "fileSizeInBytes": 206870,
+        "estimatedTokens": 41374,
+        "actualTokens": 59269,
+        "timestamp": "2025-09-14T13:45:11.710Z"
+      }
     ]
   }
 }

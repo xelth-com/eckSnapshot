@@ -33,7 +33,45 @@ function buildAgentDefinitions(executionAgents) {
   return definitions;
 }
 
-export async function generateEnhancedAIHeader(context) {
+function buildEckManifestSection(eckManifest) {
+  if (!eckManifest) {
+    return '';
+  }
+
+  let section = '\n## Project-Specific Manifest (.eck Directory)\n\n';
+  section += 'This project includes a `.eck` directory with specific context and configuration:\n\n';
+
+  if (eckManifest.context) {
+    section += '### Project Context\n\n';
+    section += eckManifest.context + '\n\n';
+  }
+
+  if (eckManifest.operations) {
+    section += '### Operations Guide\n\n';
+    section += eckManifest.operations + '\n\n';
+  }
+
+  if (eckManifest.journal) {
+    section += '### Development Journal\n\n';
+    section += eckManifest.journal + '\n\n';
+  }
+
+  if (Object.keys(eckManifest.environment).length > 0) {
+    section += '### Environment Overrides\n\n';
+    section += 'The following environment settings override auto-detected values:\n\n';
+    for (const [key, value] of Object.entries(eckManifest.environment)) {
+      section += `- **${key}**: ${value}\n`;
+    }
+    section += '\n';
+  }
+
+  section += '**Important**: Use this manifest information when formulating technical plans and briefing execution agents. The context, operations guide, and journal provide crucial project-specific knowledge that should inform your decisions.\n\n';
+  section += '---\n\n';
+
+  return section;
+}
+
+export async function generateEnhancedAIHeader(context, isGitRepo = false) {
   try {
     const setupConfig = await loadSetupConfig();
     const { aiInstructions } = setupConfig;
@@ -113,7 +151,31 @@ To ensure error-free execution, all tasks for the agent must be presented in a s
       agentDefinitions
     };
 
-    return render(template, data);
+    let renderedTemplate = render(template, data);
+    
+    // Add .eck manifest section if present
+    if (context.eckManifest) {
+      const eckSection = buildEckManifestSection(context.eckManifest);
+      // Insert the .eck section after the main instructions but before the content
+      const insertPoint = renderedTemplate.indexOf('---\n');
+      if (insertPoint !== -1) {
+        renderedTemplate = renderedTemplate.slice(0, insertPoint) + eckSection + renderedTemplate.slice(insertPoint);
+      } else {
+        renderedTemplate += eckSection;
+      }
+    }
+
+    // Add Git workflow instructions if this is a Git repository
+    if (isGitRepo && promptTemplates.gitWorkflow) {
+      const insertPoint = renderedTemplate.indexOf('---\n');
+      if (insertPoint !== -1) {
+        renderedTemplate = renderedTemplate.slice(0, insertPoint) + promptTemplates.gitWorkflow + renderedTemplate.slice(insertPoint);
+      } else {
+        renderedTemplate += promptTemplates.gitWorkflow;
+      }
+    }
+
+    return renderedTemplate;
   } catch (error) {
     console.warn('Warning: Could not load setup.json, using minimal header');
     return `# Snapshot for ${context.repoName || 'Project'}\n\nGenerated: ${new Date().toISOString()}\n\n---\n\n`;

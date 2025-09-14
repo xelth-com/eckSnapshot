@@ -1,11 +1,14 @@
 import fs from 'fs/promises';
 import path from 'path';
+import { fileURLToPath } from 'url';
 
 /**
  * Adaptive token estimation system with project-specific polynomials
  */
 
-const ESTIMATION_DATA_FILE = path.join(process.cwd(), '.eck-token-training.json');
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const ESTIMATION_DATA_FILE = path.join(__dirname, '..', '..', '.eck-token-training.json');
 
 /**
  * Default coefficients for different project types (bytes to tokens ratio)

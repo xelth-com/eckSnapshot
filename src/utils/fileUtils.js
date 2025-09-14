@@ -448,3 +448,136 @@ export function displayProjectInfo(detection) {
   
   console.log('');
 }
+
+/**
+ * Parses YAML-like content from ENVIRONMENT.md
+ * @param {string} content - The raw content of ENVIRONMENT.md
+ * @returns {object} Parsed key-value pairs
+ */
+function parseEnvironmentYaml(content) {
+  const result = {};
+  const lines = content.split('\n');
+  
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (trimmed && !trimmed.startsWith('#') && trimmed.includes(':')) {
+      const [key, ...valueParts] = trimmed.split(':');
+      const value = valueParts.join(':').trim();
+      
+      // Remove quotes if present
+      const cleanValue = value.replace(/^["']|["']$/g, '');
+      result[key.trim()] = cleanValue;
+    }
+  }
+  
+  return result;
+}
+
+/**
+ * Loads and processes the .eck directory manifest
+ * @param {string} repoPath - Path to the repository
+ * @returns {Promise<object|null>} The eck manifest object or null if no .eck directory
+ */
+export async function loadProjectEckManifest(repoPath) {
+  const eckDir = path.join(repoPath, '.eck');
+  
+  try {
+    // Check if .eck directory exists
+    const eckStats = await fs.stat(eckDir);
+    if (!eckStats.isDirectory()) {
+      return null;
+    }
+    
+    console.log('📋 Found .eck directory - loading project manifest...');
+    
+    const manifest = {
+      environment: {},
+      context: '',
+      operations: '',
+      journal: ''
+    };
+    
+    // Define the files to check
+    const files = [
+      { name: 'ENVIRONMENT.md', key: 'environment', parser: parseEnvironmentYaml },
+      { name: 'CONTEXT.md', key: 'context', parser: content => content },
+      { name: 'OPERATIONS.md', key: 'operations', parser: content => content },
+      { name: 'JOURNAL.md', key: 'journal', parser: content => content }
+    ];
+    
+    // Process each file
+    for (const file of files) {
+      const filePath = path.join(eckDir, file.name);
+      try {
+        const content = await fs.readFile(filePath, 'utf-8');
+        manifest[file.key] = file.parser(content.trim());
+        console.log(`   ✅ Loaded ${file.name}`);
+      } catch (error) {
+        // File doesn't exist or can't be read - that's okay, use default
+        console.log(`   ⚠️  ${file.name} not found or unreadable`);
+      }
+    }
+    
+    return manifest;
+  } catch (error) {
+    // .eck directory doesn't exist - that's normal
+    return null;
+  }
+}
+
+/**
+ * Ensures that 'snapshots/' is added to the target project's .gitignore file
+ * @param {string} repoPath - Path to the repository
+ */
+export async function ensureSnapshotsInGitignore(repoPath) {
+  const gitignorePath = path.join(repoPath, '.gitignore');
+  const entryToAdd = 'snapshots/';
+  const comment = '# Added by eck-snapshot to prevent committing snapshots';
+  
+  try {
+    // Check if the repo is a Git repository first
+    const isGitRepo = await checkGitRepository(repoPath);
+    if (!isGitRepo) {
+      // Not a Git repo, skip .gitignore modification
+      return;
+    }
+    
+    let gitignoreContent = '';
+    let fileExists = true;
+    
+    // Try to read existing .gitignore file
+    try {
+      gitignoreContent = await fs.readFile(gitignorePath, 'utf-8');
+    } catch (error) {
+      // File doesn't exist, we'll create it
+      fileExists = false;
+      gitignoreContent = '';
+    }
+    
+    // Check if 'snapshots/' is already in the file
+    const lines = gitignoreContent.split('\n');
+    const hasSnapshotsEntry = lines.some(line => line.trim() === entryToAdd);
+    
+    if (!hasSnapshotsEntry) {
+      // Add the entry
+      let newContent = gitignoreContent;
+      
+      // If file exists and doesn't end with newline, add one
+      if (fileExists && gitignoreContent && !gitignoreContent.endsWith('\n')) {
+        newContent += '\n';
+      }
+      
+      // Add comment and entry
+      if (fileExists && gitignoreContent) {
+        newContent += '\n';
+      }
+      newContent += comment + '\n' + entryToAdd + '\n';
+      
+      await fs.writeFile(gitignorePath, newContent);
+      console.log(`✅ Added '${entryToAdd}' to .gitignore`);
+    }
+  } catch (error) {
+    // Silently fail - don't break the snapshot process if gitignore update fails
+    console.warn(`⚠️  Warning: Could not update .gitignore: ${error.message}`);
+  }
+}

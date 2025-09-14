@@ -11,7 +11,8 @@ import ora from 'ora';
 import {
   parseSize, formatSize, matchesPattern, checkGitRepository, 
   scanDirectoryRecursively, loadGitignore, readFileWithSizeCheck, 
-  generateDirectoryTree, loadConfig, displayProjectInfo
+  generateDirectoryTree, loadConfig, displayProjectInfo, loadProjectEckManifest,
+  ensureSnapshotsInGitignore
 } from '../../utils/fileUtils.js';
 import { detectProjectType, getProjectSpecificFiltering } from '../../utils/projectDetector.js';
 import { estimateTokensWithPolynomial, generateTrainingCommand } from '../../utils/tokenEstimator.js';
@@ -351,10 +352,16 @@ async function runFileSnapshot(repoPath, options, config, estimation = null, pro
     // Commander.js converts --no-ai-header to aiHeader: false
     const shouldIncludeAiHeader = config.aiHeaderEnabled && (options.aiHeader !== false);
     
+    // Check if this is a Git repository
+    const isGitRepo = await checkGitRepository(repoPath);
+    
+    // Load .eck manifest if it exists
+    const eckManifest = await loadProjectEckManifest(repoPath);
+    
     // Generate AI header if needed (for both formats)
     let aiHeader = '';
     if (shouldIncludeAiHeader) {
-      aiHeader = await generateEnhancedAIHeader({ stats, repoName, mode: 'file' });
+      aiHeader = await generateEnhancedAIHeader({ stats, repoName, mode: 'file', eckManifest }, isGitRepo);
     }
     
     // Prepare content based on format
@@ -472,6 +479,9 @@ async function runFileSnapshot(repoPath, options, config, estimation = null, pro
 export async function createRepoSnapshot(repoPath, options) {
   const spinner = ora('Analyzing project...').start();
   try {
+    // Ensure snapshots/ is in .gitignore to prevent accidental commits
+    await ensureSnapshotsInGitignore(repoPath);
+    
     // Detect project type first
     const projectDetection = await detectProjectType(repoPath);
     spinner.stop();
