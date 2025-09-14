@@ -27,7 +27,9 @@
       "Read(/tmp/test-project/.eck/**)",
       "Read(/tmp/test-project/.eck/**)",
       "Bash(git commit:*)",
-      "Bash(test:*)"
+      "Bash(test:*)",
+      "Bash(git log:*)",
+      "Read(/home/xelth/.claude/**)"
     ],
     "deny": [],
     "defaultMode": "acceptEdits"
