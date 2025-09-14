@@ -12,7 +12,7 @@ import {
   parseSize, formatSize, matchesPattern, checkGitRepository, 
   scanDirectoryRecursively, loadGitignore, readFileWithSizeCheck, 
   generateDirectoryTree, loadConfig, displayProjectInfo, loadProjectEckManifest,
-  ensureSnapshotsInGitignore
+  ensureSnapshotsInGitignore, initializeEckManifest
 } from '../../utils/fileUtils.js';
 import { detectProjectType, getProjectSpecificFiltering } from '../../utils/projectDetector.js';
 import { estimateTokensWithPolynomial, generateTrainingCommand } from '../../utils/tokenEstimator.js';
@@ -481,6 +481,9 @@ export async function createRepoSnapshot(repoPath, options) {
   try {
     // Ensure snapshots/ is in .gitignore to prevent accidental commits
     await ensureSnapshotsInGitignore(repoPath);
+    
+    // Initialize .eck manifest directory if it doesn't exist
+    await initializeEckManifest(repoPath);
     
     // Detect project type first
     const projectDetection = await detectProjectType(repoPath);

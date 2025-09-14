@@ -23,7 +23,9 @@
       "Bash(npm run build:*)",
       "Bash(npm run:*)",
       "Bash(./bin/eck-snapshot.js:*)",
-      "Read(/tmp/test_hygiene_repo/**)"
+      "Read(/tmp/test_hygiene_repo/**)",
+      "Read(/tmp/test-project/.eck/**)",
+      "Read(/tmp/test-project/.eck/**)"
     ],
     "deny": [],
     "defaultMode": "acceptEdits"

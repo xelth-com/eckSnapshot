@@ -581,3 +581,165 @@ export async function ensureSnapshotsInGitignore(repoPath) {
     console.warn(`⚠️  Warning: Could not update .gitignore: ${error.message}`);
   }
 }
+
+/**
+ * Automatically initializes the .eck manifest directory with template files
+ * @param {string} projectPath - Path to the project
+ */
+export async function initializeEckManifest(projectPath) {
+  const eckDir = path.join(projectPath, '.eck');
+  
+  try {
+    // Check if .eck directory already exists
+    try {
+      const eckStats = await fs.stat(eckDir);
+      if (eckStats.isDirectory()) {
+        // Directory already exists, no need to initialize
+        return;
+      }
+    } catch (error) {
+      // Directory doesn't exist, we'll create it
+    }
+    
+    // Create .eck directory
+    await fs.mkdir(eckDir, { recursive: true });
+    console.log('📋 Initializing .eck manifest directory...');
+    
+    // Template files with their content
+    const templateFiles = [
+      {
+        name: 'CONTEXT.md',
+        content: `# Project Overview
+
+## Description
+Brief description of what this project does and its main purpose.
+
+## Architecture
+High-level overview of the system architecture, key components, and how they interact.
+
+## Key Technologies
+- Technology 1
+- Technology 2
+- Technology 3
+
+## Important Notes
+Any crucial information that developers should know when working on this project.
+`
+      },
+      {
+        name: 'OPERATIONS.md',
+        content: `# Common Operations
+
+## Development Setup
+\`\`\`bash
+# Setup commands
+npm install
+# or yarn install
+\`\`\`
+
+## Running the Project
+\`\`\`bash
+# Development mode
+npm run dev
+
+# Production build
+npm run build
+\`\`\`
+
+## Testing
+\`\`\`bash
+# Run tests
+npm test
+
+# Run tests in watch mode
+npm run test:watch
+\`\`\`
+
+## Deployment
+\`\`\`bash
+# Deployment commands
+npm run deploy
+\`\`\`
+
+## Troubleshooting
+Common issues and their solutions.
+`
+      },
+      {
+        name: 'JOURNAL.md',
+        content: `# Development Journal
+
+## Recent Changes
+Track significant changes, decisions, and progress here.
+
+---
+
+### YYYY-MM-DD - Project Started
+- Initial project setup
+- Added basic structure
+`
+      },
+      {
+        name: 'ROADMAP.md',
+        content: `# Project Roadmap
+
+## Current Sprint/Phase
+- [ ] Feature 1
+- [ ] Feature 2
+- [ ] Bug fix 1
+
+## Next Phase
+- [ ] Future feature 1
+- [ ] Future feature 2
+
+## Long-term Goals
+- [ ] Major milestone 1
+- [ ] Major milestone 2
+
+## Completed
+- [x] Project initialization
+`
+      },
+      {
+        name: 'TECH_DEBT.md',
+        content: `# Technical Debt
+
+## Current Technical Debt
+Track technical debt, refactoring needs, and code quality issues.
+
+### Code Quality Issues
+- Issue 1: Description and priority
+- Issue 2: Description and priority
+
+### Refactoring Opportunities
+- Opportunity 1: Description and impact
+- Opportunity 2: Description and impact
+
+### Performance Issues
+- Performance issue 1: Description and impact
+- Performance issue 2: Description and impact
+
+### Security Concerns
+- Security concern 1: Description and priority
+- Security concern 2: Description and priority
+
+## Resolved
+- [x] Resolved issue 1
+`
+      }
+    ];
+    
+    // Create each template file
+    for (const file of templateFiles) {
+      const filePath = path.join(eckDir, file.name);
+      await fs.writeFile(filePath, file.content);
+      console.log(`   ✅ Created ${file.name}`);
+    }
+    
+    console.log('📋 .eck manifest initialized! Edit the files to provide project-specific context.');
+    
+  } catch (error) {
+    // Silently fail - don't break the snapshot process if manifest initialization fails
+    console.warn(`⚠️  Warning: Could not initialize .eck manifest: ${error.message}`);
+  }
+}

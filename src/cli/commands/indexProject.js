@@ -8,6 +8,7 @@ import { generateBatchEmbeddings, releaseModel as releaseEmbeddingModel } from '
 import { getCodeSummary } from '../../services/analysisService.js';
 import { releaseModel as releaseAnalysisModel } from '../../services/analysisService.js';
 import { loadSetupConfig } from '../../config.js';
+import { initializeEckManifest } from '../../utils/fileUtils.js';
 
 async function getProjectFiles(projectPath) {
   const { stdout } = await execa('git', ['ls-files'], { cwd: projectPath });
@@ -17,6 +18,9 @@ async function getProjectFiles(projectPath) {
 export async function indexProject(projectPath, options) {
   const mainSpinner = ora('Запуск конвейера индексации...').start();
   try {
+    // Initialize .eck manifest directory if it doesn't exist
+    await initializeEckManifest(projectPath);
+    
     await initDb();
     const knex = getKnex();
     const config = await loadSetupConfig();
