@@ -48,3 +48,6 @@ Thumbs.db
 
 # Added by eck-snapshot to prevent committing snapshots
 snapshots/
+
+# Claude CLI service (contains API interactions)
+src/services/claudeCliService.js

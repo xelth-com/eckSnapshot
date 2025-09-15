@@ -29,7 +29,8 @@
       "Bash(git commit:*)",
       "Bash(test:*)",
       "Bash(git log:*)",
-      "Read(/home/xelth/.claude/**)"
+      "Read(/home/xelth/.claude/**)",
+      "Read(/tmp/new-claude-test-project/**)"
     ],
     "deny": [],
     "defaultMode": "acceptEdits"

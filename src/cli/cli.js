@@ -9,6 +9,7 @@ import { indexProject } from './commands/indexProject.js';
 import { queryProject } from './commands/queryProject.js';
 import { detectProject, testFileParsing } from './commands/detectProject.js';
 import { trainTokens, showTokenStats } from './commands/trainTokens.js';
+import { executePrompt } from '../services/claudeCliService.js';
 
 /**
  * Check code boundaries in a file
@@ -163,6 +164,21 @@ export function run() {
     .command('token-stats')
     .description('Show token estimation statistics and accuracy')
     .action(showTokenStats);
+
+  // Ask Claude command
+  program
+    .command('ask-claude')
+    .description('Execute a prompt using claude-code CLI and return JSON response')
+    .argument('<prompt>', 'Prompt to send to Claude')
+    .action(async (prompt) => {
+      try {
+        const result = await executePrompt(prompt);
+        console.log(JSON.stringify(result, null, 2));
+      } catch (error) {
+        console.error('Failed to execute prompt:', error.message);
+        process.exit(1);
+      }
+    });
 
   program.parse(process.argv);
 }
