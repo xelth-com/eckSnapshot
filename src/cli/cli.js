@@ -9,7 +9,7 @@ import { indexProject } from './commands/indexProject.js';
 import { queryProject } from './commands/queryProject.js';
 import { detectProject, testFileParsing } from './commands/detectProject.js';
 import { trainTokens, showTokenStats } from './commands/trainTokens.js';
-import { executePrompt } from '../services/claudeCliService.js';
+import { executePrompt, executePromptWithSession } from '../services/claudeCliService.js';
 
 /**
  * Check code boundaries in a file
@@ -170,9 +170,27 @@ export function run() {
     .command('ask-claude')
     .description('Execute a prompt using claude-code CLI and return JSON response')
     .argument('<prompt>', 'Prompt to send to Claude')
-    .action(async (prompt) => {
+    .option('-c, --continue', 'Continue the most recent conversation')
+    .action(async (prompt, options) => {
       try {
-        const result = await executePrompt(prompt);
+        const result = await executePrompt(prompt, options.continue);
+        console.log(JSON.stringify(result, null, 2));
+      } catch (error) {
+        console.error('Failed to execute prompt:', error.message);
+        process.exit(1);
+      }
+    });
+
+  // Ask Claude with specific session
+  program
+    .command('ask-claude-session')
+    .description('Execute a prompt using specific session ID')
+    .argument('<sessionId>', 'Session ID to resume')
+    .argument('<prompt>', 'Prompt to send to Claude')
+    .action(async (sessionId, prompt) => {
+      try {
+        // Directly use the provided session ID
+        const result = await executePromptWithSession(prompt, sessionId);
         console.log(JSON.stringify(result, null, 2));
       } catch (error) {
         console.error('Failed to execute prompt:', error.message);

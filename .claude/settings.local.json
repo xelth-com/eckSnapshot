@@ -30,7 +30,8 @@
       "Bash(test:*)",
       "Bash(git log:*)",
       "Read(/home/xelth/.claude/**)",
-      "Read(/tmp/new-claude-test-project/**)"
+      "Read(/tmp/new-claude-test-project/**)",
+      "Bash(claude \"What is my name?\" -p --session-id=\"3bb9275f-b107-46f3-88a9-a1e83361ebd7\" --output-format=stream-json --verbose)"
     ],
     "deny": [],
     "defaultMode": "acceptEdits"
