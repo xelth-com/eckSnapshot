@@ -484,6 +484,27 @@ export async function createRepoSnapshot(repoPath, options) {
     
     // Initialize .eck manifest directory if it doesn't exist
     await initializeEckManifest(repoPath);
+
+    // Auto-commit unstaged changes if in a git repo
+    const isGitRepo = await checkGitRepository(repoPath);
+    if (isGitRepo) {
+      spinner.text = 'Checking for unstaged changes...';
+      try {
+        const { stdout: status } = await execa('git', ['status', '--porcelain'], { cwd: repoPath });
+        if (status) {
+          spinner.text = 'Unstaged changes detected. Auto-committing...';
+          await execa('git', ['add', '.'], { cwd: repoPath });
+          const timestamp = new Date().toISOString().slice(0, 19).replace('T', '_').replace(/:/g, '-');
+          await execa('git', ['commit', '-m', `chore(snapshot): Auto-commit before snapshot [${timestamp}]`], { cwd: repoPath });
+          spinner.info('Auto-commit complete.');
+        } else {
+          // No changes, do nothing. Logging this would be too verbose.
+        }
+      } catch (e) {
+        spinner.warn(`Auto-commit failed: ${e.message}`);
+      }
+    }
+    spinner.text = 'Analyzing project...'; // Reset spinner text
     
     // Detect project type first
     const projectDetection = await detectProjectType(repoPath);
