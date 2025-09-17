@@ -2,34 +2,24 @@
 
 ## Development Setup
 ```bash
-# Setup commands
+# Install dependencies
 npm install
-# or yarn install
 ```
 
-## Running the Project
+## Running the Project (CLI Commands)
 ```bash
-# Development mode
-npm run dev
+# Create a full snapshot
+node index.js snapshot [path]
 
-# Production build
-npm run build
+# Index the project for vector search
+node index.js index .
+
+# Query the index
+node index.js query "your search query"
 ```
 
 ## Testing
 ```bash
-# Run tests
+# No formal test script defined
 npm test
-
-# Run tests in watch mode
-npm run test:watch
 ```
-
-## Deployment
-```bash
-# Deployment commands
-npm run deploy
-```
-
-## Troubleshooting
-Common issues and their solutions.

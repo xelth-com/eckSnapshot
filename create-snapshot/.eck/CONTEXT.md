@@ -1,15 +1,14 @@
-# Project Overview
+# Project Overview: eckSnapshot
 
 ## Description
-Brief description of what this project does and its main purpose.
+This is the eckSnapshot project, a CLI tool to create, index, and query codebase snapshots for AI context.
 
 ## Architecture
-High-level overview of the system architecture, key components, and how they interact.
+Node.js CLI tool with modules for parsing (core), database interaction (database), AI services (services), and CLI commands (cli).
 
 ## Key Technologies
-- Technology 1
-- Technology 2
-- Technology 3
-
-## Important Notes
-Any crucial information that developers should know when working on this project.
+- Node.js
+- PostgreSQL (with simple JSON fallback)
+- @xenova/transformers.js (local AI models)
+- tree-sitter (multi-language parsing)
+- commander.js

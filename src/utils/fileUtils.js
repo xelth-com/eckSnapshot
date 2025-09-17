@@ -3,6 +3,7 @@ import path from 'path';
 import { execa } from 'execa';
 import ignore from 'ignore';
 import { detectProjectType, getProjectSpecificFiltering } from './projectDetector.js';
+import { executePrompt } from '../services/claudeCliService.js';
 
 export function parseSize(sizeStr) {
   const units = { B: 1, KB: 1024, MB: 1024 ** 2, GB: 1024 ** 3 };
@@ -583,7 +584,7 @@ export async function ensureSnapshotsInGitignore(repoPath) {
 }
 
 /**
- * Automatically initializes the .eck manifest directory with template files
+ * Automatically initializes the .eck manifest directory, attempting dynamic generation via Claude.
  * @param {string} projectPath - Path to the project
  */
 export async function initializeEckManifest(projectPath) {
@@ -609,6 +610,7 @@ export async function initializeEckManifest(projectPath) {
     const templateFiles = [
       {
         name: 'CONTEXT.md',
+        prompt: "Analyze the current project directory. Write a brief Project Overview for a .eck/CONTEXT.md file, including sections for ## Description, ## Architecture, and ## Key Technologies based on package.json and file structure.",
         content: `# Project Overview
 
 ## Description
@@ -628,6 +630,7 @@ Any crucial information that developers should know when working on this project
       },
       {
         name: 'OPERATIONS.md',
+        prompt: "Analyze the current project directory (especially package.json scripts). Generate a .eck/OPERATIONS.md file listing common commands for ## Development Setup, ## Running the Project, and ## Testing.",
         content: `# Common Operations
 
 ## Development Setup
@@ -732,8 +735,33 @@ Track technical debt, refactoring needs, and code quality issues.
     // Create each template file
     for (const file of templateFiles) {
       const filePath = path.join(eckDir, file.name);
-      await fs.writeFile(filePath, file.content);
-      console.log(`   ✅ Created ${file.name}`);
+      let fileContent = file.content; // Start with fallback
+      let generatedByAI = false;
+
+      // For CONTEXT and OPERATIONS, try to dynamically generate
+      if (file.prompt) {
+        try {
+          console.log(`   🧠 Attempting to auto-generate ${file.name} via Claude...`);
+          const aiResponse = await executePrompt(file.prompt);
+          // Basic cleanup of potential markdown code blocks from Claude
+          const cleanedResponse = aiResponse.replace(/^```(markdown)?\n|```$/g, '').trim();
+          if (cleanedResponse) {
+            fileContent = cleanedResponse;
+            generatedByAI = true;
+            console.log(`   ✨ AI successfully generated ${file.name}`);
+          } else {
+            throw new Error('AI returned empty content.');
+          }
+        } catch (error) {
+          console.warn(`   ⚠️ AI generation failed for ${file.name}: ${error.message}. Using static template.`);
+          // fileContent is already set to the fallback
+        }
+      }
+      
+      await fs.writeFile(filePath, fileContent);
+      if (!generatedByAI) {
+          console.log(`   ✅ Created ${file.name} (static template)`);
+      }
     }
     
     console.log('📋 .eck manifest initialized! Edit the files to provide project-specific context.');
