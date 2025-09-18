@@ -240,6 +240,7 @@
   "fileFiltering": {
     "filesToIgnore": [
       "package-lock.json",
+      "npm-shrinkwrap.json",
       "yarn.lock",
       "pnpm-lock.yaml",
       "*.log",
@@ -290,7 +291,6 @@
       "bin/",
       "obj/",
       ".idea/",
-      "snapshots/",
       "coverage/"
     ],
     "includeHidden": false,
@@ -412,7 +412,7 @@
   },
   "output": {
     "defaultFormat": "md",
-    "defaultPath": "./snapshots",
+    "defaultPath": "./.eck/snapshots",
     "includeTree": true,
     "_comment": "Default output format for snapshots: md, json, or txt. defaultPath is the output directory. includeTree controls whether to include directory structure."
   },

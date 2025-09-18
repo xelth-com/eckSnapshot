@@ -155,11 +155,6 @@ To ensure error-free execution, all tasks for the agent must be presented in a s
     
     // DELETED: The `multiAgent` template in setup.json now controls the entire manifest and git workflow section.
     // These programmatic insertions are removed to prevent duplicate and conflicting instructions.
-    // // Add .eck manifest section if present
-    // if (context.eckManifest) { ... }
-
-    // // Add Git workflow instructions if this is a Git repository
-    // if (isGitRepo && promptTemplates.gitWorkflow) { ... }
 
     return renderedTemplate;
   } catch (error) {

@@ -289,10 +289,11 @@ export async function getGeminiResponse(prompt, options = {}) {
     // Save debug information
     try {
       if (browser && page) {
-        await page.screenshot({ path: 'logs/gemini-error-screenshot.png' });
+        await fs.promises.mkdir('./.eck/logs', { recursive: true });
+        await page.screenshot({ path: './.eck/logs/gemini-error-screenshot.png' });
         
         const htmlContent = await page.content();
-        await fs.promises.writeFile('logs/gemini-error-page.html', htmlContent);
+        await fs.promises.writeFile('./.eck/logs/gemini-error-page.html', htmlContent);
       }
     } catch (debugError) {
       console.error('⚠️ Failed to save debug information:', debugError);

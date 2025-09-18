@@ -9,6 +9,13 @@ import { spawn } from 'child_process';
  */
 export async function executePrompt(prompt, continueConversation = false) {
   try {
+    // Ensure the log directory exists
+    try {
+      await import('fs/promises').then(fs => fs.mkdir('./.eck/logs', { recursive: true }));
+    } catch (e) {
+      console.error(`Failed to create log directory: ${e.message}`);
+      // Do not block execution if log dir creation fails, just warn
+    }
     let sessionId = null;
     if (continueConversation) {
       sessionId = await getLastSessionId();
@@ -40,7 +47,7 @@ export async function executePrompt(prompt, continueConversation = false) {
         });
         
         // Логируем любое интерактивное взаимодействие
-        const interactiveLogFile = `./logs/claude-interactive-${Date.now()}.log`;
+        const interactiveLogFile = `./.eck/logs/claude-interactive-${Date.now()}.log`;
         const interactiveLogContent = `=== Claude Interactive Recovery Log ${new Date().toISOString()} ===\n` +
                                      `Original prompt: "${prompt}"\n` +
                                      `Original error: ${error.message}\n` +
@@ -59,7 +66,7 @@ export async function executePrompt(prompt, continueConversation = false) {
         return await attemptClaudeExecution(prompt, sessionId);
       } catch (retryError) {
         // Логируем неудачу восстановления
-        const failureLogFile = `./logs/claude-recovery-failure-${Date.now()}.log`;
+        const failureLogFile = `./.eck/logs/claude-recovery-failure-${Date.now()}.log`;
         const failureLogContent = `=== Claude Recovery Failure Log ${new Date().toISOString()} ===\n` +
                                  `Original prompt: "${prompt}"\n` +
                                  `Original error: ${error.message}\n` +
@@ -91,7 +98,7 @@ export async function executePrompt(prompt, continueConversation = false) {
  */
 async function attemptClaudeExecution(prompt, sessionId = null) {
   const timestamp = new Date().toISOString();
-  const logFile = `./logs/claude-execution-${Date.now()}.log`;
+  const logFile = `./.eck/logs/claude-execution-${Date.now()}.log`;
   
   try {
     // Use spawn instead of execa for better control over streaming and timeouts
@@ -198,7 +205,7 @@ function isSessionLimitError(error) {
 async function logSessionLimitError(error, prompt) {
   const timestamp = new Date().toISOString();
   const currentTime = new Date();
-  const limitLogFile = `./logs/claude-session-limit-${Date.now()}.log`;
+  const limitLogFile = `./.eck/logs/claude-session-limit-${Date.now()}.log`;
   
   // Calculate suggested wait times based on error type
   const limitInfo = analyzeLimitType(error.message);
@@ -348,12 +355,12 @@ async function getLastSessionId() {
     const path = await import('path');
     
     // Get all log files sorted by modification time (newest first)
-    const logFiles = await fs.readdir('./logs');
+    const logFiles = await fs.readdir('./.eck/logs');
     const executionLogs = logFiles
       .filter(file => file.startsWith('claude-execution-') && file.endsWith('.log'))
       .map(file => ({
         name: file,
-        path: `./logs/${file}`,
+        path: `./.eck/logs/${file}`,
         time: parseInt(file.match(/claude-execution-(\d+)\.log/)?.[1] || '0')
       }))
       .sort((a, b) => b.time - a.time);

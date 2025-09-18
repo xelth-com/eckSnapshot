@@ -329,7 +329,11 @@ async function runFileSnapshot(repoPath, options, config, estimation = null, pro
         stats.includedFiles++;
         stats.processedSize += fileStats.size;
         
-        return `--- File: /${normalizedPath} ---\n\n${content}\n\n`;
+        return {
+          content: `--- File: /${normalizedPath} ---\n\n${content}\n\n`,
+          path: normalizedPath,
+          size: fileStats.size
+        };
       } catch (error) {
         stats.errors.push(`${normalizedPath}: ${error.message}`);
         trackSkippedFile(normalizedPath, `Error: ${error.message}`);
@@ -340,7 +344,22 @@ async function runFileSnapshot(repoPath, options, config, estimation = null, pro
     const results = await Promise.all(allFiles.map((fp, index) => limit(() => processFile(fp, index))));
     progressBar.stop();
     
-    const contentArray = results.filter(Boolean);
+    const successfulFileObjects = results.filter(Boolean);
+    const contentArray = successfulFileObjects.map(f => f.content);
+
+    // Calculate included file stats by extension
+    const includedFilesByType = new Map();
+    for (const fileObj of successfulFileObjects) {
+        try {
+            let ext = path.extname(fileObj.path);
+            if (ext === '') ext = '.no-extension';
+            includedFilesByType.set(ext, (includedFilesByType.get(ext) || 0) + 1);
+        } catch (e) { /* Silently ignore */ }
+    }
+    const sortedIncludedStats = [...includedFilesByType.entries()].sort((a, b) => b[1] - a[1]);
+
+    // Calculate Top 10 Largest Files
+    const largestFiles = [...successfulFileObjects].sort((a, b) => b.size - a.size).slice(0, 10);
     
     // Prepare basic info
     const timestamp = new Date().toISOString().slice(0, 19).replace('T', '_').replace(/:/g, '-');
@@ -427,6 +446,32 @@ async function runFileSnapshot(repoPath, options, config, estimation = null, pro
     console.log(`📏 Total size: ${formatSize(stats.totalSize)}`);
     console.log(`📦 Processed size: ${formatSize(stats.processedSize)}`);
     console.log(`📋 Format: ${fileExtension.toUpperCase()}`);
+
+    if (sortedIncludedStats.length > 0) {
+      console.log('\n📦 Included File Types:');
+      console.log('---------------------------------');
+      for (const [ext, count] of sortedIncludedStats.slice(0, 10)) {
+          console.log(`   - ${String(ext).padEnd(15)} ${String(count).padStart(5)} files`);
+      }
+      if (sortedIncludedStats.length > 10) {
+          console.log(`   ... and ${sortedIncludedStats.length - 10} other types.`);
+      }
+    }
+
+    if (largestFiles.length > 0) {
+      console.log('\n🐘 Top 10 Largest Files (Included):');
+      console.log('---------------------------------');
+      for (const fileObj of largestFiles) {
+          console.log(`   - ${String(formatSize(fileObj.size)).padEnd(15)} ${fileObj.path}`);
+      }
+    }
+    
+    // Excluded/Skipped Files Section
+    const hasExcludedContent = stats.excludedFiles > 0 || stats.binaryFiles > 0 || stats.oversizedFiles > 0 || stats.ignoredFiles > 0 || stats.errors.length > 0;
+    if (hasExcludedContent) {
+      console.log('\n🚫 Excluded/Skipped Files:');
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    }
     
     if (stats.excludedFiles > 0) {
       console.log(`🚫 Excluded files: ${stats.excludedFiles}`);
@@ -450,7 +495,7 @@ async function runFileSnapshot(repoPath, options, config, estimation = null, pro
     // Print detailed skip reasons report
     if (stats.skippedFilesDetails.size > 0) {
       console.log('\n📋 Skip Reasons:');
-      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      console.log('---------------------------------');
       
       for (const [reason, files] of stats.skippedFilesDetails.entries()) {
         console.log(`\n🔸 ${reason} (${files.length} files):`);
@@ -458,9 +503,9 @@ async function runFileSnapshot(repoPath, options, config, estimation = null, pro
           console.log(`   • ${file}`);
         });
       }
-      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      console.log('---------------------------------');
     } else {
-      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      console.log('---------------------------------');
     }
     
     // Generate training command string if estimation data is available

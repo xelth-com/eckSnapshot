@@ -532,8 +532,8 @@ export async function loadProjectEckManifest(repoPath) {
  */
 export async function ensureSnapshotsInGitignore(repoPath) {
   const gitignorePath = path.join(repoPath, '.gitignore');
-  const entryToAdd = 'snapshots/';
-  const comment = '# Added by eck-snapshot to prevent committing snapshots';
+  const entryToAdd = '.eck/';
+  const comment = '# Added by eck-snapshot to ignore metadata directory';
   
   try {
     // Check if the repo is a Git repository first
@@ -605,12 +605,35 @@ export async function initializeEckManifest(projectPath) {
     // Create .eck directory
     await fs.mkdir(eckDir, { recursive: true });
     console.log('📋 Initializing .eck manifest directory...');
+
+    // --- NEW HYBRID LOGIC --- 
+    // 1. Run static analysis first to gather facts.
+    let staticFacts = {};
+    try {
+      staticFacts = await detectProjectType(projectPath);
+      console.log(`   🔍 Static analysis complete. Detected type: ${staticFacts.type}`);
+    } catch (e) {
+      console.warn(`   ⚠️ Static project detection failed: ${e.message}. Proceeding with generic prompts.`);
+    }
+
+    // Prevent AI hallucination by removing low-confidence "other possibilities"
+    if (staticFacts && staticFacts.allDetections) {
+      delete staticFacts.allDetections;
+    }
+    
+    const staticFactsJson = JSON.stringify(staticFacts, null, 2);
+    // --- END NEW LOGIC ---
     
     // Template files with their content
     const templateFiles = [
       {
+        name: 'ENVIRONMENT.md',
+        prompt: `Given these static project analysis facts:\n${staticFactsJson}\n\nGenerate the raw YAML key-value content for an .eck/ENVIRONMENT.md file. Only include detected facts. DO NOT add any keys that are not present in the facts. DO NOT add conversational text or markdown wrappers. Your response MUST start directly with a YAML key (e.g., 'project_type: ...').`,
+        content: `# This file is for environment overrides. Add agent-specific settings here.\nagent_id: local_dev\n` // Simple static fallback
+      },
+      {
         name: 'CONTEXT.md',
-        prompt: "Analyze the current project directory. Write a brief Project Overview for a .eck/CONTEXT.md file, including sections for ## Description, ## Architecture, and ## Key Technologies based on package.json and file structure.",
+        prompt: `Given these static project analysis facts:\n${staticFactsJson}\n\nGenerate the raw Markdown content ONLY for a .eck/CONTEXT.md file. Use the facts to write ## Description, ## Architecture, and ## Key Technologies. DO NOT add conversational text (like "Here is the file..."). Your response MUST start *directly* with the '# Project Overview' heading.`,
         content: `# Project Overview
 
 ## Description
@@ -630,7 +653,10 @@ Any crucial information that developers should know when working on this project
       },
       {
         name: 'OPERATIONS.md',
-        prompt: "Analyze the current project directory (especially package.json scripts). Generate a .eck/OPERATIONS.md file listing common commands for ## Development Setup, ## Running the Project, and ## Testing.",
+        prompt: `Given these static project analysis facts (especially package.json scripts):
+${staticFactsJson}
+
+Generate the raw Markdown content ONLY for a .eck/OPERATIONS.md file. DO NOT add conversational text. Your response MUST start *directly* with the '# Common Operations' heading. List commands for ## Development Setup, ## Running the Project, and ## Testing.`,
         content: `# Common Operations
 
 ## Development Setup
@@ -684,6 +710,7 @@ Track significant changes, decisions, and progress here.
       },
       {
         name: 'ROADMAP.md',
+        prompt: `Given these static project analysis facts:\n${staticFactsJson}\n\nGenerate the raw Markdown content ONLY for a .eck/ROADMAP.md file. DO NOT add conversational text. Start *directly* with '# Project Roadmap'. Propose 1-2 *plausible* placeholder items for ## Current Sprint/Phase and ## Next Phase based on the project type.`,
         content: `# Project Roadmap
 
 ## Current Sprint/Phase
@@ -705,6 +732,7 @@ Track significant changes, decisions, and progress here.
       },
       {
         name: 'TECH_DEBT.md',
+        prompt: `Generate the raw Markdown content ONLY for a .eck/TECH_DEBT.md file. DO NOT add conversational text. Start *directly* with '# Technical Debt'. Propose 1-2 *common* placeholder items for ## Code Quality Issues and ## Refactoring Opportunities.`,
         content: `# Technical Debt
 
 ## Current Technical Debt
@@ -738,13 +766,20 @@ Track technical debt, refactoring needs, and code quality issues.
       let fileContent = file.content; // Start with fallback
       let generatedByAI = false;
 
-      // For CONTEXT and OPERATIONS, try to dynamically generate
+      // For files with a prompt, try to dynamically generate
       if (file.prompt) {
         try {
           console.log(`   🧠 Attempting to auto-generate ${file.name} via Claude...`);
-          const aiResponse = await executePrompt(file.prompt);
+          const aiResponseObject = await executePrompt(file.prompt); // Use the prompt
+          const rawText = aiResponseObject.result; // <-- This is the fix for the TypeError
+          
+          if (!rawText || typeof rawText.replace !== 'function') {
+             throw new Error(`AI returned invalid content type: ${typeof rawText}`);
+          }
+
           // Basic cleanup of potential markdown code blocks from Claude
-          const cleanedResponse = aiResponse.replace(/^```(markdown)?\n|```$/g, '').trim();
+          const cleanedResponse = rawText.replace(/^```(markdown|yaml)?\n|```$/g, '').trim();
+          
           if (cleanedResponse) {
             fileContent = cleanedResponse;
             generatedByAI = true;

@@ -5,8 +5,6 @@
 /build
 /dist
 
-# Snapshots
-/snapshots/
 
 # Logs
 logs
@@ -46,6 +44,7 @@ Thumbs.db
 .env.local
 .env.production
 
-# Added by eck-snapshot to prevent committing snapshots
-snapshots/
 
+
+# Added by eck-snapshot to ignore metadata directory
+.eck/
