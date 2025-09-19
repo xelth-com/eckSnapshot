@@ -33,7 +33,8 @@
       "Read(/tmp/new-claude-test-project/**)",
       "Bash(claude \"What is my name?\" -p --session-id=\"3bb9275f-b107-46f3-88a9-a1e83361ebd7\" --output-format=stream-json --verbose)",
       "Bash(! grep 'claudeCliService' .gitignore)",
-      "Bash(! grep 'snapshots/' .gitignore)"
+      "Bash(! grep 'snapshots/' .gitignore)",
+      "Bash(! test -f src/services/geminiWebService.js)"
     ],
     "deny": [],
     "defaultMode": "acceptEdits"

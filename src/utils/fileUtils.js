@@ -4,6 +4,8 @@ import { execa } from 'execa';
 import ignore from 'ignore';
 import { detectProjectType, getProjectSpecificFiltering } from './projectDetector.js';
 import { executePrompt } from '../services/claudeCliService.js';
+import { getProfile } from '../config.js';
+import micromatch from 'micromatch';
 
 export function parseSize(sizeStr) {
   const units = { B: 1, KB: 1024, MB: 1024 ** 2, GB: 1024 ** 3 };
@@ -581,6 +583,61 @@ export async function ensureSnapshotsInGitignore(repoPath) {
     // Silently fail - don't break the snapshot process if gitignore update fails
     console.warn(`⚠️  Warning: Could not update .gitignore: ${error.message}`);
   }
+}
+
+/**
+ * Applies advanced profile filtering (multi-profile and exclusion) to a file list.
+ */
+export async function applyProfileFilter(allFiles, profileString, repoPath) {
+  const profileNames = profileString.split(',').map(p => p.trim()).filter(Boolean);
+  
+  const includeNames = profileNames.filter(p => !p.startsWith('-'));
+  const excludeNames = profileNames.filter(p => p.startsWith('-')).map(p => p.substring(1));
+
+  let workingFiles = [];
+  let finalIncludes = [];
+  let finalExcludes = [];
+
+  // 1. Get all profile objects
+  const allProfileNames = [...new Set([...includeNames, ...excludeNames])];
+  const profiles = new Map();
+  for (const name of allProfileNames) {
+    const profile = await getProfile(name, repoPath);
+    if (profile) {
+      profiles.set(name, profile);
+    } else {
+      console.warn(`⚠️ Warning: Profile '${name}' not found and will be skipped.`);
+    }
+  }
+
+  // 2. Populate include/exclude pattern lists
+  for (const name of includeNames) {
+    if (profiles.has(name)) {
+      finalIncludes.push(...(profiles.get(name).include || []));
+      finalExcludes.push(...(profiles.get(name).exclude || [])); // Profiles can also have their own excludes
+    }
+  }
+  for (const name of excludeNames) {
+    if (profiles.has(name)) {
+      finalExcludes.push(...(profiles.get(name).include || [])); // We *exclude* what the negative profile *includes*
+    }
+  }
+
+  // 3. Apply the 3-rule logic
+  if (includeNames.length > 0) {
+    // Rule 1 & 3: Start with an EMPTY set and add includes
+    workingFiles = micromatch(allFiles, finalIncludes);
+  } else {
+    // Rule 2: Start with ALL files (since no includes were specified)
+    workingFiles = allFiles;
+  }
+
+  // 4. Apply all exclusions
+  if (finalExcludes.length > 0) {
+    workingFiles = micromatch.not(workingFiles, finalExcludes);
+  }
+
+  return workingFiles;
 }
 
 /**

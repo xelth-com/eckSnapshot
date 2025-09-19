@@ -7,7 +7,8 @@ import { getKnex, initDb, destroyDb } from '../../database/postgresConnector.js'
 import { generateBatchEmbeddings, releaseModel as releaseEmbeddingModel } from '../../services/embeddingService.js';
 import { getCodeSummary } from '../../services/analysisService.js';
 import { releaseModel as releaseAnalysisModel } from '../../services/analysisService.js';
-import { loadSetupConfig } from '../../config.js';
+import { getProfile } from '../../config.js';
+import { applyProfileFilter } from '../../utils/fileUtils.js';
 import { initializeEckManifest } from '../../utils/fileUtils.js';
 
 async function getProjectFiles(projectPath) {
@@ -23,17 +24,25 @@ export async function indexProject(projectPath, options) {
     
     await initDb();
     const knex = getKnex();
-    const config = await loadSetupConfig();
-    
     let files = await getProjectFiles(projectPath);
-    const profileName = options.profile || 'default';
+    
+    // --- Apply Advanced Profile Filtering ---
+    const defaultProfile = await getProfile('default', projectPath);
     if (options.profile) {
-        const profile = config.contextProfiles[options.profile];
-        if (!profile) throw new Error(`Profile '${options.profile}' not found in setup.json`);
-        mainSpinner.info(`Using profile: '${options.profile}'.`);
-        files = micromatch(files, profile.include, { ignore: profile.exclude });
+        mainSpinner.text = `Applying profile filter: '${options.profile}'...`;
+        files = await applyProfileFilter(files, options.profile, projectPath);
+        mainSpinner.info(`Filtered down to ${files.length} files using profile: '${options.profile}'.`);
+    } else if (defaultProfile) {
+        mainSpinner.text = "Applying detected 'default' profile...";
+        files = micromatch(files, defaultProfile.include, { ignore: defaultProfile.exclude });
+        mainSpinner.info(`Filtered down to ${files.length} files using detected 'default' profile.`);
     }
+    if (files.length === 0) {
+        throw new Error(`Profile filter resulted in 0 files. Aborting.`);
+    }
+    // --- End Profile Filtering ---
 
+    const profileName = options.profile || 'default';
     mainSpinner.text = 'Получение кэша из базы данных...';
     const existingRows = await knex('code_chunks').where({ profile: profileName }).select('content_hash', 'summary', 'embedding');
     const cache = new Map(existingRows.map(r => [r.content_hash, { summary: r.summary, embedding: r.embedding }]));

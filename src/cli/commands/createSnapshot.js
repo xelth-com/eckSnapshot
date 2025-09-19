@@ -7,6 +7,7 @@ import isBinaryPath from 'is-binary-path';
 import zlib from 'zlib';
 import { promisify } from 'util';
 import ora from 'ora';
+import micromatch from 'micromatch';
 
 import {
   parseSize, formatSize, matchesPattern, checkGitRepository, 
@@ -17,7 +18,8 @@ import {
 import { detectProjectType, getProjectSpecificFiltering } from '../../utils/projectDetector.js';
 import { estimateTokensWithPolynomial, generateTrainingCommand } from '../../utils/tokenEstimator.js';
 import { indexProject } from './indexProject.js';
-import { loadSetupConfig } from '../../config.js';
+import { loadSetupConfig, getProfile } from '../../config.js';
+import { applyProfileFilter } from '../../utils/fileUtils.js';
 
 /**
  * Creates dynamic project context based on detection results
@@ -240,7 +242,18 @@ async function runFileSnapshot(repoPath, options, config, estimation = null, pro
     
     // Get all files and setup gitignore
     console.log('🔍 Scanning repository...');
-    const allFiles = await getProjectFiles(repoPath, config);
+    let allFiles = await getProjectFiles(repoPath, config);
+
+    // --- Apply Advanced Profile Filtering ---
+    if (options.profile) {
+      console.log(`Applying profile filter: '${options.profile}'...`);
+      allFiles = await applyProfileFilter(allFiles, options.profile, repoPath);
+      console.log(`Filtered down to ${allFiles.length} files based on profile rules.`);
+      if (allFiles.length === 0) {
+        throw new Error(`Profile filter '${options.profile}' resulted in 0 files. Aborting.`);
+      }
+    }
+    // --- End Profile Filtering ---
     const gitignore = await loadGitignore(repoPath);
     stats.totalFiles = allFiles.length;
     
@@ -380,7 +393,7 @@ async function runFileSnapshot(repoPath, options, config, estimation = null, pro
     // Generate AI header if needed (for both formats)
     let aiHeader = '';
     if (shouldIncludeAiHeader) {
-      aiHeader = await generateEnhancedAIHeader({ stats, repoName, mode: 'file', eckManifest }, isGitRepo);
+      aiHeader = await generateEnhancedAIHeader({ stats, repoName, mode: 'file', eckManifest, options, repoPath }, isGitRepo);
     }
     
     // Prepare content based on format
@@ -509,7 +522,7 @@ async function runFileSnapshot(repoPath, options, config, estimation = null, pro
     }
     
     // Generate training command string if estimation data is available
-    if (estimation && projectType) {
+    if (estimation && projectType && !options.profile) { // Do not show training prompt if a profile is used, as estimates will mismatch
       const trainingCommand = generateTrainingCommand(projectType, estimation.estimatedTokens, estimation.totalSize, repoPath);
       console.log('\n🎯 To improve token estimation accuracy, run this command after checking actual tokens:');
       console.log(`${trainingCommand}[ACTUAL_TOKENS_HERE]`);

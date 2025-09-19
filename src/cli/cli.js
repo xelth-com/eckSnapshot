@@ -10,6 +10,7 @@ import { queryProject } from './commands/queryProject.js';
 import { detectProject, testFileParsing } from './commands/detectProject.js';
 import { trainTokens, showTokenStats } from './commands/trainTokens.js';
 import { executePrompt, executePromptWithSession } from '../services/claudeCliService.js';
+import { detectProfiles } from './commands/detectProfiles.js';
 
 /**
  * Check code boundaries in a file
@@ -72,6 +73,7 @@ export function run() {
     .option('--no-ai-header', 'Skip AI instructions')
     .option('-d, --dir', 'Directory mode')
     .option('--enhanced', 'Use enhanced multi-agent headers (default: true)', true)
+    .option('--profile <name>', 'Use a specific context profile (local .eck/profiles.json or global setup.json)')
     .action(createRepoSnapshot);
 
   // Restore command
@@ -164,6 +166,13 @@ export function run() {
     .command('token-stats')
     .description('Show token estimation statistics and accuracy')
     .action(showTokenStats);
+
+  // Profile detection command
+  program
+    .command('profile-detect')
+    .description('Use AI to scan the directory tree and auto-generate local context profiles (saves to .eck/profiles.json)')
+    .argument('[repoPath]', 'Path to the repository', process.cwd())
+    .action(detectProfiles);
 
   // Ask Claude command
   program

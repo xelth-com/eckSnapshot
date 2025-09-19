@@ -23,6 +23,51 @@ export async function loadSetupConfig() {
   }
 }
 
+/**
+ * Loads and merges all profiles (local-first).
+ */
+export async function getAllProfiles(repoPath) {
+  const globalConfig = await loadSetupConfig();
+  const globalProfiles = globalConfig.contextProfiles || {};
+
+  let localProfiles = {};
+  const localProfilePath = path.join(repoPath, '.eck', 'profiles.json');
+
+  try {
+    const localProfileContent = await fs.readFile(localProfilePath, 'utf-8');
+    localProfiles = JSON.parse(localProfileContent);
+  } catch (e) {
+    // No local profiles.json found, which is fine.
+  }
+
+  // Local profiles override global profiles
+  return { ...globalProfiles, ...localProfiles };
+}
+
+/**
+ * Smart profile loader (Step 2 of dynamic profiles).
+ * Reads local .eck/profiles.json first, then falls back to global setup.json profiles.
+ */
+export async function getProfile(profileName, repoPath) {
+  const globalConfig = await loadSetupConfig();
+  const globalProfiles = globalConfig.contextProfiles || {};
+
+  let localProfiles = {};
+  const localProfilePath = path.join(repoPath, '.eck', 'profiles.json');
+
+  try {
+    const localProfileContent = await fs.readFile(localProfilePath, 'utf-8');
+    localProfiles = JSON.parse(localProfileContent);
+  } catch (e) {
+    // No local profiles.json found, which is fine. We just use globals.
+  }
+
+  // Local profiles override global profiles
+  const allProfiles = { ...globalProfiles, ...localProfiles };
+
+  return allProfiles[profileName] || null;
+}
+
 // Fallback default config for backwards compatibility
 export const DEFAULT_CONFIG = {
   smartModeTokenThreshold: 200000,

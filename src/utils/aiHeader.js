@@ -1,4 +1,4 @@
-import { loadSetupConfig } from '../config.js';
+import { loadSetupConfig, getAllProfiles } from '../config.js';
 
 // Simple template renderer for basic variable substitution
 function render(template, data) {
@@ -152,6 +152,24 @@ To ensure error-free execution, all tasks for the agent must be presented in a s
     };
 
     let renderedTemplate = render(template, data);
+
+    // Inject dynamic profile context if a profile is active
+    if (context.options && context.options.profile && context.repoPath) {
+      let metadataHeader = '\n\n## Partial Snapshot Context\n';
+      metadataHeader += `- **Profile(s) Active:** ${context.options.profile}\n`;
+      try {
+          const allProfiles = await getAllProfiles(context.repoPath);
+          const activeProfileNames = context.options.profile.split(',').map(p => p.trim().replace(/^-/, ''));
+          const allProfileNames = Object.keys(allProfiles).filter(p => !activeProfileNames.includes(p));
+          if (allProfileNames.length > 0) {
+               metadataHeader += `- **Other Available Profiles:** ${allProfileNames.join(', ')}\n`;
+          }
+      } catch (e) { /* fail silently on metadata generation */ }
+      
+      // Inject this metadata block right before the CRITICAL WORKFLOW section
+      const insertMarker = "### CRITICAL WORKFLOW: Structured Commits via `journal_entry`";
+      renderedTemplate = renderedTemplate.replace(insertMarker, metadataHeader + '\n' + insertMarker);
+    }
     
     // DELETED: The `multiAgent` template in setup.json now controls the entire manifest and git workflow section.
     // These programmatic insertions are removed to prevent duplicate and conflicting instructions.
