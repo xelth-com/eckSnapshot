@@ -1,6 +1,10 @@
 import { Command } from 'commander';
 import path from 'path';
 import fs from 'fs/promises';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 import { createRepoSnapshot } from './commands/createSnapshot.js';
 import { restoreSnapshot } from './commands/restoreSnapshot.js';
@@ -10,7 +14,13 @@ import { queryProject } from './commands/queryProject.js';
 import { detectProject, testFileParsing } from './commands/detectProject.js';
 import { trainTokens, showTokenStats } from './commands/trainTokens.js';
 import { executePrompt, executePromptWithSession } from '../services/claudeCliService.js';
+import { executePrompt as executeGeminiPrompt, executePromptWithPTY } from '../services/geminiWebService.js';
 import { detectProfiles } from './commands/detectProfiles.js';
+import { startGeminiSession, askGeminiSession, stopGeminiSession } from '../services/geminiWebService.js';
+import inquirer from 'inquirer';
+import ora from 'ora';
+import { execa } from 'execa';
+import chalk from 'chalk';
 
 /**
  * Check code boundaries in a file
@@ -203,6 +213,171 @@ export function run() {
         console.log(JSON.stringify(result, null, 2));
       } catch (error) {
         console.error('Failed to execute prompt:', error.message);
+        process.exit(1);
+      }
+    });
+
+  // Ask Gemini command (PTY mode by default for OAuth support)
+  program
+    .command('ask-gemini')
+    .description('Execute a prompt using gemini-cli with OAuth authentication')
+    .argument('<prompt>', 'Prompt to send to Gemini')
+    .option('--use-api-key', 'Use API key mode instead of OAuth (requires GEMINI_API_KEY)')
+    .action(async (prompt, options) => {
+      try {
+        let result;
+        if (options.useApiKey) {
+          console.log('Using API key mode...');
+          result = await executeGeminiPrompt(prompt);
+        } else {
+          console.log('Using OAuth authentication via PTY...');
+          result = await executePromptWithPTY(prompt);
+        }
+        console.log(JSON.stringify(result, null, 2));
+      } catch (error) {
+        console.error('Failed to execute prompt with Gemini:', error.message);
+        if (!options.useApiKey) {
+          console.log('💡 Tip: Try using --use-api-key flag if you have GEMINI_API_KEY set');
+        }
+        process.exit(1);
+      }
+    });
+
+  async function handleGeminiSession(snapshotPath, options) {
+    const spinner = ora('Preparing Gemini session...').start();
+    try {
+      // Force logout to ensure a clean authentication flow
+      spinner.text = 'Clearing previous session credentials...';
+      try {
+        await execa('gemini', ['auth', 'clean']);
+      } catch (e) {
+        // This might fail if no auth exists, which is fine.
+      }
+      try {
+        await execa('gemini', ['auth', 'logout']);
+      } catch (e) {
+        // This is expected if the user is already logged out, so we can ignore it.
+        spinner.text = 'No active session found. Proceeding with new login...';
+      }
+
+      spinner.text = 'Starting Gemini session...';
+      await startGeminiSession({ model: options.model });
+      spinner.succeed('Gemini session started.'); // Session is ready now
+
+      const configSpinner = ora('Configuring Gemini agent with architect prompt...').start();
+      const templatePath = path.join(__dirname, '..', 'templates', 'architect-prompt.template.md');
+      const architectPrompt = await fs.readFile(templatePath, 'utf-8');
+      await askGeminiSession(architectPrompt);
+      configSpinner.succeed('Agent configured.');
+
+      const snapshotSpinner = ora('Loading snapshot context into session...').start();
+      const snapshotLoadPrompt = `Loaded context from snapshot: ${snapshotPath}. I will now begin the task based on my instructions.`;
+      const initialResponse = await askGeminiSession(snapshotLoadPrompt);
+      snapshotSpinner.succeed('Snapshot context loaded.');
+      console.log(chalk.blueBright('\nInitial Analysis:\n'), initialResponse);
+
+      process.on('SIGINT', async () => {
+        console.log('\nCaught interrupt signal. Ending session.');
+        await stopGeminiSession();
+        process.exit();
+      });
+
+      while (true) {
+        const { prompt } = await inquirer.prompt([
+          {
+            type: 'input',
+            name: 'prompt',
+            message: 'Ask Gemini (type exit to end):',
+          },
+        ]);
+
+        if (prompt.toLowerCase() === 'exit' || prompt.toLowerCase() === 'quit') {
+          break;
+        }
+
+        if (!prompt.trim()) continue;
+
+        const askSpinner = ora('Getting response from Gemini...').start();
+        try {
+          let modelResponse = await askGeminiSession(prompt);
+          askSpinner.succeed('Response received.');
+
+          const toolRegex = /\[tool_code:\s*([\s\S]*?)\]/g;
+          let match;
+          const commandsToRun = [];
+
+          while ((match = toolRegex.exec(modelResponse)) !== null) {
+            commandsToRun.push(match[1].trim());
+          }
+
+          const thought = modelResponse.replace(toolRegex, '').trim();
+          if (thought) {
+            console.log(chalk.greenBright('\nGemini:\n'), thought);
+          }
+
+          if (commandsToRun.length > 0) {
+            for (const command of commandsToRun) {
+              const toolSpinner = ora(`Gemini agent is running local command: ${chalk.yellow(command)}`).start();
+              try {
+                const commandParts = command.split(' ');
+                const mainCommand = commandParts.shift();
+                if (mainCommand !== 'eck-snapshot') {
+                  throw new Error('Only eck-snapshot commands are allowed.');
+                }
+                const { stdout, stderr } = await execa('node', ['index.js', ...commandParts]);
+                toolSpinner.succeed(`Local command finished.`);
+                const observation = `Observation: \nSTDOUT:\n${stdout}\nSTDERR:\n${stderr}`;
+
+                const observationSpinner = ora('Gemini is processing the result...').start();
+                const finalResponse = await askGeminiSession(observation);
+                observationSpinner.succeed('Gemini responded.');
+                console.log(chalk.greenBright('\nGemini:\n'), finalResponse);
+
+              } catch (e) {
+                toolSpinner.fail('Local command failed.');
+                const errorFeedback = `Observation: Command failed with error:\n${e.stderr || e.message}`;
+                const errorSpinner = ora('Informing Gemini about the error...').start();
+                const errorResponse = await askGeminiSession(errorFeedback);
+                errorSpinner.succeed('Gemini responded to error.');
+                console.log(chalk.greenBright('\nGemini:\n'), errorResponse);
+              }
+            }
+          } else if (!thought) {
+             console.log(chalk.greenBright('\nGemini:\n'), modelResponse);
+          }
+        } catch (e) {
+          askSpinner.fail('Error receiving response.');
+          console.error(chalk.red(e.message));
+        }
+      }
+    } catch (error) {
+      spinner.fail('Failed to start Gemini session.');
+      console.error(chalk.red(error.message));
+    } finally {
+      const endSpinner = ora('Ending Gemini session...').start();
+      await stopGeminiSession();
+      endSpinner.succeed('Session ended.');
+    }
+  }
+
+  program
+    .command('gemini-session <snapshot_file>')
+    .description('Starts an interactive session with Gemini using a large snapshot as context.')
+    .option('--model <modelName>', 'Specify the Gemini model to use')
+    .action(handleGeminiSession);
+
+  program
+    .command('generate-ai-prompt')
+    .description('Generate a specific AI prompt from a template.')
+    .option('--role <role>', 'The role for which to generate a prompt', 'architect')
+    .action(async (options) => {
+      try {
+        const templatePath = path.join(__dirname, '..', 'templates', `${options.role}-prompt.template.md`);
+        const template = await fs.readFile(templatePath, 'utf-8');
+        // In the future, we can inject dynamic data here from setup.json
+        console.log(template);
+      } catch (error) {
+        console.error(`Failed to generate prompt for role '${options.role}':`, error.message);
         process.exit(1);
       }
     });
