@@ -343,6 +343,45 @@ export async function startGeminiSession(options = {}) {
   }
 }
 
+/**
+ * Starts a Gemini session in daemon mode (non-interactive)
+ * @param {object} options - Session options
+ * @param {string} options.model - Model to use
+ * @param {string} options.snapshotFile - Snapshot file to load
+ * @returns {Promise<void>}
+ */
+export async function startGeminiSessionDaemon(options = {}) {
+  const { model, snapshotFile } = options;
+  
+  console.log('🚀 Starting Gemini session daemon...');
+  
+  // Start the basic session
+  await startGeminiSession({ model });
+  
+  console.log('✅ Gemini session started successfully');
+  
+  if (snapshotFile) {
+    console.log('📄 Loading snapshot context...');
+    const templatePath = path.join(process.cwd(), 'src', 'templates', 'architect-prompt.template.md');
+    
+    try {
+      if (existsSync(templatePath)) {
+        const architectPrompt = await fs.readFile(templatePath, 'utf-8');
+        await askGeminiSession(architectPrompt);
+        console.log('🏗️ Architect prompt configured');
+      }
+      
+      const snapshotLoadPrompt = `Loaded context from snapshot: ${snapshotFile}. I will now begin the task based on my instructions.`;
+      await askGeminiSession(snapshotLoadPrompt);
+      console.log('📋 Snapshot context loaded');
+    } catch (error) {
+      console.warn('⚠️ Warning: Could not load snapshot context:', error.message);
+    }
+  }
+  
+  console.log('🎯 Session daemon ready to receive commands');
+}
+
 export async function askGeminiSession(prompt) {
   if (!activeSession) {
     throw new Error('No active Gemini session. Use start-gemini-session first.');
@@ -367,4 +406,79 @@ export async function stopGeminiSession() {
     activeSession = null;
   }
   return Promise.resolve();
+}
+
+/**
+ * Gets the status of the current Gemini session
+ * @returns {object} Session status information
+ */
+export function getSessionStatus() {
+  return {
+    isActive: !!activeSession,
+    hasLogStream: !!logStream,
+    processId: activeSession ? activeSession.pid : null
+  };
+}
+
+/**
+ * Sends a command to the active Gemini session and returns the response
+ * @param {string} command - The command to send to Gemini
+ * @returns {Promise<string>} The response from Gemini
+ */
+export async function sendCommandToSession(command) {
+  if (!activeSession) {
+    throw new Error('No active Gemini session. Please start a session first using gemini-session command.');
+  }
+  
+  try {
+    if (logStream) {
+      logStream.write(`[EXTERNAL_COMMAND] ${command}\n`);
+    }
+    console.log(chalk.cyan(`[PTY_EXTERNAL] Sending command: ${command.substring(0, 100)}...`));
+    
+    // Send the command to the session
+    activeSession.write(`${command}\r`);
+    
+    // Get the response
+    const response = await getResponse(activeSession);
+    
+    // Clean up the response by removing the echoed command
+    const commandIndex = response.indexOf(command);
+    const cleanResponse = commandIndex !== -1 
+      ? response.substring(commandIndex + command.length).trim()
+      : response.trim();
+    
+    return cleanResponse;
+  } catch (error) {
+    console.error('Error sending command to session:', error.message);
+    throw error;
+  }
+}
+
+/**
+ * Waits for the active session to become ready for input
+ * @returns {Promise<boolean>} True if session is ready
+ */
+export async function waitForSessionReady() {
+  if (!activeSession) {
+    throw new Error('No active Gemini session.');
+  }
+  
+  return new Promise((resolve, reject) => {
+    let output = '';
+    const timeout = setTimeout(() => {
+      reject(new Error('Timeout waiting for session to become ready'));
+    }, 30000); // 30 second timeout
+    
+    const handler = (data) => {
+      output += stripAnsi(data.toString());
+      if (PROMPT_INDICATOR.test(output)) {
+        activeSession.removeListener('data', handler);
+        clearTimeout(timeout);
+        resolve(true);
+      }
+    };
+    
+    activeSession.on('data', handler);
+  });
 }

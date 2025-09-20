@@ -16,7 +16,7 @@ import { trainTokens, showTokenStats } from './commands/trainTokens.js';
 import { executePrompt, executePromptWithSession } from '../services/claudeCliService.js';
 import { executePrompt as executeGeminiPrompt, executePromptWithPTY } from '../services/geminiWebService.js';
 import { detectProfiles } from './commands/detectProfiles.js';
-import { startGeminiSession, askGeminiSession, stopGeminiSession } from '../services/geminiWebService.js';
+import { startGeminiSession, askGeminiSession, stopGeminiSession, getSessionStatus, sendCommandToSession, waitForSessionReady, startGeminiSessionDaemon } from '../services/geminiWebService.js';
 import inquirer from 'inquirer';
 import ora from 'ora';
 import { execa } from 'execa';
@@ -365,6 +365,90 @@ export function run() {
     .description('Starts an interactive session with Gemini using a large snapshot as context.')
     .option('--model <modelName>', 'Specify the Gemini model to use')
     .action(handleGeminiSession);
+
+  // Daemon mode for non-interactive session
+  program
+    .command('session-start [snapshot_file]')
+    .description('Start a Gemini session daemon (non-interactive mode)')
+    .option('--model <modelName>', 'Specify the Gemini model to use', 'gemini-2.5-pro')
+    .action(async (snapshotFile, options) => {
+      try {
+        const status = getSessionStatus();
+        if (status.isActive) {
+          console.log('A session is already active. Use session-stop to stop it first.');
+          return;
+        }
+
+        await startGeminiSessionDaemon({
+          model: options.model,
+          snapshotFile: snapshotFile
+        });
+        
+        // Keep the process alive in daemon mode
+        console.log('Session daemon is running. Use Ctrl+C to stop or run "eck-snapshot session-stop" from another terminal.');
+        process.stdin.resume(); // Keep process alive
+      } catch (error) {
+        console.error('Failed to start session daemon:', error.message);
+        process.exit(1);
+      }
+    });
+
+  // Gemini session status command
+  program
+    .command('session-status')
+    .description('Check the status of the current Gemini session')
+    .action(async () => {
+      try {
+        const status = getSessionStatus();
+        console.log(JSON.stringify(status, null, 2));
+      } catch (error) {
+        console.error('Failed to get session status:', error.message);
+        process.exit(1);
+      }
+    });
+
+  // Send command to active session
+  program
+    .command('session-send <command>')
+    .description('Send a command to the active Gemini session')
+    .action(async (command) => {
+      try {
+        const status = getSessionStatus();
+        if (!status.isActive) {
+          console.error('No active Gemini session. Start one first with: eck-snapshot gemini-session <snapshot_file>');
+          process.exit(1);
+        }
+
+        console.log(chalk.blue('Sending command to active session...'));
+        const response = await sendCommandToSession(command);
+        console.log(chalk.green('\nResponse:'));
+        console.log(response);
+      } catch (error) {
+        console.error('Failed to send command to session:', error.message);
+        process.exit(1);
+      }
+    });
+
+  // Stop active session
+  program
+    .command('session-stop')
+    .description('Stop the active Gemini session')
+    .action(async () => {
+      try {
+        const status = getSessionStatus();
+        if (!status.isActive) {
+          console.log('No active session to stop.');
+          return;
+        }
+
+        const spinner = ora('Stopping Gemini session...').start();
+        await stopGeminiSession();
+        spinner.succeed('Session stopped successfully.');
+      } catch (error) {
+        console.error('Failed to stop session:', error.message);
+        process.exit(1);
+      }
+    });
 
   program
     .command('generate-ai-prompt')
