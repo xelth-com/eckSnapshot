@@ -14,9 +14,8 @@ import { queryProject } from './commands/queryProject.js';
 import { detectProject, testFileParsing } from './commands/detectProject.js';
 import { trainTokens, showTokenStats } from './commands/trainTokens.js';
 import { executePrompt, executePromptWithSession } from '../services/claudeCliService.js';
-import { executePrompt as executeGeminiPrompt, executePromptWithPTY, executePromptSimple } from '../services/geminiWebService.js';
+import { executePrompt as executeGeminiPrompt, executePromptWithPTY } from '../services/geminiWebService.js';
 import { detectProfiles } from './commands/detectProfiles.js';
-import { startGeminiSession, askGeminiSession, stopGeminiSession, getSessionStatus, sendCommandToSession, waitForSessionReady, startGeminiSessionDaemon } from '../services/geminiWebService.js';
 import inquirer from 'inquirer';
 import ora from 'ora';
 import { execa } from 'execa';
@@ -84,6 +83,7 @@ export function run() {
     .option('-d, --dir', 'Directory mode')
     .option('--enhanced', 'Use enhanced multi-agent headers (default: true)', true)
     .option('--profile <name>', 'Use a specific context profile (local .eck/profiles.json or global setup.json)')
+    .option('--agent', 'Generate a snapshot optimized for a command-line agent')
     .action(createRepoSnapshot);
 
   // Restore command
@@ -248,212 +248,7 @@ export function run() {
       }
     });
 
-  async function handleGeminiSession(snapshotPath, options) {
-    const spinner = ora('Preparing Gemini session...').start();
-    try {
-      // Force logout to ensure a clean authentication flow
-      spinner.text = 'Clearing previous session credentials...';
-      try {
-        await execa('gemini', ['auth', 'clean']);
-      } catch (e) {
-        // This might fail if no auth exists, which is fine.
-      }
-      try {
-        await execa('gemini', ['auth', 'logout']);
-      } catch (e) {
-        // This is expected if the user is already logged out, so we can ignore it.
-        spinner.text = 'No active session found. Proceeding with new login...';
-      }
 
-      spinner.text = 'Starting Gemini session...';
-      await startGeminiSession({ model: options.model });
-      spinner.succeed('Gemini session started.'); // Session is ready now
-
-      const configSpinner = ora('Configuring Gemini agent with architect prompt...').start();
-      const templatePath = path.join(__dirname, '..', 'templates', 'architect-prompt.template.md');
-      const architectPrompt = await fs.readFile(templatePath, 'utf-8');
-      await askGeminiSession(architectPrompt);
-      configSpinner.succeed('Agent configured.');
-
-      const snapshotSpinner = ora('Loading snapshot context into session...').start();
-      const snapshotLoadPrompt = `Loaded context from snapshot: ${snapshotPath}. I will now begin the task based on my instructions.`;
-      const initialResponse = await askGeminiSession(snapshotLoadPrompt);
-      snapshotSpinner.succeed('Snapshot context loaded.');
-      console.log(chalk.blueBright('\nInitial Analysis:\n'), initialResponse);
-
-      process.on('SIGINT', async () => {
-        console.log('\nCaught interrupt signal. Ending session.');
-        await stopGeminiSession();
-        process.exit();
-      });
-
-      while (true) {
-        const { prompt } = await inquirer.prompt([
-          {
-            type: 'input',
-            name: 'prompt',
-            message: 'Ask Gemini (type exit to end):',
-          },
-        ]);
-
-        if (prompt.toLowerCase() === 'exit' || prompt.toLowerCase() === 'quit') {
-          break;
-        }
-
-        if (!prompt.trim()) continue;
-
-        const askSpinner = ora('Getting response from Gemini...').start();
-        try {
-          let modelResponse = await askGeminiSession(prompt);
-          askSpinner.succeed('Response received.');
-
-          const toolRegex = /\[tool_code:\s*([\s\S]*?)\]/g;
-          let match;
-          const commandsToRun = [];
-
-          while ((match = toolRegex.exec(modelResponse)) !== null) {
-            commandsToRun.push(match[1].trim());
-          }
-
-          const thought = modelResponse.replace(toolRegex, '').trim();
-          if (thought) {
-            console.log(chalk.greenBright('\nGemini:\n'), thought);
-          }
-
-          if (commandsToRun.length > 0) {
-            for (const command of commandsToRun) {
-              const toolSpinner = ora(`Gemini agent is running local command: ${chalk.yellow(command)}`).start();
-              try {
-                const commandParts = command.split(' ');
-                const mainCommand = commandParts.shift();
-                if (mainCommand !== 'eck-snapshot') {
-                  throw new Error('Only eck-snapshot commands are allowed.');
-                }
-                const { stdout, stderr } = await execa('node', ['index.js', ...commandParts]);
-                toolSpinner.succeed(`Local command finished.`);
-                const observation = `Observation: \nSTDOUT:\n${stdout}\nSTDERR:\n${stderr}`;
-
-                const observationSpinner = ora('Gemini is processing the result...').start();
-                const finalResponse = await askGeminiSession(observation);
-                observationSpinner.succeed('Gemini responded.');
-                console.log(chalk.greenBright('\nGemini:\n'), finalResponse);
-
-              } catch (e) {
-                toolSpinner.fail('Local command failed.');
-                const errorFeedback = `Observation: Command failed with error:\n${e.stderr || e.message}`;
-                const errorSpinner = ora('Informing Gemini about the error...').start();
-                const errorResponse = await askGeminiSession(errorFeedback);
-                errorSpinner.succeed('Gemini responded to error.');
-                console.log(chalk.greenBright('\nGemini:\n'), errorResponse);
-              }
-            }
-          } else if (!thought) {
-             console.log(chalk.greenBright('\nGemini:\n'), modelResponse);
-          }
-        } catch (e) {
-          askSpinner.fail('Error receiving response.');
-          console.error(chalk.red(e.message));
-        }
-      }
-    } catch (error) {
-      spinner.fail('Failed to start Gemini session.');
-      console.error(chalk.red(error.message));
-    } finally {
-      const endSpinner = ora('Ending Gemini session...').start();
-      await stopGeminiSession();
-      endSpinner.succeed('Session ended.');
-    }
-  }
-
-  program
-    .command('gemini-session <snapshot_file>')
-    .description('Starts an interactive session with Gemini using a large snapshot as context.')
-    .option('--model <modelName>', 'Specify the Gemini model to use')
-    .action(handleGeminiSession);
-
-  // Daemon mode for non-interactive session
-  program
-    .command('session-start [snapshot_file]')
-    .description('Start a Gemini session daemon (non-interactive mode)')
-    .option('--model <modelName>', 'Specify the Gemini model to use', 'gemini-2.5-pro')
-    .action(async (snapshotFile, options) => {
-      try {
-        const status = getSessionStatus();
-        if (status.isActive) {
-          console.log('A session is already active. Use session-stop to stop it first.');
-          return;
-        }
-
-        await startGeminiSessionDaemon({
-          model: options.model,
-          snapshotFile: snapshotFile
-        });
-        
-        // Keep the process alive in daemon mode
-        console.log('Session daemon is running. Use Ctrl+C to stop or run "eck-snapshot session-stop" from another terminal.');
-        process.stdin.resume(); // Keep process alive
-      } catch (error) {
-        console.error('Failed to start session daemon:', error.message);
-        process.exit(1);
-      }
-    });
-
-  // Gemini session status command
-  program
-    .command('session-status')
-    .description('Check the status of the current Gemini session')
-    .action(async () => {
-      try {
-        const status = getSessionStatus();
-        console.log(JSON.stringify(status, null, 2));
-      } catch (error) {
-        console.error('Failed to get session status:', error.message);
-        process.exit(1);
-      }
-    });
-
-  // Send command to active session
-  program
-    .command('session-send <command>')
-    .description('Send a command to the active Gemini session')
-    .action(async (command) => {
-      try {
-        const status = getSessionStatus();
-        if (!status.isActive) {
-          console.error('No active Gemini session. Start one first with: eck-snapshot gemini-session <snapshot_file>');
-          process.exit(1);
-        }
-
-        console.log(chalk.blue('Sending command to active session...'));
-        const response = await sendCommandToSession(command);
-        console.log(chalk.green('\nResponse:'));
-        console.log(response);
-      } catch (error) {
-        console.error('Failed to send command to session:', error.message);
-        process.exit(1);
-      }
-    });
-
-  // Stop active session
-  program
-    .command('session-stop')
-    .description('Stop the active Gemini session')
-    .action(async () => {
-      try {
-        const status = getSessionStatus();
-        if (!status.isActive) {
-          console.log('No active session to stop.');
-          return;
-        }
-
-        const spinner = ora('Stopping Gemini session...').start();
-        await stopGeminiSession();
-        spinner.succeed('Session stopped successfully.');
-      } catch (error) {
-        console.error('Failed to stop session:', error.message);
-        process.exit(1);
-      }
-    });
 
   program
     .command('generate-ai-prompt')

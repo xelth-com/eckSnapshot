@@ -6,9 +6,6 @@ import stripAnsi from 'strip-ansi';
 import chalk from 'chalk';
 import path from 'path';
 
-let activeSession = null;
-let logStream = null;
-const PROMPT_INDICATOR = />\\s$|Type your message|context left/;
 
 /**
  * Executes a Gemini prompt using non-interactive mode with --prompt flag
@@ -367,7 +364,6 @@ export async function executePromptWithPTY(prompt) {
   });
 }
 
-// --- NEW SESSION MANAGEMENT LOGIC ---
 
 function waitForReady(ptyProcess) {
   return new Promise((resolve, reject) => {

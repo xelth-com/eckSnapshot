@@ -1,4 +1,6 @@
 import { loadSetupConfig, getAllProfiles } from '../config.js';
+import fs from 'fs/promises';
+import path from 'path';
 
 // Simple template renderer for basic variable substitution
 function render(template, data) {
@@ -72,6 +74,34 @@ function buildEckManifestSection(eckManifest) {
 }
 
 export async function generateEnhancedAIHeader(context, isGitRepo = false) {
+  // Check if agent mode is enabled
+  if (context.options && context.options.agent) {
+    try {
+      const agentPromptPath = path.join(process.cwd(), 'src', 'templates', 'agent-prompt.template.md');
+      const agentPromptContent = await fs.readFile(agentPromptPath, 'utf-8');
+      
+      // Construct simple header with basic snapshot stats
+      const agentHeader = `${agentPromptContent}
+
+---
+
+## Project Snapshot Information
+
+- **Project**: ${context.repoName || 'Unknown'}
+- **Timestamp**: ${new Date().toISOString()}
+- **Files Included**: ${context.fileCount || 'Unknown'}
+- **Total Files in Repo**: ${context.totalFiles || 'Unknown'}
+
+---
+
+`;
+      return agentHeader;
+    } catch (error) {
+      console.warn('Warning: Could not load agent prompt template, using minimal header');
+      return `# Agent Mode Snapshot for ${context.repoName || 'Project'}\n\nGenerated: ${new Date().toISOString()}\n\n---\n\n`;
+    }
+  }
+
   try {
     const setupConfig = await loadSetupConfig();
     const { aiInstructions } = setupConfig;
