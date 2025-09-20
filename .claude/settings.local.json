@@ -47,7 +47,8 @@
       "Read(/home/xelth/.config/configstore/**)",
       "Read(/home/xelth/.config/**)",
       "Read(/home/xelth/.cache/**)",
-      "Read(/home/xelth/**)"
+      "Read(/home/xelth/**)",
+      "Read(/home/xelth/gemini-cli/.eck/snapshots/**)"
     ],
     "deny": [],
     "defaultMode": "acceptEdits"

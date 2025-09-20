@@ -14,7 +14,7 @@ import { queryProject } from './commands/queryProject.js';
 import { detectProject, testFileParsing } from './commands/detectProject.js';
 import { trainTokens, showTokenStats } from './commands/trainTokens.js';
 import { executePrompt, executePromptWithSession } from '../services/claudeCliService.js';
-import { executePrompt as executeGeminiPrompt, executePromptWithPTY } from '../services/geminiWebService.js';
+import { executePrompt as executeGeminiPrompt, executePromptWithPTY, executePromptSimple } from '../services/geminiWebService.js';
 import { detectProfiles } from './commands/detectProfiles.js';
 import { startGeminiSession, askGeminiSession, stopGeminiSession, getSessionStatus, sendCommandToSession, waitForSessionReady, startGeminiSessionDaemon } from '../services/geminiWebService.js';
 import inquirer from 'inquirer';
@@ -217,12 +217,13 @@ export function run() {
       }
     });
 
-  // Ask Gemini command (PTY mode by default for OAuth support)
+  // Ask Gemini command (PTY mode with OAuth - no API key needed)
   program
     .command('ask-gemini')
     .description('Execute a prompt using gemini-cli with OAuth authentication')
     .argument('<prompt>', 'Prompt to send to Gemini')
     .option('--use-api-key', 'Use API key mode instead of OAuth (requires GEMINI_API_KEY)')
+    .option('--debug', 'Enable debug mode with detailed logging')
     .action(async (prompt, options) => {
       try {
         let result;
@@ -230,7 +231,10 @@ export function run() {
           console.log('Using API key mode...');
           result = await executeGeminiPrompt(prompt);
         } else {
-          console.log('Using OAuth authentication via PTY...');
+          // Default: use PTY mode (works with OAuth, no API key needed)
+          if (options.debug) {
+            console.log('Using PTY mode with OAuth authentication (debug enabled)...');
+          }
           result = await executePromptWithPTY(prompt);
         }
         console.log(JSON.stringify(result, null, 2));
@@ -238,6 +242,7 @@ export function run() {
         console.error('Failed to execute prompt with Gemini:', error.message);
         if (!options.useApiKey) {
           console.log('💡 Tip: Try using --use-api-key flag if you have GEMINI_API_KEY set');
+          console.log('   Or use --debug flag for detailed logging');
         }
         process.exit(1);
       }

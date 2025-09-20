@@ -11,6 +11,52 @@ let logStream = null;
 const PROMPT_INDICATOR = />\\s$|Type your message|context left/;
 
 /**
+ * Executes a Gemini prompt using non-interactive mode with --prompt flag
+ * @param {string} prompt - The prompt to send to Gemini
+ * @param {string} model - The model to use (default: gemini-2.5-pro)
+ * @returns {Promise<object>} Response object with result and stats
+ */
+export async function executePromptSimple(prompt, model = 'gemini-2.5-pro') {
+  const timestamp = new Date().toISOString();
+  
+  try {
+    console.log('🤖 Sending prompt to Gemini in non-interactive mode...');
+    
+    // Use gemini CLI with prompt as positional argument for clean, non-interactive output
+    const result = await execa('gemini', [prompt], {
+      timeout: 120000, // 2 minutes timeout
+      encoding: 'utf8'
+    });
+    
+    const response = result.stdout.trim();
+    
+    console.log(`✅ Received response (${response.length} chars)`);
+    
+    return {
+      result: response,
+      stats: {
+        model: model,
+        timestamp: timestamp,
+        method: 'simple',
+        responseLength: response.length
+      }
+    };
+  } catch (error) {
+    console.error('❌ Error executing Gemini prompt:', error.message);
+    
+    return {
+      result: `Error: ${error.message}`,
+      stats: {
+        model: model,
+        timestamp: timestamp,
+        method: 'simple',
+        error: true
+      }
+    };
+  }
+}
+
+/**
  * Executes a prompt using the gemini-cli in non-interactive JSON mode.
  * @param {string} prompt The prompt to send to Gemini.
  * @returns {Promise<object>} A promise that resolves with the final JSON output object from Gemini.
@@ -123,16 +169,23 @@ export async function executePromptWithPTY(prompt) {
         ptyProcess.kill();
         reject(new Error('Gemini PTY process timed out'));
       }
-    }, 180000); // 3 minutes
+    }, 300000); // 5 minutes
 
     let promptSent = false;
     let responseStarted = false;
     let responseBuffer = '';
     let lastDataTime = Date.now();
+    let noDataTimeout;
     
     ptyProcess.onData((data) => {
       output += data;
       lastDataTime = Date.now();
+      
+      // Log basic data flow (temporarily enabled for debugging)
+      console.log(`🔍 [DATA] Received ${data.length} chars:`, JSON.stringify(data.substring(0, 100)));
+      
+      // Clear existing no-data timeout and set a new one
+      if (noDataTimeout) clearTimeout(noDataTimeout);
       
       // Look for prompt indicators that Gemini is ready (after showing model info)
       if (!promptSent && data.includes('gemini-2.5-pro') && data.includes('context left')) {
@@ -145,23 +198,45 @@ export async function executePromptWithPTY(prompt) {
       }
       
       // Detect when our prompt appears (response starting)
-      if (promptSent && !responseStarted && data.includes(prompt)) {
+      if (promptSent && !responseStarted && data.includes(prompt.substring(0, 20))) {
         responseStarted = true;
         console.log('📝 Response starting...');
         responseBuffer = '';
+        // Start collecting from this point
+        responseBuffer += data;
         
-        // Give Gemini 15 seconds to complete the response
-        setTimeout(() => {
-          if (!isComplete) {
-            console.log('⏰ Fixed timeout reached, completing response...');
+        // Set a longer timeout for the full response
+        noDataTimeout = setTimeout(() => {
+          if (!isComplete && responseStarted) {
+            console.log('⏰ Response timeout reached, completing...');
             completeResponse();
           }
-        }, 15000);
+        }, 30000); // 30 seconds for full response
+        return;
       }
       
-      // Collect response data after prompt is echoed
+      // Collect response data after prompt is detected
       if (responseStarted) {
         responseBuffer += data;
+        
+        // Look for indicators that the response is complete and ready for next input
+        const strippedData = stripAnsi(data);
+        
+        // Check for ready state indicators
+        if (strippedData.includes('Type your message') && strippedData.includes('context left')) {
+          console.log('✅ Response complete, Gemini ready for next input');
+          completeResponse();
+          return;
+        }
+        
+        // Reset timeout with each new data
+        if (noDataTimeout) clearTimeout(noDataTimeout);
+        noDataTimeout = setTimeout(() => {
+          if (!isComplete && responseStarted) {
+            console.log('⏰ No new data timeout, completing response...');
+            completeResponse();
+          }
+        }, 5000); // 5 seconds of no new data
       }
     });
     
@@ -169,45 +244,82 @@ export async function executePromptWithPTY(prompt) {
       if (isComplete) return;
       isComplete = true;
       clearTimeout(timeout);
+      if (noDataTimeout) clearTimeout(noDataTimeout);
       ptyProcess.kill();
       
-      // Extract the actual response from buffer
-      let cleanedResponse = responseBuffer
-        .replace(/\x1b\[[0-9;]*[A-Za-z]/g, '') // Remove ANSI escape sequences
-        .replace(/\r/g, '') // Remove carriage returns
-        .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, ''); // Remove control chars
+      console.log('🔍 Processing response buffer...');
+      console.log('🔍 Raw buffer length:', responseBuffer.length);
       
-      // Try to find the actual response between prompt and status
-      const promptIndex = cleanedResponse.indexOf(prompt);
-      if (promptIndex !== -1) {
-        cleanedResponse = cleanedResponse.substring(promptIndex + prompt.length);
-      }
+      // Remove ANSI codes and normalize
+      let cleanedResponse = stripAnsi(responseBuffer);
       
-      // Remove various UI elements and status lines
-      cleanedResponse = cleanedResponse
-        .replace(/eckSnapshot \(main\*?\)[\s\S]*?context left/g, '') // Remove status
-        .replace(/no sandbox \(see \/docs\)/g, '') // Remove sandbox warning
-        .replace(/│[\s\r\n]*╰[─]+╯/g, '') // Remove box drawing
-        .replace(/^\s*\n+/, '') // Remove leading whitespace
-        .replace(/\n\s*\n\s*$/, '') // Remove trailing whitespace
-        .replace(/^\s*\)\s*$/, '') // Remove stray parenthesis
-        .trim();
-      
-      // Log the raw buffer for debugging
-      console.log('🔍 Raw response buffer length:', responseBuffer.length);
-      console.log('🔍 Raw buffer sample:', JSON.stringify(responseBuffer.substring(0, 200)));
-      console.log('🔍 Cleaned response:', cleanedResponse.substring(0, 100) + '...');
-      
-      resolve({
-        result: cleanedResponse || 'No response received',
-        stats: {
-          model: 'gemini-2.5-pro',
-          timestamp: timestamp,
-          method: 'pty',
-          promptSent: promptSent,
-          responseStarted: responseStarted
+      // Find the response content between our prompt and the next prompt
+      const promptStart = cleanedResponse.indexOf(prompt);
+      if (promptStart !== -1) {
+        // Get everything after our prompt
+        let afterPrompt = cleanedResponse.substring(promptStart + prompt.length);
+        
+        // Look for the end marker (next prompt appearance)
+        let endMarkers = [
+          'Type your message',
+          'context left',
+          'gemini-2.5-pro',
+          '╭─────────────────────────────────────────'
+        ];
+        
+        let endIndex = afterPrompt.length;
+        for (let marker of endMarkers) {
+          let markerIndex = afterPrompt.indexOf(marker);
+          if (markerIndex !== -1 && markerIndex < endIndex) {
+            endIndex = markerIndex;
+          }
         }
-      });
+        
+        // Extract the content between prompt and end marker
+        let responseContent = afterPrompt.substring(0, endIndex);
+        
+        // Clean up the extracted content
+        responseContent = responseContent
+          .replace(/\r\n/g, '\n')
+          .replace(/\n{3,}/g, '\n\n')
+          .replace(/^[\s\n]+/, '') // Remove leading whitespace
+          .replace(/[\s\n]+$/, '') // Remove trailing whitespace
+          .replace(/^[│╭╰─\s]*\n/, '') // Remove box drawing at start
+          .replace(/\n[│╭╰─\s]*$/, '') // Remove box drawing at end
+          .trim();
+        
+        console.log('🔍 Extracted content length:', responseContent.length);
+        if (responseContent.length > 0) {
+          console.log('🔍 Content preview:', responseContent.substring(0, 200) + '...');
+        }
+        
+        resolve({
+          result: responseContent || 'No response content found',
+          stats: {
+            model: 'gemini-2.5-pro',
+            timestamp: timestamp,
+            method: 'pty',
+            promptSent: promptSent,
+            responseStarted: responseStarted,
+            responseLength: responseContent.length
+          }
+        });
+      } else {
+        console.log('⚠️ Could not find prompt in response buffer');
+        console.log('🔍 Buffer sample:', cleanedResponse.substring(0, 300));
+        
+        resolve({
+          result: 'Could not extract response content',
+          stats: {
+            model: 'gemini-2.5-pro',
+            timestamp: timestamp,
+            method: 'pty',
+            promptSent: promptSent,
+            responseStarted: responseStarted,
+            responseLength: 0
+          }
+        });
+      }
     }
 
     ptyProcess.onExit((exitCode) => {
