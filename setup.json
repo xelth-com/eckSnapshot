@@ -291,7 +291,8 @@
       "bin/",
       "obj/",
       ".idea/",
-      "coverage/"
+      "coverage/",
+      "create-snapshot/"
     ],
     "includeHidden": false,
     "projectSpecific": {
