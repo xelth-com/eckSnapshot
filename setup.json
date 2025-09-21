@@ -335,7 +335,8 @@
       ".env.production",
       "eckasse_*.sqlite*",
       "README*",
-      "readme*"
+      "readme*",
+      "LICENSE*"
     ],
     "extensionsToIgnore": [
       ".sqlite3",
