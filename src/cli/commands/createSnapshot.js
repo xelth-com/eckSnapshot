@@ -217,7 +217,7 @@ async function estimateProjectTokens(projectPath, config, projectType = null) {
   return { estimatedTokens, totalSize, includedFiles };
 }
 
-async function runFileSnapshot(repoPath, options, config, estimation = null, projectType = null) {
+async function runFileSnapshot(repoPath, options, config, estimation = null, projectType = null, filenameSuffix = '') {
   const originalCwd = process.cwd();
   console.log(`\n📸 Creating snapshot of: ${path.basename(repoPath)}`);
   console.log(`📁 Repository path: ${repoPath}`);
@@ -431,9 +431,11 @@ async function runFileSnapshot(repoPath, options, config, estimation = null, pro
         })
       };
       outputContent = JSON.stringify(jsonOutput, null, 2);
-      outputFilename = gitHash 
-        ? `${repoName}_snapshot_${timestamp}_${gitHash}.json`
-        : `${repoName}_snapshot_${timestamp}.json`;
+      const baseFilename = gitHash 
+        ? `${repoName}_snapshot_${timestamp}_${gitHash}` 
+        : `${repoName}_snapshot_${timestamp}`;
+
+      outputFilename = `${baseFilename}${filenameSuffix}.${fileExtension}`;
     } else {
       // Markdown format (default)
       outputContent = aiHeader;
@@ -443,9 +445,11 @@ async function runFileSnapshot(repoPath, options, config, estimation = null, pro
       }
       
       outputContent += contentArray.join('');
-      outputFilename = gitHash 
-        ? `${repoName}_snapshot_${timestamp}_${gitHash}.md`
-        : `${repoName}_snapshot_${timestamp}.md`;
+      const baseFilenameMd = gitHash 
+        ? `${repoName}_snapshot_${timestamp}_${gitHash}` 
+        : `${repoName}_snapshot_${timestamp}`;
+
+      outputFilename = `${baseFilenameMd}${filenameSuffix}.${fileExtension}`;
     }
     
     const fullOutputFilePath = path.join(outputPath, outputFilename);
@@ -611,7 +615,27 @@ export async function createRepoSnapshot(repoPath, options) {
       await indexProject(repoPath, options);
     } else {
       spinner.succeed('Project is small. Creating a single-file snapshot.');
-      await runFileSnapshot(repoPath, options, config, estimation, projectDetection.type);
+      // Call 1: Standard Architect Snapshot
+      await runFileSnapshot(repoPath, options, config, estimation, projectDetection.type, '');
+      
+      // Call 2: Junior Architect (_ja) Snapshot (if not a vector build)
+      // Only run if this isn't *already* an agent build or a profile build
+      if (!options.profile && !options.agent) {
+        spinner.text = 'Generating Junior Architect (_ja) snapshot...';
+        
+        // Create new options for the JA snapshot
+        const jaOptions = { 
+          ...options, 
+          agent: true,    // This triggers the detailed 'agent' format
+          profile: null,  // Ensure JA snapshot is not profiled
+          noTree: false,  // Ensure JA snapshot *has* a tree
+          noAiHeader: false // Ensure JA snapshot *has* a header
+        };
+        
+        // Call runFileSnapshot *again* with the new options and suffix
+        await runFileSnapshot(repoPath, jaOptions, config, estimation, projectDetection.type, '_ja');
+        spinner.succeed('Junior Architect snapshot generated.');
+      }
     }
   } catch (error) {
     spinner.fail(`Operation failed: ${error.message}`);
