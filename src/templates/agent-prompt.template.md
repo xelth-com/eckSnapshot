@@ -20,8 +20,10 @@ When you need to write or modify code, you **MUST** use the `/claude` command an
 
 **DO NOT** ask `claude` to "write a function" in natural language. You *must* command it with this precise JSON structure:
 
+**IMPORTANT:** The JSON payload must be passed as a **single-line string wrapped in SINGLE QUOTES (`'`)**. This is the simplest and safest way to pass the complete JSON (which uses double quotes) through the shell without it breaking.
+
 ```
-/claude {"target_agent":"local_dev","command_for_agent":"apply_code_changes","task_id":"ja-subtask-123","payload":{"objective":"Write the `doSomething` function","context":"This function is for the `UserService`...","files_to_modify":[{"path":"src/services/UserService.js","action":"add","location":"After the `getUser` function","details":"...new function code..."}],"new_files":[],"validation_steps":[]},"post_execution_steps":{"journal_entry":{"type":"feat","scope":"api","summary":"Implement `doSomething` function","details":"Delegated from JA"}}}
+/claude '{"target_agent":"local_dev","command_for_agent":"apply_code_changes","task_id":"ja-subtask-123","payload":{"objective":"Write the `doSomething` function","context":"This function is for the `UserService`...","files_to_modify":[{"path":"src/services/UserService.js","action":"add","location":"After the `getUser` function","details":"...new function code..."}],"new_files":[],"validation_steps":[]},"post_execution_steps":{"journal_entry":{"type":"feat","scope":"api","summary":"Implement `doSomething` function","details":"Delegated from JA"}}}'
 ```
 
 Your other tools (like `bash`) can be used for analysis and validation.

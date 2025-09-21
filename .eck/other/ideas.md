@@ -1244,3 +1244,184 @@ This prompt *mandates* that the `{{args}}` it passes to the `/claude` command mu
 4.  **`claude.toml`** executes the `eck-snapshot ask-claude "{...}"` shell command.
 5.  **`eck-snapshot`** (specifically `claudeCliService.js`) receives the JSON string as a 'prompt'.
 6.  It forwards this prompt to the `claude-cli` binary (`local_dev`), which is smart enough to parse the JSON and execute the `apply_code_changes` task.
+
+
+
+
+Отлично — я просмотрел указанные файлы из снапшотов и сделал детальный разбор. Ниже — сжатый, практичный отчёт: что именно в коде похоже на причину «непоследовательного»/«неправильного» внедрения `.eck`-манифеста, замечания по JA-workflow и рекомендации с конкретными правками/приоритетами.
+
+Я буду ссылаться на участки снапшота; при необходимости могу сразу предложить патч-файлы.
+
+---
+
+# 1) `src/utils/aiHeader.js` + `setup.json` — есть ли ошибка в `generateEnhancedAIHeader`? (Краткий вывод)
+
+Да — есть несколько проблем, которые могут приводить к непоследовательному/частично отсутствующему встраиванию содержимого `.eck` в снапшоты (и, как следствие, к тому что «иногда не то, что хотелось бы отображается»):
+
+* **Несоответствие структуры ожидаемого `eckManifest` и фактической структуры из `setup.json` / `.eck`.**
+  `buildEckManifestSection` ожидает поля типа `eckManifest.context`, `eckManifest.operations`, `eckManifest.journal`, `eckManifest.environment` и т.п.; в `setup.json` же проектный манифест в снапшоте представлен под другими корневыми ключами (например `projectContext`, `environmentDetection`, `contextProfiles`, `aiInstructions` и т.д.). Это делает `buildEckManifestSection` чувствительной к форме объекта и приводит к пропускам.&#x20;
+
+* **Логика выбора шаблона/агента разделена, но вставка манифеста делается по-разному для agent vs architect.**
+  В `generateEnhancedAIHeader` при `context.options.agent` загружается агентный шаблон и вставляется `eckManifestSection`. В другом режиме (architect) код уже использует другие шаблоны и вставляет `eckManifestSection` через replace. Разная ветвь = разный путь к формированию секции манифеста → легко получить разные результаты для SA и JA.&#x20;
+
+* **Отсутствие «нормализации»/фолбэка формата manifest.**
+  Если `loadProjectEckManifest` возвращает объект в иной форме (например, `projectContext` вместо `context`), `buildEckManifestSection` просто ничего не вставит — без предупреждений (файл спокойно пропустится). Это объясняет «иногда не то».&#x20;
+
+* **Поведенческие/синтаксические «кандидаты на баг» в соседних местах (createSnapshot):**
+  В `createSnapshot.js` видно создание опций для JA через `const jaOptions = { .options, agent: true, ... }` и похожие конструкции (`{ .context, ... }`) — в представленном тексте это **некорректный JS-синтаксис** (возможно, артефакт шаблонизации в снапшоте), но если аналогичный код действительно исполняется, он приведёт к ошибкам или к тому, что `options`/`context` не попадут в `generateEnhancedAIHeader`. Это тоже объясняет непоследовательность внедрения.
+
+(См. исходные места: реализация `buildEckManifestSection` и `generateEnhancedAIHeader` в `aiHeader.js`; места, где `generateEnhancedAIHeader` вызывается при создании архитект/JA-снапшотов в `createSnapshot.js`.)
+
+---
+
+# 2) `src/cli/commands/createSnapshot.js` и `src/templates/agent-prompt.template.md` — нарекания и эффективность процесса
+
+## createSnapshot.js — замечания
+
+* **Дублирование тела снапшота без адаптации.**
+  В текущей логике `fileBody` собирается один раз и просто записывается в оба файла (Architect + `_ja`) — в результате JA и SA получают одинаковые тела файлов, а различие делается только в header. Это допустимо, но если вы хотите *детализированный* JA-снапшот (например: больше журналов, больше метаданных, дополнительная аналитика), лучше строить отдельный `fileBody` или включать дополнительные вставки для JA.&#x20;
+
+* **Потенциальная синтаксическая ошибка/артефакт в создании `jaOptions`:**
+  Как писал выше — в снапшоте видна конструкция `const jaOptions = { .options, agent: true, noTree: false, noAiHeader: false };` — это либо артефакт миграции/шаблонизации либо реальная багa. Если это реальный код — JA-header будет получать пустой/ошибочный `context.options` и header неправильно соберётся. Нужно заменить на корректный spread: `const jaOptions = { ...options, agent: true, noTree: false, noAiHeader: false };`.&#x20;
+
+* **Условие генерации JA-снапшота ограничительное (всё зависит от `options.profile` и `options.agent`).**
+  Это хорошо для контроля, но убедитесь, что вызывающие CLI-флаги выставлены ожидаемо; при необычных комбинациях флагов JA может не генерироваться вовсе.&#x20;
+
+## `agent-prompt.template.md` (JA prompt) — замечания
+
+* **Жёсткое требование «single-line JSON» для `/claude` команд** — это практическое слабое место:\*\*
+
+  * Оно ломко действует при вложенных строках, кавычках, многострочных текстах; легко привести к синтаксической ошибке при формировании аргумента оболочки.&#x20;
+  * Нет встроенной инструкции по экранированию кавычек/символов или по использованию base64/обёртки — поэтому нестабильность в работе JA при передаче payload возможна.
+* **Отсутствие валидатора/преобразователя до отправки.** Рекомендую: JA должен автоматически `JSON.stringify(payload)` и затем безопасно экранировать/оборачивать аргумент (или использовать stdin для передачи JSON), а не полагаться на ручной single-line сбор.
+
+## Краткий вывод по эффективности процесса
+
+* Идея и архитектура потока SA → JA → Coder (Claude) **логична** и масштабируема, но текущая реализация демонстрирует хрупкости:
+
+  * несогласованность формата/шаблонов (`.eck` schema vs сборка header),
+  * brittleness при формировании однострочных JSON,
+  * и — возможно — синтаксические/копипаста-артефакты в `createSnapshot.js`.
+
+---
+
+# 3) Архитектура SA → JA → Coder — надёжна ли она? риски и улучшения
+
+## Плюсы
+
+* Хорошая **разделённость ответственности**: SA формулирует стратегию, JA разбивает на задачи и валидирует контекст, Coder фокусируется только на коде.
+* Позволяет **шкалирование**: разные агентов с разной степенью привилегий; fine-grained auditing (`journal_entry` и т.д.).&#x20;
+
+## Минусы / фундаментальные недостатки (и риски)
+
+1. **Сложность и много точек отказа.** Каждая связь (SA→JA, JA→Coder) — потенциальная точка, где формат/контракт может не соблюдаться (см. single-line JSON, mismatch manifest).
+2. **Опора на внешний Coder (Claude) как единственную сущность, пишущую код.** Это создаёт bottleneck и риск (rate limits, сессии, формат ответов).
+3. **Требование к строгому контракту команд (формат JSON, journal\_entry)** — если контракт хоть чуть-чуть меняется, всё падает.&#x20;
+4. **Права/безопасность** — делегирование commit-операций через `post_execution_steps.journal_entry` требует строгих проверок (и ревизии), чтобы не допустить неожиданных git-операций.&#x20;
+
+## Рекомендации по архитектурной надёжности
+
+(с приоритетами: P0 — срочно, P1 — желательно, P2 — опционально)
+
+### P0 (исправить сейчас)
+
+1. **Нормализация/адаптер для `eckManifest` в `generateEnhancedAIHeader`.**
+   Перед использованием `buildEckManifestSection` привести manifest к ожидаемой форме: если есть `projectContext`, маппить в `context`; если есть `operations`/`journal` — нормализовать. Если поле отсутствует — вернуть явный фолбэк-текст `WARNING: .eck manifest missing keys`. Это устранит «иногда пусто». (Изменить `buildEckManifestSection` — поддержать несколько форматов).&#x20;
+
+2. **Починить/проверить spread-операторы в `createSnapshot.js`.**
+   Исправить `const jaOptions = { ...options, agent: true, noTree: false, noAiHeader: false };` и аналогичные `...context`/`...data` участки (в файле видны артефакты `.{something}` — надо убрать). Это, возможно, причина того, что JA-header получал пустой/неправильный контекст.&#x20;
+
+3. **Добавить валидацию и fallbacks в `generateEnhancedAIHeader`.**
+   Если шаблон не найден/не загрузился — логировать WARN и вставлять минимальную заглушку вместо «ERROR: FAILED TO LOAD TEMPLATE ...», чтобы не ломать структуру.&#x20;
+
+### P1 (улучшения UX / устойчивости)
+
+1. **Для `/claude` — убрать требование raw single-line JSON или обеспечить надёжное кодирование.**
+   Предлагаю: JA всегда `JSON.stringify(payload)` и затем base64-encode аргумент; код вызова `/claude` декодирует base64. Это снимает проблемы с кавычками/новыми строками. (Изменение в `agent-prompt.template.md` + соответствующая реализация `claude.toml` / `claudeCliService`).&#x20;
+
+2. **Разделять тела снапшотов для SA и JA, а не только header.**
+   Если JA должен быть более подробным, добавлять `jaExtras` (например: `JOURNAL.md` последние записи, envScan результаты). Сейчас тело одинаковое — возможно, CEO хотел именно отличия.&#x20;
+
+3. **Покрыть эти сценарии unit/integration тестами.**
+
+   * Тест: `generateEnhancedAIHeader` при разных форм-факторах `eckManifest`.
+   * Тест: `createSnapshot` генерирует оба файла, и JA header содержит `gemini_wsl` подсекцию.
+
+### P2 (архитектурные улучшения)
+
+1. **Добавить schema v1 для `.eck` + schema validator** (простая JSON Schema), чтобы все загрузчики возвращали единый формат. Это инвестирование позволит избежать множества «форматных» багов.
+2. **Мониторинг и логирование контрактных ошибок**: если `generateEnhancedAIHeader` не нашёл данные, записать подробный warning файл `.eck/logs/header-mismatch-*.log`.
+
+---
+
+# Конкретные правки (микропатчи) — предлагаю начать с этих трёх изменений
+
+1. **aiHeader.js — адаптер манифеста (пример логики)**
+
+   * В `generateEnhancedAIHeader` перед `const eckManifestSection = buildEckManifestSection(context.eckManifest)` добавить:
+
+```js
+// normalize manifest: accept either new (projectContext) or old (context) shapes
+function normalizeManifest(raw) {
+  if (!raw) return null;
+  const out = {};
+  if (raw.projectContext) {
+    out.context = raw.projectContext.description || JSON.stringify(raw.projectContext, null, 2);
+    out.operations = raw.operations || raw.projectContext.operations || '';
+    out.journal = raw.journal || raw.projectContext.journal || '';
+    out.environment = raw.environment || raw.projectContext.environment || {};
+  } else {
+    out.context = raw.context || '';
+    out.operations = raw.operations || '';
+    out.journal = raw.journal || '';
+    out.environment = raw.environment || {};
+  }
+  return out;
+}
+
+const normalizedEck = normalizeManifest(context.eckManifest);
+let eckManifestSection = '';
+if (normalizedEck) {
+  eckManifestSection = buildEckManifestSection(normalizedEck);
+}
+```
+
+(Это устраняет расхождения формата и даёт предсказуемый результат.) — разместить в `generateEnhancedAIHeader`.&#x20;
+
+2. **createSnapshot.js — исправить spread для JA options**
+
+```js
+// вместо: const jaOptions = { .options, agent: true, noTree: false, noAiHeader: false };
+const jaOptions = { ...options, agent: true, noTree: false, noAiHeader: false };
+```
+
+(и проверить другие места с «.{…}» артефактами).&#x20;
+
+3. **agent-prompt.template.md — изменить рекомендацию single-line и добавить пример экранирования**
+
+* Документировать, либо: (A) как правильно экранировать (shell escaping rules), либо (B) менять команду на передачу через stdin/base64. Я рекомендую (B).
+
+---
+
+# Риски/возможные неожиданные эффекты исправлений
+
+* Нормализация manifest может вывести дополнительные строки в header (если данные большие) — при желании можно сокращать/резюмировать (например, первые 300–800 символов) для SA-snapshot.
+* Изменение передачи JSON в `/claude` на base64 потребует соответствующего изменения `claude.toml` и `claudeCliService` — но это одноразовая правка, дающая большую надёжность.
+
+---
+
+# Итог — кратко (что сделать сначала)
+
+1. **P0: Починить spread в `createSnapshot.js` и добавить логирование ошибок header-генерации.**&#x20;
+2. **P0: В `aiHeader.js` добавить адаптер нормализации `.eck` структуры и фолбэк-тексты** (чтобы не терялись секции).&#x20;
+3. **P1: Убрать требование single-line JSON → перейти на безопасную передачу (base64/stdin) / добавить пример экранирования в `agent-prompt.template.md`.**&#x20;
+4. **P1: Добавить тесты/интеграционные проверки для header generation и для JA JSON payload.**
+
+---
+
+Если хотите — я могу прямо сейчас:
+
+* сгенерировать патч-diff (или PR-стиль) с конкретными правками для `aiHeader.js` и `createSnapshot.js` (включая тест-шаблоны), **или**
+* составить более подробный план миграции manifest → schema v1 и набор unit-тестов.
+
+Что предпочитаете дальше?

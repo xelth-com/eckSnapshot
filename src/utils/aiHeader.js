@@ -91,21 +91,48 @@ export async function generateEnhancedAIHeader(context, isGitRepo = false) {
           const resolvedPath = path.join(__dirname, '..', '..', templatePathOrString);
           return await fs.readFile(resolvedPath, 'utf-8');
         } catch (e) {
-          console.warn(`Warning: Could not read prompt template from ${templatePathOrString}: ${e.message}`);
-          return `ERROR: FAILED TO LOAD TEMPLATE ${templatePathOrString}`;
+          return `ERROR: FAILED TO LOAD TEMPLATE ${templatePathOrString}: ${e.message}`;
         }
       }
       return templatePathOrString; // Fallback for old-style inline strings or errors
     };
+
+    // P1 Bug Fix: Normalize manifest structure as per Consilium report
+    function normalizeManifest(raw) {
+      if (!raw) return null;
+      const out = {};
+      // Handle `setup.json` structure (e.g., `projectContext.name`)
+      if (raw.projectContext) {
+        out.context = raw.projectContext.description || JSON.stringify(raw.projectContext, null, 2);
+        out.operations = raw.operations || raw.projectContext.operations || ''; // Assuming .eck/OPERATIONS.md is separate
+        out.journal = raw.journal || raw.projectContext.journal || ''; // Assuming .eck/JOURNAL.md is separate
+        out.environment = raw.environment || raw.projectContext.environment || {}; // Assuming .eck/ENVIRONMENT.md is separate
+      } else {
+        // Handle direct .eck file structure (e.g., raw.context from CONTEXT.md)
+        out.context = raw.context || '';
+        out.operations = raw.operations || '';
+        out.journal = raw.journal || '';
+        out.environment = raw.environment || {};
+      }
+      // Add fallback text if still empty
+      if (!out.context) out.context = 'No project context provided.';
+      if (!out.operations) out.operations = 'No operations guide provided.';
+      if (!out.journal) out.journal = 'No journal entries found.';
+
+      return out;
+    }
 
     // --- Build common context sections --- 
     const projectOverview = `### PROJECT OVERVIEW
 - **Project:** ${context.repoName || 'Unknown'}
 - **Description:** A monorepo POS system with Electron frontend and Node.js backend.
 `;
+    const normalizedEck = normalizeManifest(context.eckManifest);
     let eckManifestSection = '';
-    if (context.eckManifest) {
-      eckManifestSection = buildEckManifestSection(context.eckManifest);
+    if (normalizedEck) {
+      eckManifestSection = buildEckManifestSection(normalizedEck);
+    } else {
+      eckManifestSection = '### PROJECT-SPECIFIC MANIFEST (.eck Directory)\n\nWARNING: .eck manifest was not found or was empty.\n';
     }
     // --- End context building ---
 
