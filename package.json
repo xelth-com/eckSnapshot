@@ -11,7 +11,9 @@
     "index.js",
     ".ecksnapshot.config.js",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "src/",
+    "setup.json"
   ],
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"

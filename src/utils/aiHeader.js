@@ -1,6 +1,10 @@
 import { loadSetupConfig, getAllProfiles } from '../config.js';
 import fs from 'fs/promises';
 import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Simple template renderer for basic variable substitution
 function render(template, data) {
@@ -108,13 +112,28 @@ export async function generateEnhancedAIHeader(context, isGitRepo = false) {
     
     const { architectPersona, executionAgents, promptTemplates } = aiInstructions;
 
+    // Helper function to read a template file or return the string if it's not a path
+    const loadTemplate = async (templatePathOrString) => {
+      if (templatePathOrString && (templatePathOrString.endsWith('.md') || templatePathOrString.endsWith('.txt'))) {
+        try {
+          // Resolve path relative to the project root. __dirname is src/utils.
+          const resolvedPath = path.join(__dirname, '..', '..', templatePathOrString);
+          return await fs.readFile(resolvedPath, 'utf-8');
+        } catch (e) {
+          console.warn(`Warning: Could not read prompt template from ${templatePathOrString}: ${e.message}`);
+          return `ERROR: FAILED TO LOAD TEMPLATE ${templatePathOrString}`;
+        }
+      }
+      return templatePathOrString; // Fallback for old-style inline strings or errors
+    };
+
     // Count active agents to determine template
     const activeAgents = Object.values(executionAgents).filter(agent => agent.active);
     const isMultiAgent = activeAgents.length > 1;
 
     let template;
     if (context.mode === 'vector') {
-      template = promptTemplates.vectorMode;
+      template = await loadTemplate(promptTemplates.vectorMode);
       // For vector mode, build the multi-agent section dynamically
       const multiAgentSection = isMultiAgent ? 
         `### AVAILABLE EXECUTION AGENTS
@@ -169,7 +188,7 @@ To ensure error-free execution, all tasks for the agent must be presented in a s
       template = template.replace('{{multiAgentSection}}', multiAgentSection);
     } else {
       // Always use multiAgent template for file snapshots
-      template = promptTemplates.multiAgent;
+      template = await loadTemplate(promptTemplates.multiAgent);
     }
 
     const agentDefinitions = buildAgentDefinitions(executionAgents);
