@@ -144,6 +144,10 @@ ${eckManifestSection}
 `); 
     } else {
       template = await loadTemplate(promptTemplates.multiAgent);
+      // --- INJECT DYNAMIC CONTEXT --- 
+      template = template.replace('{{projectOverview}}', projectOverview);
+      template = template.replace('{{eckManifestSection}}', eckManifestSection);
+      // --- END INJECT --- 
     }
 
     const agentDefinitions = buildAgentDefinitions(executionAgents);
