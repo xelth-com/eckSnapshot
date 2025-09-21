@@ -467,6 +467,20 @@ export async function createRepoSnapshot(repoPath, options) {
           directoryTree = await generateDirectoryTree(processedRepoPath, '', allFiles, 0, config.maxDepth || 10, config);
         }
 
+        // Calculate included file stats by extension
+        const includedFilesByType = new Map();
+        for (const fileObj of successfulFileObjects) {
+            try {
+                let ext = path.extname(fileObj.path);
+                if (ext === '') ext = '.no-extension';
+                includedFilesByType.set(ext, (includedFilesByType.get(ext) || 0) + 1);
+            } catch (e) { /* Silently ignore */ }
+        }
+        const sortedIncludedStats = [...includedFilesByType.entries()].sort((a, b) => b[1] - a[1]);
+
+        // Calculate Top 10 Largest Files
+        const largestFiles = [...successfulFileObjects].sort((a, b) => b.size - a.size).slice(0, 10);
+
         const fileBody = (directoryTree ? `\n## Directory Structure\n\n\`\`\`\n${directoryTree}\`\`\`\n\n` : '') + contentArray.join('');
 
         // --- File 1: Architect Snapshot --- 
@@ -497,17 +511,80 @@ export async function createRepoSnapshot(repoPath, options) {
         console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
         console.log(`📄 Architect File: ${architectFilePath}`);
         if (jaFilePath) {
-          console.log(`📄 Junior Arch File: ${jaFilePath}`); // This is the new line user requested
+          console.log(`📄 Junior Arch File: ${jaFilePath}`);
         }
         console.log(`📊 Files processed: ${stats.includedFiles}/${stats.totalFiles}`);
+        console.log(`📏 Total size: ${formatSize(stats.totalSize)}`);
         console.log(`📦 Processed size: ${formatSize(stats.processedSize)}`);
+        console.log(`📋 Format: ${fileExtension.toUpperCase()}`);
 
-        // (Full stats reporting removed for brevity, can be re-added from original `runFileSnapshot`)
+        if (sortedIncludedStats.length > 0) {
+          console.log('\n📦 Included File Types:');
+          console.log('---------------------------------');
+          for (const [ext, count] of sortedIncludedStats.slice(0, 10)) {
+              console.log(`   - ${String(ext).padEnd(15)} ${String(count).padStart(5)} files`);
+          }
+          if (sortedIncludedStats.length > 10) {
+              console.log(`   ... and ${sortedIncludedStats.length - 10} other types.`);
+          }
+        }
 
+        if (largestFiles.length > 0) {
+          console.log('\n🐘 Top 10 Largest Files (Included):');
+          console.log('---------------------------------');
+          for (const fileObj of largestFiles) {
+              console.log(`   - ${String(formatSize(fileObj.size)).padEnd(15)} ${fileObj.path}`);
+          }
+        }
+        
+        // Excluded/Skipped Files Section
+        const hasExcludedContent = stats.excludedFiles > 0 || stats.binaryFiles > 0 || stats.oversizedFiles > 0 || stats.ignoredFiles > 0 || stats.errors.length > 0;
+        if (hasExcludedContent) {
+          console.log('\n🚫 Excluded/Skipped Files:');
+          console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        }
+        
+        if (stats.excludedFiles > 0) {
+          console.log(`🚫 Excluded files: ${stats.excludedFiles}`);
+        }
+        if (stats.binaryFiles > 0) {
+          console.log(`📱 Binary files skipped: ${stats.binaryFiles}`);
+        }
+        if (stats.oversizedFiles > 0) {
+          console.log(`📏 Oversized files skipped: ${stats.oversizedFiles}`);
+        }
+        if (stats.ignoredFiles > 0) {
+          console.log(`🙈 Ignored files: ${stats.ignoredFiles}`);
+        }
+        if (stats.errors.length > 0) {
+          console.log(`❌ Errors: ${stats.errors.length}`);
+          if (options.verbose) {
+            stats.errors.forEach(err => console.log(`   ${err}`));
+          }
+        }
+        
+        // Print detailed skip reasons report
+        if (stats.skippedFilesDetails.size > 0) {
+          console.log('\n📋 Skip Reasons:');
+          console.log('---------------------------------');
+          
+          for (const [reason, files] of stats.skippedFilesDetails.entries()) {
+            console.log(`\n🔸 ${reason} (${files.length} files):`);
+            files.forEach(file => {
+              console.log(`   • ${file}`);
+            });
+          }
+          console.log('---------------------------------');
+        } else {
+          console.log('---------------------------------');
+        }
+        
+        // Generate training command string if estimation data is available
         if (estimation && projectDetection.type && !options.profile) {
           const trainingCommand = generateTrainingCommand(projectDetection.type, estimation.estimatedTokens, estimation.totalSize, repoPath);
           console.log('\n🎯 To improve token estimation accuracy, run this command after checking actual tokens:');
           console.log(`${trainingCommand}[ACTUAL_TOKENS_HERE]`);
+          console.log('   Replace [ACTUAL_TOKENS_HERE] with the real token count from your LLM');
         }
 
       } finally {
