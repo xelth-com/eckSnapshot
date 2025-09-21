@@ -1,6 +1,10 @@
-# Junior Architect (`gemini_wsl`) Setup Guide
+# Commands Reference
 
-This document explains how the `gemini_wsl` agent (Junior Architect) is configured to delegate coding tasks to the `claude` agent (Coder).
+This document contains essential commands and setup instructions for the project's multi-agent architecture.
+
+## Junior Architect (`gemini_wsl`) Setup Guide
+
+This section explains how the `gemini_wsl` agent (Junior Architect) is configured to delegate coding tasks to the `claude` agent (Coder).
 
 This architecture relies on `gemini-cli`'s custom tool feature.
 
@@ -35,3 +39,23 @@ This prompt *mandates* that the `{{args}}` it passes to the `/claude` command mu
 4.  **`claude.toml`** executes the `eck-snapshot ask-claude "{...}"` shell command.
 5.  **`eck-snapshot`** (specifically `claudeCliService.js`) receives the JSON string as a 'prompt'.
 6.  It forwards this prompt to the `claude-cli` binary (`local_dev`), which is smart enough to parse the JSON and execute the `apply_code_changes` task.
+
+## Claude Code Commands
+
+### Commit Command (`.claude/commands/eck/commit.md`)
+
+A custom command for structured commits with automatic journaling. Place this file in `.claude/commands/eck/commit.md` to enable it in Claude Code.
+
+**Usage:** `/commit <type> <scope> <summary> <details>`
+
+**Function:**
+- Stages all current changes
+- Creates YAML frontmatter for journal entry with task_id, date, type, scope
+- Creates markdown body with summary and details
+- Prepends complete journal entry to `.eck/JOURNAL.md`
+- Creates conventional commit message: `{type}({scope}): {summary}`
+- Executes the commit
+
+**Example:** `/commit feat api "Add user authentication" "Implemented JWT-based auth with login/logout endpoints"`
+
+**Important:** This command should be preserved in git (via `.gitignore` rules) so it can be recreated if lost. The command integrates with the project's `.eck` manifest system for structured development journaling.

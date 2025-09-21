@@ -51,3 +51,9 @@ Thumbs.db
 
 # Test snapshot directory
 create-snapshot/
+
+# Claude Code settings (exclude all except commands/eck)
+.claude/
+!.claude/commands/
+!.claude/commands/eck/
+!.claude/commands/eck/**
