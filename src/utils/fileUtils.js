@@ -648,15 +648,30 @@ export async function initializeEckManifest(projectPath) {
   const eckDir = path.join(projectPath, '.eck');
   
   try {
-    // Check if .eck directory already exists
+    // Check if .eck directory already exists and has all required files
+    let needsInitialization = false;
     try {
       const eckStats = await fs.stat(eckDir);
       if (eckStats.isDirectory()) {
-        // Directory already exists, no need to initialize
-        return;
+        // Directory exists, check if all required files are present
+        const requiredFiles = ['ENVIRONMENT.md', 'CONTEXT.md', 'OPERATIONS.md', 'JOURNAL.md'];
+        for (const fileName of requiredFiles) {
+          try {
+            await fs.stat(path.join(eckDir, fileName));
+          } catch (error) {
+            console.log(`   ℹ️ Missing ${fileName}, initialization needed`);
+            needsInitialization = true;
+            break;
+          }
+        }
+        if (!needsInitialization) {
+          // All files exist, no need to initialize
+          return;
+        }
       }
     } catch (error) {
       // Directory doesn't exist, we'll create it
+      needsInitialization = true;
     }
     
     // Create .eck directory
@@ -817,9 +832,19 @@ Track technical debt, refactoring needs, and code quality issues.
       }
     ];
     
-    // Create each template file
+    // Create each template file (only if it doesn't exist)
     for (const file of templateFiles) {
       const filePath = path.join(eckDir, file.name);
+      
+      // Skip if file already exists
+      try {
+        await fs.stat(filePath);
+        console.log(`   ✅ ${file.name} already exists, skipping`);
+        continue;
+      } catch (error) {
+        // File doesn't exist, create it
+      }
+      
       let fileContent = file.content; // Start with fallback
       let generatedByAI = false;
 
