@@ -78,38 +78,9 @@ function buildEckManifestSection(eckManifest) {
 }
 
 export async function generateEnhancedAIHeader(context, isGitRepo = false) {
-  // Check if agent mode is enabled
-  if (context.options && context.options.agent) {
-    try {
-      const agentPromptPath = path.join(process.cwd(), 'src', 'templates', 'agent-prompt.template.md');
-      const agentPromptContent = await fs.readFile(agentPromptPath, 'utf-8');
-      
-      // Construct simple header with basic snapshot stats
-      const agentHeader = `${agentPromptContent}
-
----
-
-## Project Snapshot Information
-
-- **Project**: ${context.repoName || 'Unknown'}
-- **Timestamp**: ${new Date().toISOString()}
-- **Files Included**: ${context.fileCount || 'Unknown'}
-- **Total Files in Repo**: ${context.totalFiles || 'Unknown'}
-
----
-
-`;
-      return agentHeader;
-    } catch (error) {
-      console.warn('Warning: Could not load agent prompt template, using minimal header');
-      return `# Agent Mode Snapshot for ${context.repoName || 'Project'}\n\nGenerated: ${new Date().toISOString()}\n\n---\n\n`;
-    }
-  }
-
   try {
     const setupConfig = await loadSetupConfig();
     const { aiInstructions } = setupConfig;
-    
     const { architectPersona, executionAgents, promptTemplates } = aiInstructions;
 
     // Helper function to read a template file or return the string if it's not a path
@@ -127,67 +98,51 @@ export async function generateEnhancedAIHeader(context, isGitRepo = false) {
       return templatePathOrString; // Fallback for old-style inline strings or errors
     };
 
-    // Count active agents to determine template
-    const activeAgents = Object.values(executionAgents).filter(agent => agent.active);
-    const isMultiAgent = activeAgents.length > 1;
+    // --- Build common context sections --- 
+    const projectOverview = `### PROJECT OVERVIEW
+- **Project:** ${context.repoName || 'Unknown'}
+- **Description:** A monorepo POS system with Electron frontend and Node.js backend.
+`;
+    let eckManifestSection = '';
+    if (context.eckManifest) {
+      eckManifestSection = buildEckManifestSection(context.eckManifest);
+    }
+    // --- End context building ---
 
+
+    // Check if agent mode is enabled
+    if (context.options && context.options.agent) {
+      const agentPromptTemplate = await loadTemplate(promptTemplates.agent);
+
+      const agentHeader = `${agentPromptTemplate}
+
+${projectOverview}
+${eckManifestSection}
+---
+
+## Project Snapshot Information
+
+- **Project**: ${context.repoName || 'Unknown'}
+- **Timestamp**: ${new Date().toISOString()}
+- **Files Included**: ${context.stats ? context.stats.includedFiles : 'Unknown'}
+- **Total Files in Repo**: ${context.stats ? context.stats.totalFiles : 'Unknown'}
+
+---
+
+`;
+      return agentHeader;
+    }
+
+    // --- This is the main/Senior Architect prompt logic --- 
     let template;
     if (context.mode === 'vector') {
       template = await loadTemplate(promptTemplates.vectorMode);
-      // For vector mode, build the multi-agent section dynamically
-      const multiAgentSection = isMultiAgent ? 
-        `### AVAILABLE EXECUTION AGENTS
-You can command multiple specialized agents. **YOU must choose the most appropriate agent** based on the task requirements and target environment:
-
-${buildAgentDefinitions(executionAgents)}
-
-### COMMAND BLOCK FORMAT
-To ensure error-free execution, all tasks for agents must be presented in a special block with a "Copy" button. **IMPORTANT:** You MUST analyze the task and choose the appropriate agent by its ID, then fill in the agent information:
-
-\`\`\`json
-{
-  "target_agent": "local_dev",
-  "agent_environment": "Development environment with full GUI support and development tools",
-  "command_for_agent": "apply_code_changes",
-  "task_id": "unique-task-id",
-  "payload": {
-    "objective": "Brief, clear task description",
-    "context": "Why this change is needed",
-    "files_to_modify": [...],
-    "new_files": [...],
-    "dependencies": {...},
-    "validation_steps": [...],
-    "expected_outcome": "what should work after changes"
-  }
-}
-\`\`\`
-
-**Agent Selection Guidelines:**
-- Choose the agent ID based on task requirements and environment constraints
-- Copy the agent's description to "agent_environment" field
-- Ensure the task matches the agent's capabilities and restrictions` :
-        `### COMMAND BLOCK FORMAT
-To ensure error-free execution, all tasks for the agent must be presented in a special block with a "Copy" button:
-
-\`\`\`json
-{
-  "command_for_agent": "apply_code_changes",
-  "task_id": "unique-task-id",
-  "payload": {
-    "objective": "Brief, clear task description",
-    "context": "Why this change is needed",
-    "files_to_modify": [...],
-    "new_files": [...],
-    "dependencies": {...},
-    "validation_steps": [...],
-    "expected_outcome": "what should work after changes"
-  }
-}
-\`\`\``;
-      
-      template = template.replace('{{multiAgentSection}}', multiAgentSection);
+      // Inject context for vector mode
+      template = template.replace('{{multiAgentSection}}', `
+${projectOverview}
+${eckManifestSection}
+`); 
     } else {
-      // Always use multiAgent template for file snapshots
       template = await loadTemplate(promptTemplates.multiAgent);
     }
 
@@ -201,7 +156,7 @@ To ensure error-free execution, all tasks for the agent must be presented in a s
     };
 
     let renderedTemplate = render(template, data);
-
+    
     // Inject dynamic profile context if a profile is active
     if (context.options && context.options.profile && context.repoPath) {
       let metadataHeader = '\n\n## Partial Snapshot Context\n';
@@ -215,17 +170,20 @@ To ensure error-free execution, all tasks for the agent must be presented in a s
           }
       } catch (e) { /* fail silently on metadata generation */ }
       
-      // Inject this metadata block right before the CRITICAL WORKFLOW section
-      const insertMarker = "### CRITICAL WORKFLOW: Structured Commits via `journal_entry`";
+      const insertMarker = "### HIERARCHICAL AGENT WORKFLOW"; // Use our new marker
       renderedTemplate = renderedTemplate.replace(insertMarker, metadataHeader + '\n' + insertMarker);
     }
-    
-    // DELETED: The `multiAgent` template in setup.json now controls the entire manifest and git workflow section.
-    // These programmatic insertions are removed to prevent duplicate and conflicting instructions.
 
     return renderedTemplate;
+
   } catch (error) {
-    console.warn('Warning: Could not load setup.json, using minimal header');
-    return `# Snapshot for ${context.repoName || 'Project'}\n\nGenerated: ${new Date().toISOString()}\n\n---\n\n`;
+    console.warn('Warning: Could not load setup.json, using minimal header', error.message);
+    return `# Snapshot for ${context.repoName || 'Project'}
+
+Generated: ${new Date().toISOString()}
+
+---
+
+`;
   }
 }

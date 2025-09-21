@@ -693,7 +693,8 @@
       "envScanRequest": "src/templates/envScanRequest.md",
       "gitWorkflow": "src/templates/gitWorkflow.md",
       "multiAgent": "src/templates/multiAgent.md",
-      "vectorMode": "src/templates/vectorMode.md"
+      "vectorMode": "src/templates/vectorMode.md",
+      "agent": "src/templates/agent-prompt.template.md"
     }
   },
   "consilium": {
