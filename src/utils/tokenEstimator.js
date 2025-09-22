@@ -29,9 +29,14 @@ const DEFAULT_COEFFICIENTS = {
 async function loadTrainingData() {
   try {
     const data = await fs.readFile(ESTIMATION_DATA_FILE, 'utf-8');
-    return JSON.parse(data);
+    const parsedData = JSON.parse(data);
+    // Ensure the structure is complete by merging with defaults
+    return {
+        coefficients: { ...DEFAULT_COEFFICIENTS, ...parsedData.coefficients },
+        trainingPoints: parsedData.trainingPoints || {}
+    };
   } catch (error) {
-    // If file doesn't exist, return default structure
+    // If file doesn't exist or is malformed, return default structure
     return {
       coefficients: { ...DEFAULT_COEFFICIENTS },
       trainingPoints: {}
@@ -116,28 +121,47 @@ export async function addTrainingPoint(projectType, fileSizeInBytes, estimatedTo
  */
 function updateCoefficients(data, projectType) {
   const points = data.trainingPoints[projectType];
-  if (points.length < 2) return;
-  
-  // Simple linear regression for now (bytes -> tokens)
-  // We can make this more sophisticated later with higher order polynomials
-  
+
+  if (!points || points.length === 0) {
+    // No points, nothing to do.
+    return;
+  }
+
+  if (points.length === 1) {
+    // With one point, use a direct ratio for the linear coefficient.
+    const point = points[0];
+    if (point.fileSizeInBytes > 0) { // Avoid division by zero
+        const ratio = point.actualTokens / point.fileSizeInBytes;
+        data.coefficients[projectType] = [
+            0, // intercept
+            Math.max(0, ratio), // linear term (slope)
+            0, 0 // quadratic, cubic
+        ];
+    }
+    return;
+  }
+
+  // Use linear regression for 2 or more points.
   let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
   const n = points.length;
-  
+
   for (const point of points) {
     const x = point.fileSizeInBytes;
     const y = point.actualTokens;
-    
+
     sumX += x;
     sumY += y;
     sumXY += x * y;
     sumX2 += x * x;
   }
-  
+
+  const denominator = (n * sumX2 - sumX * sumX);
+  if (denominator === 0) return; // Avoid division by zero, can't calculate slope
+
   // Calculate linear coefficients: y = a + bx
-  const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+  const slope = (n * sumXY - sumX * sumY) / denominator;
   const intercept = (sumY - slope * sumX) / n;
-  
+
   // Update coefficients [constant, linear, quadratic, cubic]
   data.coefficients[projectType] = [
     Math.max(0, intercept), // constant term (ensure non-negative)

@@ -49,7 +49,10 @@
       "Read(/home/xelth/.cache/**)",
       "Read(/home/xelth/**)",
       "Read(/home/xelth/gemini-cli/.eck/snapshots/**)",
-      "Bash(! grep -q \"async function runFileSnapshot\" src/cli/commands/createSnapshot.js)"
+      "Bash(! grep -q \"async function runFileSnapshot\" src/cli/commands/createSnapshot.js)",
+      "Bash(npm test)",
+      "Bash(pkill:*)",
+      "Bash(npx vitest run:*)"
     ],
     "deny": [],
     "defaultMode": "acceptEdits"

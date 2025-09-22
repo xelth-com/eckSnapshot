@@ -16,7 +16,10 @@
     "setup.json"
   ],
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "test:run": "vitest run",
+    "docs:auto": "node index.js docs-auto"
   },
   "author": "xelth-com",
   "license": "MIT",
@@ -42,12 +45,18 @@
     "node-pty": "^1.0.0",
     "ora": "^8.1.0",
     "p-limit": "^5.0.0",
-    "strip-ansi": "^7.1.0",
+    "p-retry": "^6.2.1",
     "pg": "^8.16.3",
+    "strip-ansi": "^7.1.0",
     "tree-sitter": "^0.21.1",
     "tree-sitter-java": "^0.21.0",
     "tree-sitter-kotlin": "^0.3.6",
     "tree-sitter-python": "^0.21.0",
-    "vectra": "^0.9.0"
+    "vectra": "^0.9.0",
+    "which": "^4.0.0"
+  },
+  "devDependencies": {
+    "vitest": "^2.0.0",
+    "jsdom": "^24.0.0"
   }
 }

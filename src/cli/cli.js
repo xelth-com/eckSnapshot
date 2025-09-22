@@ -16,6 +16,8 @@ import { trainTokens, showTokenStats } from './commands/trainTokens.js';
 import { executePrompt, executePromptWithSession } from '../services/claudeCliService.js';
 import { executePrompt as executeGeminiPrompt, executePromptWithPTY } from '../services/geminiWebService.js';
 import { detectProfiles } from './commands/detectProfiles.js';
+import { setupGemini } from './commands/setupGemini.js';
+import { generateAutoDocs } from './commands/autoDocs.js';
 import inquirer from 'inquirer';
 import ora from 'ora';
 import { execa } from 'execa';
@@ -265,6 +267,19 @@ export function run() {
         process.exit(1);
       }
     });
+
+  // Setup Gemini command
+  program
+    .command('setup-gemini')
+    .description('Generate claude.toml configuration for gemini-cli integration with dynamic paths')
+    .option('-v, --verbose', 'Show detailed output and error information')
+    .action(setupGemini);
+
+  // Auto-docs command
+  program
+    .command('docs-auto')
+    .description('Auto-generate documentation from gemini-extension.json files')
+    .action(generateAutoDocs);
 
   program.parse(process.argv);
 }

@@ -1,5 +1,6 @@
 import { execa } from 'execa';
 import { spawn } from 'child_process';
+import pRetry from 'p-retry';
 
 /**
  * Executes a prompt using the claude-code CLI in non-interactive print mode.
@@ -501,4 +502,105 @@ async function executeClaudeWithDynamicTimeout(prompt, sessionId = null) {
       }
     }, INITIAL_TIMEOUT);
   });
+}
+
+/**
+ * Executes a prompt using gemini-cli delegation with retry logic for transient errors.
+ * @param {string} prompt The prompt to send to Claude via gemini-cli.
+ * @returns {Promise<object>} A promise that resolves with the response from Claude.
+ */
+export async function askClaude(prompt) {
+  return pRetry(async () => {
+    try {
+      const result = await execa('gemini-cli', ['claude', prompt], {
+        timeout: 120000 // 2 minute timeout
+      });
+
+      // Parse mcp_feedback if present in prompt
+      let mcpFeedback = null;
+      try {
+        const promptObj = JSON.parse(prompt);
+        if (promptObj.payload && promptObj.payload.post_execution_steps && promptObj.payload.post_execution_steps.mcp_feedback) {
+          mcpFeedback = promptObj.payload.post_execution_steps.mcp_feedback;
+
+          // Log if errors array is non-empty
+          if (mcpFeedback.errors && Array.isArray(mcpFeedback.errors) && mcpFeedback.errors.length > 0) {
+            console.warn('MCP feedback contains errors:', mcpFeedback.errors);
+          }
+        }
+      } catch (parseError) {
+        // If prompt is not valid JSON or doesn't contain mcp_feedback, continue normally
+      }
+
+      return {
+        stdout: result.stdout,
+        stderr: result.stderr,
+        success: true,
+        mcp_feedback: mcpFeedback
+      };
+    } catch (error) {
+      // Check if this is a transient error that should be retried
+      if (isTransientError(error)) {
+        console.log(`Transient error detected, retrying: ${error.message}`);
+        throw error; // This will trigger a retry
+      }
+
+      // Non-transient errors should not be retried
+      console.error(`Non-transient error in askClaude: ${error.message}`);
+      return {
+        stdout: error.stdout || '',
+        stderr: error.stderr || error.message,
+        success: false,
+        error: error.message
+      };
+    }
+  }, {
+    retries: 3,
+    minTimeout: 1000,
+    maxTimeout: 5000,
+    onFailedAttempt: (error) => {
+      console.log(`Attempt ${error.attemptNumber} failed. ${error.retriesLeft} retries left.`);
+    }
+  });
+}
+
+/**
+ * Checks if an error is transient and should be retried.
+ * @param {Error} error The error to check.
+ * @returns {boolean} True if the error is transient.
+ */
+export function isTransientError(error) {
+  const errorMessage = (error.message || '').toLowerCase();
+  const stderr = (error.stderr || '').toLowerCase();
+  const stdout = (error.stdout || '').toLowerCase();
+  const allOutput = `${errorMessage} ${stderr} ${stdout}`;
+
+  // Network-related errors
+  const networkErrors = [
+    'network',
+    'timeout',
+    'connection',
+    'econnreset',
+    'enotfound',
+    'econnrefused',
+    'socket hang up'
+  ];
+
+  // Quota/rate limit errors
+  const quotaErrors = [
+    'quota exceeded',
+    'rate limit',
+    'too many requests',
+    'service unavailable',
+    'temporarily unavailable',
+    '429',
+    '500',
+    '502',
+    '503',
+    '504'
+  ];
+
+  const transientPatterns = [...networkErrors, ...quotaErrors];
+
+  return transientPatterns.some(pattern => allOutput.includes(pattern));
 }

@@ -8,7 +8,7 @@
     ],
     "nodejs": [
       0,
-      0.2,
+      0.3091314011805184,
       0,
       0
     ],
@@ -35,6 +35,16 @@
       0.25,
       0,
       0
+    ]
+  },
+  "trainingPoints": {
+    "nodejs": [
+      {
+        "fileSizeInBytes": 229899,
+        "estimatedTokens": 45980,
+        "actualTokens": 71069,
+        "timestamp": "2025-09-21T23:52:36.862Z"
+      }
     ]
   }
 }

@@ -117,6 +117,11 @@ Use `apply_code_changes` for simple, direct tasks where you provide all details.
         "scope": "authentication",
         "summary": "Brief description of what was accomplished",
         "details": "Detailed explanation of changes, impacts, and technical notes"
+      },
+      "mcp_feedback": {
+        "success": true,
+        "errors": [],
+        "mcp_version": "1.0"
       }
     }
   }
