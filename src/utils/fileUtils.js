@@ -585,20 +585,47 @@ export async function ensureSnapshotsInGitignore(repoPath) {
   }
 }
 
+// Helper function to determine if a string is a glob pattern
+function isGlob(str) {
+  return str.includes('*') || str.includes('?') || str.includes('{');
+}
+
 /**
- * Applies advanced profile filtering (multi-profile and exclusion) to a file list.
+ * Applies advanced profile filtering (multi-profile, exclusion, and ad-hoc globs) to a file list.
  */
 export async function applyProfileFilter(allFiles, profileString, repoPath) {
-  const profileNames = profileString.split(',').map(p => p.trim()).filter(Boolean);
+  const profileParts = profileString.split(',').map(p => p.trim()).filter(Boolean);
   
-  const includeNames = profileNames.filter(p => !p.startsWith('-'));
-  const excludeNames = profileNames.filter(p => p.startsWith('-')).map(p => p.substring(1));
+  const includeGlobs = [];
+  const excludeGlobs = [];
+  const includeNames = [];
+  const excludeNames = [];
+
+  // Step 1: Differentiate between profile names and ad-hoc glob patterns
+  for (const part of profileParts) {
+    const isNegative = part.startsWith('-');
+    const pattern = isNegative ? part.substring(1) : part;
+
+    if (isGlob(pattern)) {
+      if (isNegative) {
+        excludeGlobs.push(pattern);
+      } else {
+        includeGlobs.push(pattern);
+      }
+    } else {
+      if (isNegative) {
+        excludeNames.push(pattern);
+      } else {
+        includeNames.push(pattern);
+      }
+    }
+  }
 
   let workingFiles = [];
-  let finalIncludes = [];
-  let finalExcludes = [];
+  let finalIncludes = [...includeGlobs];
+  let finalExcludes = [...excludeGlobs];
 
-  // 1. Get all profile objects
+  // Step 2: Load patterns from specified profile names
   const allProfileNames = [...new Set([...includeNames, ...excludeNames])];
   const profiles = new Map();
   for (const name of allProfileNames) {
@@ -606,33 +633,34 @@ export async function applyProfileFilter(allFiles, profileString, repoPath) {
     if (profile) {
       profiles.set(name, profile);
     } else {
-      console.warn(`⚠️ Warning: Profile '${name}' not found and will be skipped.`);
+      // This is an ad-hoc glob, not a profile, so no warning is needed.
+      if (!isGlob(name)) {
+        console.warn(`⚠️ Warning: Profile '${name}' not found and will be skipped.`);
+      }
     }
   }
 
-  // 2. Populate include/exclude pattern lists
   for (const name of includeNames) {
     if (profiles.has(name)) {
       finalIncludes.push(...(profiles.get(name).include || []));
-      finalExcludes.push(...(profiles.get(name).exclude || [])); // Profiles can also have their own excludes
+      finalExcludes.push(...(profiles.get(name).exclude || []));
     }
   }
   for (const name of excludeNames) {
     if (profiles.has(name)) {
-      finalExcludes.push(...(profiles.get(name).include || [])); // We *exclude* what the negative profile *includes*
+      finalExcludes.push(...(profiles.get(name).include || []));
     }
   }
-
-  // 3. Apply the 3-rule logic
-  if (includeNames.length > 0) {
-    // Rule 1 & 3: Start with an EMPTY set and add includes
+  
+  // Step 3: Apply the filtering logic
+  if (finalIncludes.length > 0) {
     workingFiles = micromatch(allFiles, finalIncludes);
+  } else if (includeNames.length > 0 && includeGlobs.length === 0) {
+    workingFiles = [];
   } else {
-    // Rule 2: Start with ALL files (since no includes were specified)
     workingFiles = allFiles;
   }
 
-  // 4. Apply all exclusions
   if (finalExcludes.length > 0) {
     workingFiles = micromatch.not(workingFiles, finalExcludes);
   }

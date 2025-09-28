@@ -71,6 +71,39 @@ Run `docker-compose up -d`.
 
 `eck-snapshot` needs to connect to this database. Copy the `.env.example` file in the package directory to `.env` and fill in the credentials from your `docker-compose.yml`.
 
+## Advanced Usage: Filtering with Profiles
+
+The `--profile` flag is a powerful way to control which files are included in a snapshot. It accepts a comma-separated list of profile names and ad-hoc glob patterns.
+
+### Recommended Workflow
+
+1.  **Detect Available Profiles**: Run `eck-snapshot detect` to see a list of pre-configured profiles (e.g., `backend`, `frontend`, `database`). These are defined in `.eck/profiles.json` or `setup.json`.
+
+2.  **Create a Snapshot**: Use the profile names and combine them with ad-hoc glob patterns for fine-tuned filtering.
+
+### Combining Profiles and Patterns
+
+You can mix and match profile names and glob patterns. Use a `-` prefix to exclude a profile or a pattern.
+
+**Examples:**
+
+* **Use the `backend` profile but exclude all test files:**
+    ```bash
+    eck-snapshot --profile "backend,-**/tests/**,-**/*.test.js"
+    ```
+
+* **Include the `frontend` profile and also all `.md` files from the `docs` directory:**
+    ```bash
+    eck-snapshot --profile "frontend,docs/**/*.md"
+    ```
+
+* **Start with all files, but exclude the `node_modules` directory and all `.log` files (note: `node_modules` is usually ignored by default, this is just an example):**
+    ```bash
+    eck-snapshot --profile "-node_modules/**,-**/*.log"
+    ```
+
+This system provides maximum flexibility, allowing you to use well-defined profiles for common tasks and ad-hoc patterns for specific, one-off snapshots.
+
 ## License
 
 This project is licensed under the MIT License.

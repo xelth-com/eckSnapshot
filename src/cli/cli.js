@@ -85,9 +85,18 @@ export function run() {
     .option('--no-ai-header', 'Skip AI instructions')
     .option('-d, --dir', 'Directory mode')
     .option('--enhanced', 'Use enhanced multi-agent headers (default: true)', true)
-    .option('--profile <name>', 'Use a specific context profile (local .eck/profiles.json or global setup.json)')
+    .option('--profile <name>', 'Filter files using profiles and/or ad-hoc glob patterns.')
     .option('--agent', 'Generate a snapshot optimized for a command-line agent')
-    .action(createRepoSnapshot);
+    .action(createRepoSnapshot)
+    .addHelpText('after', `
+Examples for --profile:
+  --profile backend                      (Uses the 'backend' profile)
+  --profile "backend,-**/tests/**"         (Uses 'backend' profile, excludes all test files)
+  --profile "src/**/*.js,-**/*.test.js"  (Includes all JS files in src, excludes tests)
+
+  Combine predefined profiles (from .eck/profiles.json) with ad-hoc glob patterns.
+  Prefix a profile name or glob pattern with '-' to exclude it.
+`);
 
   // Restore command
   program
