@@ -1,7 +1,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import ora from 'ora';
-import { executePrompt } from '../../services/claudeCliService.js';
+import { dispatchAnalysisTask } from '../../services/dispatcherService.js';
 import { scanDirectoryRecursively, generateDirectoryTree, initializeEckManifest, loadConfig } from '../../utils/fileUtils.js';
 import { loadSetupConfig } from '../../config.js';
 
@@ -55,10 +55,10 @@ DO NOT add any conversational text, introductory sentences, or explanations. You
 DIRECTORY TREE:
 ${dirTree}`;
 
-    // 4. Call Claude
+    // 4. Call AI via dispatcher
     spinner.text = 'Asking AI to analyze directory tree and detect profiles...';
-    const aiResponseObject = await executePrompt(prompt);
-    const rawText = aiResponseObject.result;
+    const aiResponseObject = await dispatchAnalysisTask(prompt);
+    const rawText = aiResponseObject.result || aiResponseObject.response_text;
 
     if (!rawText || typeof rawText.replace !== 'function') {
       throw new Error(`AI returned invalid content type: ${typeof rawText}`);

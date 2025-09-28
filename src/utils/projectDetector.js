@@ -27,7 +27,7 @@ export async function detectProjectType(projectPath = '.') {
   
   // Sort by priority and score
   detections.sort((a, b) => (b.priority * 10 + b.score) - (a.priority * 10 + a.score));
-  
+
   if (detections.length === 0) {
     return {
       type: 'unknown',
@@ -35,8 +35,41 @@ export async function detectProjectType(projectPath = '.') {
       details: {}
     };
   }
-  
+
   const best = detections[0];
+
+  // Special handling for mixed monorepos
+  const isLikelyMonorepo = detections.length > 1 && detections.some(d => d.score >= 40);
+
+  if (isLikelyMonorepo) {
+    // If we have multiple strong detections, prefer the highest priority with substantial evidence
+    const strongDetections = detections.filter(d => d.score >= 40);
+    if (strongDetections.length > 1) {
+      const primaryType = strongDetections[0].type;
+      return {
+        type: primaryType,
+        confidence: Math.min(strongDetections[0].score / 100, 1.0),
+        details: {
+          ...strongDetections[0].details,
+          isMonorepo: true,
+          additionalTypes: strongDetections.slice(1).map(d => d.type)
+        },
+        allDetections: detections
+      };
+    }
+  }
+
+  // Boost confidence for strong workspace indicators
+  if (best.details && (best.details.isWorkspace || best.details.workspaceSize)) {
+    const boostedScore = best.score + 20; // Bonus for workspace structure
+    return {
+      type: best.type,
+      confidence: Math.min(boostedScore / 100, 1.0),
+      details: best.details,
+      allDetections: detections
+    };
+  }
+
   return {
     type: best.type,
     confidence: Math.min(best.score / 100, 1.0),
@@ -50,23 +83,52 @@ export async function detectProjectType(projectPath = '.') {
  */
 async function calculateTypeScore(projectPath, pattern) {
   let score = 0;
-  
-  // Check for required files (faster, check only direct files)
+
+  // Check for required files (check both root and common subdirectories)
   if (pattern.files) {
     for (const file of pattern.files) {
-      const exists = await fileExists(path.join(projectPath, file));
-      if (exists) {
+      // Check in root directory first
+      const rootExists = await fileExists(path.join(projectPath, file));
+      if (rootExists) {
         score += 25; // Each required file adds points
+      } else {
+        // For Cargo.toml and other project files, also check common subdirectory patterns
+        const commonSubdirs = ['src', 'lib', 'app', 'core', 'backend', 'frontend'];
+        // Add project-type specific subdirectories
+        if (file === 'Cargo.toml') {
+          commonSubdirs.push('codex-rs', 'rust', 'server', 'api');
+        }
+        if (file === 'package.json') {
+          commonSubdirs.push('codex-cli', 'cli', 'client', 'web', 'ui');
+        }
+
+        for (const subdir of commonSubdirs) {
+          const subdirExists = await fileExists(path.join(projectPath, subdir, file));
+          if (subdirExists) {
+            score += 20; // Slightly lower score for subdirectory finds
+            break; // Only count once per file type
+          }
+        }
       }
     }
   }
-  
-  // Check for required directories
+
+  // Check for required directories (check both root and one level deep)
   if (pattern.directories) {
     for (const dir of pattern.directories) {
-      const exists = await directoryExists(path.join(projectPath, dir));
-      if (exists) {
+      const rootExists = await directoryExists(path.join(projectPath, dir));
+      if (rootExists) {
         score += 20; // Each required directory adds points
+      } else {
+        // Check in common project subdirectories
+        const projectSubdirs = ['codex-rs', 'codex-cli', 'src', 'lib', 'app'];
+        for (const projDir of projectSubdirs) {
+          const subdirExists = await directoryExists(path.join(projectPath, projDir, dir));
+          if (subdirExists) {
+            score += 15; // Lower score for nested directory finds
+            break;
+          }
+        }
       }
     }
   }
@@ -95,14 +157,14 @@ async function calculateTypeScore(projectPath, pattern) {
           ...packageJson.peerDependencies
         };
         
-        // Check for exact dependency names or in description/keywords
-        const foundInDeps = Object.keys(allDeps).some(dep => dep.includes(patternText));
-        const foundInMeta = JSON.stringify({
-          description: packageJson.description,
-          keywords: packageJson.keywords
-        }).toLowerCase().includes(patternText.toLowerCase());
+        // Check for exact dependency names (more precise matching)
+        const foundInDeps = Object.keys(allDeps).some(dep => dep === patternText || dep.startsWith(patternText + '/'));
+        // Only check for exact matches in keywords array, not description (too broad)
+        const foundInKeywords = packageJson.keywords && Array.isArray(packageJson.keywords)
+          ? packageJson.keywords.some(keyword => keyword.toLowerCase() === patternText.toLowerCase())
+          : false;
         
-        if (foundInDeps || foundInMeta) {
+        if (foundInDeps || foundInKeywords) {
           score += 25; // Higher score for actual dependencies
         }
       }
@@ -435,32 +497,78 @@ async function getPythonDetails(projectPath, type) {
 
 async function getRustDetails(projectPath) {
   const details = { type: 'rust' };
-  
+
   try {
-    const cargoPath = path.join(projectPath, 'Cargo.toml');
-    if (!await fileExists(cargoPath)) {
+    // Check both root and common subdirectories for Cargo.toml
+    let cargoPath = path.join(projectPath, 'Cargo.toml');
+    let cargoContent = null;
+
+    if (await fileExists(cargoPath)) {
+      cargoContent = await fs.readFile(cargoPath, 'utf-8');
+    } else {
+      // Check common Rust project subdirectories
+      const rustSubdirs = ['codex-rs', 'rust', 'src', 'core', 'server'];
+      for (const subdir of rustSubdirs) {
+        const subdirCargoPath = path.join(projectPath, subdir, 'Cargo.toml');
+        if (await fileExists(subdirCargoPath)) {
+          cargoPath = subdirCargoPath;
+          cargoContent = await fs.readFile(subdirCargoPath, 'utf-8');
+          details.primaryLocation = subdir;
+          break;
+        }
+      }
+    }
+
+    if (!cargoContent) {
       return details;
     }
-    
-    const content = await fs.readFile(cargoPath, 'utf-8');
-    
-    const nameMatch = content.match(/name\s*=\s*"([^"]+)"/);
-    const versionMatch = content.match(/version\s*=\s*"([^"]+)"/);
-    const editionMatch = content.match(/edition\s*=\s*"([^"]+)"/);
-    
+
+    const nameMatch = cargoContent.match(/name\s*=\s*"([^"]+)"/);
+    const versionMatch = cargoContent.match(/version\s*=\s*"([^"]+)"/);
+    const editionMatch = cargoContent.match(/edition\s*=\s*"([^"]+)"/);
+
     if (nameMatch) details.name = nameMatch[1];
     if (versionMatch) details.version = versionMatch[1];
     if (editionMatch) details.edition = editionMatch[1];
-    
+
     // Check if it's a workspace
-    if (content.includes('[workspace]')) {
+    if (cargoContent.includes('[workspace]')) {
       details.isWorkspace = true;
+
+      // Count workspace members
+      const workspaceMatch = cargoContent.match(/members\s*=\s*\[([\s\S]*?)\]/);
+      if (workspaceMatch) {
+        const members = workspaceMatch[1].split(',').map(m => m.trim().replace(/"/g, '')).filter(m => m);
+        details.workspaceMembers = members.length;
+      }
     }
-    
+
+    // Check for multiple Cargo.toml files (indicates workspace structure)
+    if (details.primaryLocation) {
+      const subdirPath = path.join(projectPath, details.primaryLocation);
+      try {
+        const subdirs = await fs.readdir(subdirPath, { withFileTypes: true });
+        let cargoCount = 0;
+        for (const entry of subdirs) {
+          if (entry.isDirectory()) {
+            const memberCargoPath = path.join(subdirPath, entry.name, 'Cargo.toml');
+            if (await fileExists(memberCargoPath)) {
+              cargoCount++;
+            }
+          }
+        }
+        if (cargoCount > 3) { // If many workspace members, this is definitely a Rust project
+          details.workspaceSize = 'large';
+        }
+      } catch (error) {
+        // Ignore
+      }
+    }
+
   } catch (error) {
     console.warn('Error getting Rust project details:', error.message);
   }
-  
+
   return details;
 }
 

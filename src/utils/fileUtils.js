@@ -3,7 +3,7 @@ import path from 'path';
 import { execa } from 'execa';
 import ignore from 'ignore';
 import { detectProjectType, getProjectSpecificFiltering } from './projectDetector.js';
-import { executePrompt } from '../services/claudeCliService.js';
+import { dispatchAnalysisTask } from '../services/dispatcherService.js';
 import { getProfile } from '../config.js';
 import micromatch from 'micromatch';
 
@@ -880,8 +880,8 @@ Track technical debt, refactoring needs, and code quality issues.
       if (file.prompt) {
         try {
           console.log(`   🧠 Attempting to auto-generate ${file.name} via Claude...`);
-          const aiResponseObject = await executePrompt(file.prompt); // Use the prompt
-          const rawText = aiResponseObject.result; // <-- This is the fix for the TypeError
+          const aiResponseObject = await dispatchAnalysisTask(file.prompt); // Use the prompt
+          const rawText = aiResponseObject.result || aiResponseObject.response_text; // Handle both Claude and GPT responses
           
           if (!rawText || typeof rawText.replace !== 'function') {
              throw new Error(`AI returned invalid content type: ${typeof rawText}`);

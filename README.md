@@ -5,20 +5,35 @@
 
 This tool is built for a workflow where the user acts as a product owner or high-level architect, providing goals and guidance, while AI agents handle the detailed implementation.
 
-## Core Concepts & Key Features
+## Core Architecture & Key Features
 
-The project is evolving, and some features are more stable than others.
+The project has evolved to include an intelligent dispatching system that makes it more efficient, reliable, and powerful.
 
-#### ✅ Stable Features
+#### ✅ Intelligent AI Dispatcher & Failover System
+
+The heart of the system is no longer a set of simple commands, but an intelligent dispatcher that routes tasks to the best AI agent based on the nature of the request.
+
+*   **For Code Generation (`ask-claude`):** This is the primary command for writing and refactoring code. It now features a **failover system** for maximum reliability. It first attempts to use Claude, which is highly optimized for coding tasks. If the request fails for any reason (API error, service unavailability), the system **automatically and seamlessly retries** the task using the high-quality GPT-5 Codex configuration, notifying you of the switch.
+
+*   **For Analytical Tasks (`profile-detect`, initial setup):** For internal tasks that require understanding the project structure but not writing production code, the dispatcher prioritizes **speed and cost-efficiency**. It first attempts the task using `gpt-5-codex` with a `low` reasoning level for a quick analysis. If that fails, it falls back to the powerful Claude model to ensure the task is completed reliably.
+
+#### ✅ High-Quality & Configurable GPT Coder (`ask-gpt`)
+
+The `ask-gpt` command has been significantly enhanced to provide maximum control and quality for code generation.
+
+*   **Highest Quality by Default:** By default, all requests to `ask-gpt` use the **`gpt-5-codex`** model with a **`high`** reasoning level. This ensures that any direct request to GPT is handled with the deepest possible analysis for the best code quality.
+
+*   **Full Configurability:** You can override the defaults using the `--model` and `--reasoning` flags to tailor the agent's behavior to your specific needs. This allows you to:
+    *   Switch to the base **`gpt-5`** model for tasks better suited for natural language, like writing documentation.
+    *   Reduce the reasoning level to **`low`** or **`medium`** for simpler, faster code modifications.
+
+#### ✅ Stable Foundational Features
 
 *   **Repository Snapshots (`snapshot`):** Generate complete or partial snapshots of your project into a single text file, perfectly suited for feeding into Large Language Models (LLMs).
 *   **Context Profiling (`--profile`):** Use pre-configured or custom profiles to include only relevant parts of the codebase in a snapshot. This is essential for focusing the AI's attention.
     *   **Usage:** You can combine profiles and ad-hoc glob patterns. Prefix with `-` to exclude.
     *   **Example:** `snapshot --profile "backend,-**/tests/**"` — uses the `backend` profile but excludes all test files.
     *   **Example:** `snapshot --profile "src/**/*.js,-**/*.test.js"` — includes all JS files in `src` but excludes tests.
-*   **Direct Coder Integration (`ask-claude`, `ask-gpt`):** Send structured JSON tasks directly to AI agents to perform code modifications.
-    *   `ask-claude`: For users with a Claude Pro subscription.
-    *   `ask-gpt`: For users with a ChatGPT Plus/Pro subscription (via the `codex` CLI).
 
 #### 🛠️ Implemented but Needs Testing
 
@@ -71,6 +86,11 @@ To use `eck-snapshot` to its full potential, you will need:
     node index.js snapshot --profile backend
     ```
 
+*   **Ask Claude to refactor code (with automatic GPT failover):**
+    ```bash
+    node index.js ask-claude '{"objective": "Refactor the UserService to use the new DatabaseRepository"}'
+    ```
+
 *   **Ask Claude to add error handling to a file:**
     ```bash
     node index.js ask-claude '{
@@ -86,9 +106,19 @@ To use `eck-snapshot` to its full potential, you will need:
     }'
     ```
 
-*   **Ask OpenAI Codex (GPT) to do the same:**
+*   **Ask GPT to perform a complex task (uses max quality by default):**
     ```bash
-    node index.js ask-gpt '{ ... }' # The JSON payload is the same
+    node index.js ask-gpt '{"objective": "Implement a caching layer for the API using Redis"}'
+    ```
+
+*   **Ask GPT to write documentation (overriding the model for better text generation):**
+    ```bash
+    node index.js ask-gpt '{"objective": "Write JSDoc comments for all functions in utils.js"}' --model gpt-5
+    ```
+
+*   **Ask GPT for a simple, quick code modification (overriding reasoning level):**
+    ```bash
+    node index.js ask-gpt '{"objective": "Rename the variable `user` to `customer` in `billing.js`"}' --reasoning low
     ```
 
 *   **Index a large project for semantic search:**
@@ -117,20 +147,35 @@ Developing and testing tools that leverage large language models is a complex ta
 
 Этот инструмент создан для рабочего процесса, в котором пользователь выступает в роли владельца продукта или архитектора высокого уровня, ставя цели и давая указания, в то время как ИИ-агенты занимаются детальной реализацией.
 
-## Ключевые концепции и возможности
+## Ключевая архитектура и возможности
 
-Проект развивается, и некоторые функции более стабильны, чем другие.
+Проект эволюционировал и теперь включает интеллектуальную систему диспетчеризации, которая делает его более эффективным, надежным и мощным.
 
-#### ✅ Стабильные функции
+#### ✅ Интеллектуальный ИИ-диспетчер и система отказоустойчивости
 
-*   **Создание снимков репозитория (`snapshot`):** Генерируйте полные или частичные снимки вашего проекта в виде одного текстового файла, который идеально подходит для передачи в большие языковые модели (LLM).
+Сердце системы — это уже не набор простых команд, а интеллектуальный диспетчер, который направляет задачи лучшему ИИ-агенту в зависимости от характера запроса.
+
+*   **Для генерации кода (`ask-claude`):** Это основная команда для написания и рефакторинга кода. Теперь она оснащена **системой отказоустойчивости** для максимальной надежности. Сначала она пытается использовать Claude, который отлично оптимизирован для задач кодирования. Если запрос по какой-либо причине завершается неудачей (ошибка API, недоступность сервиса), система **автоматически и бесшовно повторяет** задачу, используя высококачественную конфигурацию GPT-5 Codex, и уведомляет вас о переключении.
+
+*   **Для аналитических задач (`profile-detect`, первоначальная настройка):** Для внутренних задач, требующих понимания структуры проекта, но не написания производственного кода, диспетчер отдает приоритет **скорости и экономической эффективности**. Сначала он пытается выполнить задачу с помощью `gpt-5-codex` с уровнем мышления `low` для быстрого анализа. Если это не удается, он переключается на мощную модель Claude, чтобы гарантировать надежное завершение задачи.
+
+#### ✅ Высококачественный и настраиваемый GPT-кодер (`ask-gpt`)
+
+Команда `ask-gpt` была значительно улучшена для обеспечения максимального контроля и качества при генерации кода.
+
+*   **Высочайшее качество по умолчанию:** По умолчанию все запросы к `ask-gpt` используют модель **`gpt-5-codex`** с **`high`** уровнем мышления. Это гарантирует, что любой прямой запрос к GPT будет обработан с максимально глубоким анализом для наилучшего качества кода.
+
+*   **Полная настраиваемость:** Вы можете переопределить настройки по умолчанию с помощью флагов `--model` и `--reasoning`, чтобы адаптировать поведение агента к вашим конкретным потребностям. Это позволяет вам:
+    *   Переключиться на базовую модель **`gpt-5`** для задач, лучше подходящих для естественного языка, например, для написания документации.
+    *   Снизить уровень мышления до **`low`** или **`medium`** для более простых и быстрых изменений в коде.
+
+#### ✅ Стабильные базовые функции
+
+*   **Снимки репозитория (`snapshot`):** Генерируйте полные или частичные снимки вашего проекта в виде одного текстового файла, который идеально подходит для передачи в большие языковые модели (LLM).
 *   **Профилирование контекста (`--profile`):** Используйте преднастроенные или свои собственные профили для включения в снимок только релевантных частей кодовой базы. Это ключевая функция для фокусировки внимания ИИ.
     *   **Использование:** Вы можете комбинировать профили и glob-паттерны. Используйте префикс `-` для исключения.
     *   **Пример:** `snapshot --profile "backend,-**/tests/**"` — использует профиль `backend`, но исключает все файлы тестов.
     *   **Пример:** `snapshot --profile "src/**/*.js,-**/*.test.js"` — включает все JS-файлы в `src`, но исключает тесты.
-*   **Прямая интеграция с ИИ-кодерами (`ask-claude`, `ask-gpt`):** Отправляйте структурированные JSON-задачи напрямую ИИ-агентам для выполнения изменений в коде.
-    *   `ask-claude`: для пользователей с подпиской Claude Pro.
-    *   `ask-gpt`: для пользователей с подпиской ChatGPT Plus/Pro (через `codex` CLI).
 
 #### 🛠️ Реализовано, но требует тестирования
 
@@ -183,6 +228,11 @@ Developing and testing tools that leverage large language models is a complex ta
     node index.js snapshot --profile backend
     ```
 
+*   **Попросить Claude провести рефакторинг (с автоматическим переключением на GPT в случае сбоя):**
+    ```bash
+    node index.js ask-claude '{"objective": "Провести рефакторинг UserService для использования нового DatabaseRepository"}'
+    ```
+
 *   **Попросить Claude добавить обработку ошибок в файл:**
     ```bash
     node index.js ask-claude '{
@@ -198,9 +248,19 @@ Developing and testing tools that leverage large language models is a complex ta
     }'
     ```
 
-*   **Попросить OpenAI Codex (GPT) сделать то же самое:**
+*   **Попросить GPT выполнить сложную задачу (использует максимальное качество по умолчанию):**
     ```bash
-    node index.js ask-gpt '{ ... }' # Структура JSON-запроса та же
+    node index.js ask-gpt '{"objective": "Реализовать слой кэширования для API с использованием Redis"}'
+    ```
+
+*   **Попросить GPT написать документацию (переопределяя модель для лучшей генерации текста):**
+    ```bash
+    node index.js ask-gpt '{"objective": "Написать комментарии в формате JSDoc для всех функций в utils.js"}' --model gpt-5
+    ```
+
+*   **Попросить GPT внести простое и быстрое изменение (переопределяя уровень мышления):**
+    ```bash
+    node index.js ask-gpt '{"objective": "Переименовать переменную `user` в `customer` в файле `billing.js`"}' --reasoning low
     ```
 
 *   **Проиндексировать большой проект для семантического поиска:**

@@ -14,8 +14,9 @@ import { queryProject } from './commands/queryProject.js';
 import { detectProject, testFileParsing } from './commands/detectProject.js';
 import { trainTokens, showTokenStats } from './commands/trainTokens.js';
 import { askGpt } from './commands/askGpt.js';
+import { ask as askGptService } from '../services/gptService.js';
 import { executePrompt, executePromptWithSession } from '../services/claudeCliService.js';
-import { executePrompt as executeGeminiPrompt, executePromptWithPTY } from '../services/geminiWebService.js';
+import { executePrompt as executeGeminiPrompt } from '../services/geminiWebService.js';
 import { detectProfiles } from './commands/detectProfiles.js';
 import { setupGemini } from './commands/setupGemini.js';
 import { generateAutoDocs } from './commands/autoDocs.js';
@@ -162,6 +163,8 @@ Examples for --profile:
     .description('Delegate tasks to OpenAI Codex agent with automatic authentication')
     .argument('<payload>', 'JSON payload string (e.g. \'{"objective": "Calculate 5+2"}\')')
     .option('-v, --verbose', 'Enable verbose logging and detailed execution output')
+    .option('--model <name>', 'Model to use (default: gpt-5-codex)', 'gpt-5-codex')
+    .option('--reasoning <level>', 'Reasoning level: low, medium, high (default: high)', 'high')
     .action((payloadArg, cmd) => askGpt(payloadArg, cmd))
     .addHelpText('after', `
 Examples:
@@ -246,8 +249,16 @@ Authentication:
         const result = await executePrompt(prompt, options.continue);
         console.log(JSON.stringify(result, null, 2));
       } catch (error) {
-        console.error('Failed to execute prompt:', error.message);
-        process.exit(1);
+        console.warn(`⚠️ Claude failed: ${error.message}`);
+        console.log('🔄 Failing over to GPT for task...');
+        try {
+          const payload = (typeof prompt === 'string' && prompt.startsWith('{')) ? prompt : JSON.stringify({ objective: prompt });
+          const gptResult = await askGptService(payload, { verbose: false });
+          console.log(JSON.stringify(gptResult, null, 2));
+        } catch (gptError) {
+          console.error('Failed to execute prompt with both Claude and GPT:', gptError.message);
+          process.exit(1);
+        }
       }
     });
 
@@ -268,33 +279,17 @@ Authentication:
       }
     });
 
-  // Ask Gemini command (PTY mode with OAuth - no API key needed)
+  // Ask Gemini command (requires GEMINI_API_KEY)
   program
     .command('ask-gemini')
-    .description('Execute a prompt using gemini-cli with OAuth authentication')
+    .description('Execute a prompt using gemini-cli (requires GEMINI_API_KEY environment variable)')
     .argument('<prompt>', 'Prompt to send to Gemini')
-    .option('--use-api-key', 'Use API key mode instead of OAuth (requires GEMINI_API_KEY)')
-    .option('--debug', 'Enable debug mode with detailed logging')
-    .action(async (prompt, options) => {
+    .action(async (prompt) => {
       try {
-        let result;
-        if (options.useApiKey) {
-          console.log('Using API key mode...');
-          result = await executeGeminiPrompt(prompt);
-        } else {
-          // Default: use PTY mode (works with OAuth, no API key needed)
-          if (options.debug) {
-            console.log('Using PTY mode with OAuth authentication (debug enabled)...');
-          }
-          result = await executePromptWithPTY(prompt);
-        }
+        const result = await executeGeminiPrompt(prompt);
         console.log(JSON.stringify(result, null, 2));
       } catch (error) {
         console.error('Failed to execute prompt with Gemini:', error.message);
-        if (!options.useApiKey) {
-          console.log('💡 Tip: Try using --use-api-key flag if you have GEMINI_API_KEY set');
-          console.log('   Or use --debug flag for detailed logging');
-        }
         process.exit(1);
       }
     });

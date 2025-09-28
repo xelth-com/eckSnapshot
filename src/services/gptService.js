@@ -31,11 +31,11 @@ async function ensureCodexCliExists() {
 /**
  * Delegates an apply_code_changes payload to the codex CLI with auto-login.
  * @param {string|object} payload - JSON string or object payload to forward to the agent.
- * @param {{ verbose?: boolean }} [options]
+ * @param {{ verbose?: boolean, model?: string, reasoning?: string }} [options]
  * @returns {Promise<object>}
  */
 export async function ask(payload, options = {}) {
-  const { verbose = false } = options;
+  const { verbose = false, model = 'gpt-5-codex', reasoning = 'high' } = options;
   await ensureCodexCliExists();
 
   const run = async () => {
@@ -50,6 +50,8 @@ export async function ask(payload, options = {}) {
         // Use full-auto mode to prevent interactive prompts from the agent,
         // as this service is designed for non-interactive delegation.
         '--full-auto',
+        '--model', model,
+        '-c', `model_reasoning_effort=${reasoning}`,
         `${SYSTEM_PROMPT}\n\n${userPrompt}`
       ];
 

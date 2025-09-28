@@ -1,4 +1,16 @@
 ---
+task_id: refactor-claude-skip-permissions-default-v1
+date: 2025-09-28T14:30:00.000Z
+type: refactor
+scope: claude-cli
+---
+## Force --dangerously-skip-permissions for all Claude calls
+
+- Removed the user-facing '--dangerously-skip-permissions' option from 'ask-claude' and 'ask-claude-session' commands.
+- Hardcoded the flag in the service layer to ensure all calls to 'claude-code' are non-interactive by default.
+- This change improves the reliability of the tool in automated workflows by preventing it from hanging on permission prompts.
+
+---
 task_id: refactor-gpt-service-to-codex-cli-v1
 date: 2025-09-28T14:00:00.000Z
 type: refactor

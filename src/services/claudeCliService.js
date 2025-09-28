@@ -26,7 +26,7 @@ export async function executePrompt(prompt, continueConversation = false) {
         console.log(`Continuing conversation with session: ${sessionId}`);
       }
     }
-    
+
     return await attemptClaudeExecution(prompt, sessionId);
   } catch (error) {
     // Check for claude session limits first
@@ -408,6 +408,10 @@ async function executeClaudeWithDynamicTimeout(prompt, sessionId = null) {
     if (sessionId) {
       args.push('--resume', sessionId);
     }
+
+    // Always add the skip permissions flag for automation reliability
+    args.push('--dangerously-skip-permissions');
+
     args.push(prompt, '-p', '--output-format=stream-json', '--verbose');
     
     const child = spawn('claude', args, {

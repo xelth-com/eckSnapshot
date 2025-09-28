@@ -55,7 +55,14 @@
       "Bash(npx vitest run:*)",
       "Bash(npm search:*)",
       "Bash(npm test:*)",
-      "Bash(codex:*)"
+      "Bash(codex:*)",
+      "Bash(paste:*)",
+      "Bash(sort:*)",
+      "Read(///**)",
+      "Read(//home/xelth/codex/**)",
+      "Bash(! grep 'node-pty' src/services/geminiWebService.js)",
+      "Bash(! grep 'executePromptWithPTY' src/cli/cli.js)",
+      "Bash(echo \"Exit code: $?\")"
     ],
     "deny": [],
     "defaultMode": "acceptEdits"

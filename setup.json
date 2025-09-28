@@ -148,7 +148,7 @@
           "src",
           "target"
         ],
-        "priority": 7
+        "priority": 9
       },
       "go": {
         "files": [
