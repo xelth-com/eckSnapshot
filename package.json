@@ -19,7 +19,8 @@
     "test": "vitest",
     "test:ui": "vitest --ui",
     "test:run": "vitest run",
-    "docs:auto": "node index.js docs-auto"
+    "docs:auto": "node index.js docs-auto",
+    "test:gpt": "vitest src/services/gptService.test.js"
   },
   "author": "xelth-com",
   "license": "MIT",

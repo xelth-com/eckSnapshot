@@ -13,6 +13,7 @@ import { indexProject } from './commands/indexProject.js';
 import { queryProject } from './commands/queryProject.js';
 import { detectProject, testFileParsing } from './commands/detectProject.js';
 import { trainTokens, showTokenStats } from './commands/trainTokens.js';
+import { askGpt } from './commands/askGpt.js';
 import { executePrompt, executePromptWithSession } from '../services/claudeCliService.js';
 import { executePrompt as executeGeminiPrompt, executePromptWithPTY } from '../services/geminiWebService.js';
 import { detectProfiles } from './commands/detectProfiles.js';
@@ -146,6 +147,13 @@ export function run() {
     .option('--profile <name>', 'Use a specific context profile for querying')
     .option('--import <filename>', 'Use a portable index file for the query instead of the local database.')
     .action(queryProject);
+
+  program
+    .command('ask-gpt')
+    .description('Delegate apply_code_changes payload to ChatGPT CLI')
+    .argument('<payload>', 'JSON payload string')
+    .option('-v, --verbose', 'Enable verbose logging')
+    .action((payloadArg, cmd) => askGpt(payloadArg, cmd));
 
   // Project detection command
   program

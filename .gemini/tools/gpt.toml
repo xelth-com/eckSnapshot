@@ -1,0 +1,2 @@
+description = 'Ask GPT (ChatGPT subscription) for coding tasks.'
+prompt = '!{node $(pwd)/index.js ask-gpt "{{args}}"}'  # Dynamic path
