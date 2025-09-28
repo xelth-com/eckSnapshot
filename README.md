@@ -1,247 +1,220 @@
-# eck-snapshot
 
-**`eck-snapshot` is a local-first, AI-powered intelligence platform for your codebase. It transforms any code repository into a sophisticated, queryable database, enabling a new workflow for AI-assisted development called "Vibecoding".**
+# eckSnapshot
 
-## The Philosophy: What is Vibecoding?
+**eckSnapshot** is a powerful CLI tool designed for creating codebase snapshots and interacting with them using AI agents. It allows you to package the entire context of a project into a single file, use profiles to focus on specific parts of the system, and directly delegate coding tasks to AI coders like Claude and OpenAI Codex.
 
-This workflow is focused on providing AI agents with a near-perfect, holistic understanding of the entire codebase. This allows the developer to act as the **Senior Architect**, guiding the project's vision, while a hierarchy of AI agents act as flawless **Executors**.
+This tool is built for a workflow where the user acts as a product owner or high-level architect, providing goals and guidance, while AI agents handle the detailed implementation.
 
-## Key Features
+## Core Concepts & Key Features
 
-* **🧠 Multi-Language Intelligence:** Deeply understands your code using advanced parsers for **JavaScript/TypeScript** (Babel), **Python**, and **Android (Java/Kotlin)** (Tree-sitter).
-* **🗄️ Hybrid Database Backend:** Creates a powerful local knowledge base using **PostgreSQL**, combining:
-    * **Vector Search** (`pgvector`) for finding code by semantic meaning.
-    * **Graph Database** (`Apache AGE`) for understanding the structural relationships between code.
-* **🤖 Multi-Agent Hierarchy:** A built-in system (defined in `setup.json`) for orchestrating multiple AI agents:
-    * **Senior Architect (Gemini):** You, the user, guiding the high-level strategy.
-    * **Junior Architect (`gemini_wsl`):** An autonomous agent with a full-code snapshot (`_ja.md`) that analyzes complex tasks.
-    * **Coder (`claude`):** A specialized agent that receives precise JSON-based coding instructions from the Junior Architect.
-* **📸 Dual Snapshot System:** The `snapshot` command automatically generates two snapshots for small projects: a high-level one for the Architect and a detailed `_ja.md` for the Junior Architect.
-* **🔐 Local-First AI:** All AI models for code analysis (summarization) and indexing (embeddings) run **100% locally** on your machine via `Transformers.js`. Your code never leaves your computer.
+The project is evolving, and some features are more stable than others.
 
-## How It Works
+#### ✅ Stable Features
 
-`eck-snapshot` implements two distinct workflows depending on your project's size.
+*   **Repository Snapshots (`snapshot`):** Generate complete or partial snapshots of your project into a single text file, perfectly suited for feeding into Large Language Models (LLMs).
+*   **Context Profiling (`--profile`):** Use pre-configured or custom profiles to include only relevant parts of the codebase in a snapshot. This is essential for focusing the AI's attention.
+    *   **Usage:** You can combine profiles and ad-hoc glob patterns. Prefix with `-` to exclude.
+    *   **Example:** `snapshot --profile "backend,-**/tests/**"` — uses the `backend` profile but excludes all test files.
+    *   **Example:** `snapshot --profile "src/**/*.js,-**/*.test.js"` — includes all JS files in `src` but excludes tests.
+*   **Direct Coder Integration (`ask-claude`, `ask-gpt`):** Send structured JSON tasks directly to AI agents to perform code modifications.
+    *   `ask-claude`: For users with a Claude Pro subscription.
+    *   `ask-gpt`: For users with a ChatGPT Plus/Pro subscription (via the `codex` CLI).
 
-### Small Projects (Vibecoding Workflow)
+#### 🛠️ Implemented but Needs Testing
 
-1.  **`eck-snapshot snapshot`**: Generates a high-level (`_snapshot.md`) and detailed (`_ja.md`) snapshot.
-2.  **Senior Architect (You)** gives a high-level `execute_strategic_task` command to the Junior Architect.
-3.  **Junior Architect (`gemini_wsl`)** reads its `_ja.md` snapshot, analyzes the task, and formulates a low-level `apply_code_changes` JSON command.
-4.  **Coder (`claude`)** receives the JSON command and executes the code change.
+*   **Vector Indexing for Large Projects (`index`, `query`):** For repositories that are too large to fit into an LLM's context window, a specialized workflow is implemented.
+    *   **How it works:** The `index` command breaks down the entire codebase into logical chunks (functions, classes, files), creates vector embeddings for each, and stores them in a local database. The `query` command then performs a semantic search against this index to retrieve only the most relevant code snippets, generating a smaller, context-aware snapshot for the LLM.
+    *   **Status:** This functionality is implemented but requires more real-world testing on very large projects to fine-tune its performance and accuracy.
 
-### Large Projects (Vector RAG Workflow)
+#### 🧪 Experimental Features
 
-1.  **`eck-snapshot index`**: Scans, parses, analyzes, and stores your entire project in the PostgreSQL database.
-2.  **`eck-snapshot query "task"`**: Performs a hybrid vector-and-graph search and generates a `rag_snapshot_... .md` file, containing only the relevant code for your task.
+*   **Hierarchical Agent Architecture:** The project is designed with a multi-agent hierarchy in mind (Senior Architect delegating to a Junior Architect). This feature is in active development and is not yet fully stable. The primary, well-tested workflow is direct interaction with coders using the `ask-*` commands.
+*   **AI-Powered Profile Detection (`profile-detect`):** This command analyzes your project's directory tree and uses an AI to automatically generate context profiles (`.eck/profiles.json`).
+    *   **Important Note:** This command requires a subscription to an AI coder (like Claude Pro), as it delegates the analysis task to an LLM.
 
-## Installation & Setup
+## Requirements
 
-(This section assumes you have `npm` and `Docker` installed.)
+To use `eck-snapshot` to its full potential, you will need:
 
-### 1. Install the CLI
+1.  **Node.js** (v18.x or higher).
+2.  **One of the following AI Assistant setups:**
+    *   **Claude:** An active **Claude Pro** subscription and the `claude-code` CLI installed.
+    *   **(Alternative) OpenAI Codex:** An active **ChatGPT Plus/Pro** subscription and the `@openai/codex` CLI installed (`npm install -g @openai/codex`).
+3.  **(Optional) Google Gemini:** For working with models with large context windows (like Gemini 2.5 Pro) via a web-based OAuth flow, the `gemini-cli` is required.
 
-```bash
-npm install -g @xelth/eck-snapshot
-```
+## Quick Start
 
-### 2. Start the Database
-
-A running PostgreSQL instance with `pgvector` and `Apache AGE` is required. The easiest way is with Docker. Create a `docker-compose.yml`:
-
-```yaml
-version: '3.8'
-services:
-  postgres-db:
-    image: ivans-big-data/pg-vector-and-graph:16
-    container_name: eck-snapshot-db
-    ports:
-      - "5432:5432"
-    environment:
-      - POSTGRES_USER=myuser
-      - POSTGRES_PASSWORD=mypassword
-      - POSTGRES_DB=eck_snapshot_db
-    volumes:
-      - ./pg_data:/var/lib/postgresql/data
-```
-
-Run `docker-compose up -d`.
-
-### 3. Configure Environment
-
-`eck-snapshot` needs to connect to this database. Copy the `.env.example` file in the package directory to `.env` and fill in the credentials from your `docker-compose.yml`.
-
-## Advanced Usage: Filtering with Profiles
-
-The `--profile` flag is a powerful way to control which files are included in a snapshot. It accepts a comma-separated list of profile names and ad-hoc glob patterns.
-
-### Recommended Workflow
-
-1.  **Detect Available Profiles**: Run `eck-snapshot detect` to see a list of pre-configured profiles (e.g., `backend`, `frontend`, `database`). These are defined in `.eck/profiles.json` or `setup.json`.
-
-2.  **Create a Snapshot**: Use the profile names and combine them with ad-hoc glob patterns for fine-tuned filtering.
-
-### Combining Profiles and Patterns
-
-You can mix and match profile names and glob patterns. Use a `-` prefix to exclude a profile or a pattern.
-
-**Examples:**
-
-* **Use the `backend` profile but exclude all test files:**
+1.  **Clone the repository:**
     ```bash
-    eck-snapshot --profile "backend,-**/tests/**,-**/*.test.js"
+    git clone https://github.com/xelth-com/eckSnapshot.git
+    cd eckSnapshot
     ```
 
-* **Include the `frontend` profile and also all `.md` files from the `docs` directory:**
+2.  **Install dependencies:**
     ```bash
-    eck-snapshot --profile "frontend,docs/**/*.md"
+    npm install
     ```
 
-* **Start with all files, but exclude the `node_modules` directory and all `.log` files (note: `node_modules` is usually ignored by default, this is just an example):**
+3.  **(Recommended) Configure Gemini CLI Integration:**
+    This command creates the necessary configuration files for `eck-snapshot` to communicate with `gemini-cli`.
     ```bash
-    eck-snapshot --profile "-node_modules/**,-**/*.log"
+    node index.js setup-gemini
     ```
 
-This system provides maximum flexibility, allowing you to use well-defined profiles for common tasks and ad-hoc patterns for specific, one-off snapshots.
+4.  **Start using!**
+    You can run commands via `node index.js <command>` or create a symlink for global access: `npm link`.
 
-## AI Agent Integration
+## Usage Examples
 
-### ChatGPT Integration with `ask-gpt`
+*   **Create a snapshot of only the backend part of the project:**
+    ```bash
+    node index.js snapshot --profile backend
+    ```
 
-The `ask-gpt` command allows you to delegate tasks to OpenAI's Codex agent directly from the command line. This feature integrates your project context and automatically handles authentication.
+*   **Ask Claude to add error handling to a file:**
+    ```bash
+    node index.js ask-claude '{
+      "objective": "Add try-catch block to the processPayment function in paymentService.js",
+      "files_to_modify": [
+        {
+          "path": "src/services/paymentService.js",
+          "action": "modify",
+          "location": "function processPayment",
+          "details": "Wrap the entire function body in a try-catch block. Log the error to the console and re-throw a custom PaymentError."
+        }
+      ]
+    }'
+    ```
 
-#### Prerequisites
+*   **Ask OpenAI Codex (GPT) to do the same:**
+    ```bash
+    node index.js ask-gpt '{ ... }' # The JSON payload is the same
+    ```
 
-1. **Install OpenAI Codex CLI**:
-   ```bash
-   # Install the official OpenAI Codex CLI
-   npm install -g @openai/codex
-   ```
+*   **Index a large project for semantic search:**
+    ```bash
+    node index.js index
+    ```
 
-2. **Authenticate with OpenAI**:
-   ```bash
-   # Login to your OpenAI account (requires ChatGPT Plus/Pro subscription)
-   codex login
-   ```
-   This will open your browser and authenticate with your OpenAI account. Your credentials are saved locally for future use.
+*   **Ask a question to the indexed project:**
+    ```bash
+    node index.js query "How does the authentication middleware work?"
+    ```
 
-#### Usage
+## Community & Contribution
 
-**Basic Question:**
-```bash
-# Ask a simple question
-eck-snapshot ask-gpt '{"objective": "Calculate 5+2 and respond with just the number"}'
-```
+Developing and testing tools that leverage large language models is a complex task. Running and debugging large models locally requires significant computational resources.
 
-**Code Modification Request:**
-```bash
-# Request code changes with full context
-eck-snapshot ask-gpt '{
-  "target_agent": "local_dev",
-  "command_for_agent": "apply_code_changes",
-  "task_id": "feature-123",
-  "payload": {
-    "objective": "Add error handling to the user login function",
-    "context": "The login function needs proper try-catch blocks",
-    "files_to_modify": [
-      {
-        "path": "src/auth/login.js",
-        "action": "modify",
-        "details": "Add try-catch around authentication calls"
-      }
-    ]
-  },
-  "post_execution_steps": {
-    "journal_entry": {
-      "type": "feat",
-      "scope": "auth",
-      "summary": "Add error handling to login function",
-      "details": "- Added try-catch blocks\n- Improved error messages"
-    }
-  }
-}' --verbose
-```
+**I would be very grateful for help with testing `eck-snapshot` on powerful hardware, especially with large local models.** If you have the capability and desire to help, please try running the tool and leave your feedback or bug reports in the [Issues](https://github.com/xelth-com/eckSnapshot/issues) section on GitHub.
 
-#### Features
+---
 
-- **Automatic Authentication**: Uses your existing OpenAI login credentials
-- **Project Context**: Automatically includes `.eck` project manifest (CONTEXT.md, OPERATIONS.md, JOURNAL.md, ENVIRONMENT.md)
-- **Auto-retry on Auth Errors**: If authentication expires, automatically triggers re-login
-- **Journal Integration**: Supports automatic journal entries and git commits
-- **Verbose Mode**: Use `--verbose` flag to see detailed execution logs
+# Русская версия
 
-#### Authentication Troubleshooting
+## eckSnapshot
 
-If you encounter authentication issues:
+**eckSnapshot** — это мощный CLI-инструмент, разработанный для создания снимков (снапшотов) кодовой базы и взаимодействия с ней с помощью ИИ-агентов. Он позволяет упаковать весь контекст проекта в один файл, использовать профили для фокусировки на определённых частях системы и напрямую делегировать задачи по написанию и изменению кода ИИ-кодерам, таким как Claude и OpenAI Codex.
 
-1. **Re-login to Codex**:
-   ```bash
-   codex login
-   ```
+Этот инструмент создан для рабочего процесса, в котором пользователь выступает в роли владельца продукта или архитектора высокого уровня, ставя цели и давая указания, в то время как ИИ-агенты занимаются детальной реализацией.
 
-2. **Check Codex Status**:
-   ```bash
-   codex --help
-   ```
+## Ключевые концепции и возможности
 
-3. **Verify Subscription**: Ensure you have an active ChatGPT Plus or Pro subscription
+Проект развивается, и некоторые функции более стабильны, чем другие.
 
-### Claude Code Integration
+#### ✅ Стабильные функции
 
-This project also works seamlessly with Claude Code for development tasks:
+*   **Создание снимков репозитория (`snapshot`):** Генерируйте полные или частичные снимки вашего проекта в виде одного текстового файла, который идеально подходит для передачи в большие языковые модели (LLM).
+*   **Профилирование контекста (`--profile`):** Используйте преднастроенные или свои собственные профили для включения в снимок только релевантных частей кодовой базы. Это ключевая функция для фокусировки внимания ИИ.
+    *   **Использование:** Вы можете комбинировать профили и glob-паттерны. Используйте префикс `-` для исключения.
+    *   **Пример:** `snapshot --profile "backend,-**/tests/**"` — использует профиль `backend`, но исключает все файлы тестов.
+    *   **Пример:** `snapshot --profile "src/**/*.js,-**/*.test.js"` — включает все JS-файлы в `src`, но исключает тесты.
+*   **Прямая интеграция с ИИ-кодерами (`ask-claude`, `ask-gpt`):** Отправляйте структурированные JSON-задачи напрямую ИИ-агентам для выполнения изменений в коде.
+    *   `ask-claude`: для пользователей с подпиской Claude Pro.
+    *   `ask-gpt`: для пользователей с подпиской ChatGPT Plus/Pro (через `codex` CLI).
 
-#### Setup Claude Code
+#### 🛠️ Реализовано, но требует тестирования
 
-1. **Install Claude Code CLI**:
-   ```bash
-   # Follow installation instructions from Anthropic
-   curl -fsSL https://claude.com/cli/install.sh | sh
-   ```
+*   **Индексация для больших проектов (`index`, `query`):** Для репозиториев, которые слишком велики для контекстного окна LLM, реализован специальный механизм.
+    *   **Как это работает:** Команда `index` разбивает всю кодовую базу на логические части (функции, классы, файлы), создает для каждой векторные представления (embeddings) и сохраняет их в локальной базе данных. Затем команда `query` выполняет семантический поиск по этому индексу, чтобы извлечь только наиболее релевантные фрагменты кода, создавая на их основе небольшой, контекстно-зависимый снимок для LLM.
+    *   **Статус:** Эта функциональность реализована, но требует дополнительного тестирования на очень больших проектах для отладки производительности и точности.
 
-2. **Authenticate**:
-   ```bash
-   claude auth login
-   ```
+#### 🧪 Экспериментальные функции
 
-#### Using with eckSnapshot
+*   **Иерархическая архитектура агентов:** В проекте заложена концепция взаимодействия нескольких уровней ИИ-агентов (Старший и Младший архитектор). Эта функция находится в стадии активной разработки и пока не является полностью стабильной. Основной и отточенный рабочий процесс — это прямое взаимодействие с кодерами через `ask-*` команды.
+*   **Автоматическое определение профилей с помощью ИИ (`profile-detect`):** Эта команда анализирует дерево каталогов вашего проекта и использует ИИ для автоматической генерации профилей контекста (`.eck/profiles.json`).
+    *   **Важное замечание:** Для работы этой команды требуется подписка на ИИ-кодера (например, Claude Pro), так как она делегирует задачу анализа LLM.
 
-**Generate Snapshots for Claude:**
-```bash
-# Create a snapshot optimized for Claude Code
-eck-snapshot --agent --profile "src/**/*.js,docs/**/*.md"
-```
+## Требования
 
-**Ask Claude about your project:**
-```bash
-# Use Claude to analyze your codebase
-claude "Analyze this codebase and suggest improvements" < snapshot.md
-```
+Для полноценной работы `eck-snapshot` вам потребуется:
 
-**Combined Workflow:**
-```bash
-# 1. Create snapshot
-eck-snapshot --agent -o snapshot.md
+1.  **Node.js** (версия 18.x или выше).
+2.  **Один из следующих ИИ-ассистентов:**
+    *   **Claude:** Требуется активная подписка **Claude Pro** и установленный `claude-code` CLI.
+    *   **(Альтернатива) OpenAI Codex:** Требуется активная подписка **ChatGPT Plus/Pro** и установленный `@openai/codex` CLI (`npm install -g @openai/codex`).
+3.  **(Опционально) Google Gemini:** Для работы с моделями с большим контекстным окном (например, Gemini 2.5 Pro) через веб-интерфейс (OAuth) необходим `gemini-cli`.
 
-# 2. Ask Claude for code review
-claude "Review this code and suggest improvements" < snapshot.md
+## Быстрый старт
 
-# 3. Ask ChatGPT to implement changes
-eck-snapshot ask-gpt '{
-  "objective": "Implement the code improvements suggested by Claude",
-  "context": "Focus on performance and error handling"
-}' --verbose
-```
+1.  **Клонируйте репозиторий:**
+    ```bash
+    git clone https://github.com/xelth-com/eckSnapshot.git
+    cd eckSnapshot
+    ```
 
-#### AI Agent Comparison
+2.  **Установите зависимости:**
+    ```bash
+    npm install
+    ```
 
-| Feature | ChatGPT (ask-gpt) | Claude Code |
-|---------|-------------------|-------------|
-| **Authentication** | OpenAI account + subscription | Anthropic account |
-| **Code Execution** | Via Codex agent | Direct code assistance |
-| **Project Context** | Auto-loads `.eck` manifest | Manual snapshot feeding |
-| **Git Integration** | Auto-commit journal entries | Manual commit needed |
-| **Best For** | Automated code changes | Code analysis & review |
+3.  **(Рекомендуется) Сконфигурируйте интеграцию с Gemini CLI:**
+    Этот шаг создаст необходимые файлы конфигурации для взаимодействия между `eck-snapshot` и `gemini-cli`.
+    ```bash
+    node index.js setup-gemini
+    ```
 
-## License
+4.  **Начинайте использовать!**
+    Вы можете запускать команды через `node index.js <команда>` или создать символическую ссылку для глобального доступа: `npm link`.
 
-This project is licensed under the MIT License.
+## Примеры использования
+
+*   **Создать снимок только бэкенд-части проекта:**
+    ```bash
+    node index.js snapshot --profile backend
+    ```
+
+*   **Попросить Claude добавить обработку ошибок в файл:**
+    ```bash
+    node index.js ask-claude '{
+      "objective": "Добавить блок try-catch в функцию processPayment в paymentService.js",
+      "files_to_modify": [
+        {
+          "path": "src/services/paymentService.js",
+          "action": "modify",
+          "location": "function processPayment",
+          "details": "Обернуть всё тело функции в блок try-catch. Логировать ошибку в консоль и выбрасывать кастомную ошибку PaymentError."
+        }
+      ]
+    }'
+    ```
+
+*   **Попросить OpenAI Codex (GPT) сделать то же самое:**
+    ```bash
+    node index.js ask-gpt '{ ... }' # Структура JSON-запроса та же
+    ```
+
+*   **Проиндексировать большой проект для семантического поиска:**
+    ```bash
+    node index.js index
+    ```
+
+*   **Задать вопрос проиндексированному проекту:**
+    ```bash
+    node index.js query "Как работает мидлвэр для аутентификации?"
+    ```
+
+## Помощь сообщества и контрибьюторы
+
+Разработка и тестирование инструментов, использующих большие языковые модели, — сложная задача. Локальный запуск и отладка больших моделей требует значительных вычислительных ресурсов.
+
+**Я буду очень признателен за помощь в тестировании `eck-snapshot` с большими локальными моделями на мощном оборудовании.** Если у вас есть возможность и желание помочь, пожалуйста, попробуйте запустить инструмент и оставьте свой отзыв или сообщение об ошибке в разделе [Issues](https://github.com/xelth-com/eckSnapshot/issues) на GitHub.
