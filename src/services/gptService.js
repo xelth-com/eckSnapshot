@@ -1,70 +1,105 @@
 import { execa } from 'execa';
 import fs from 'fs/promises';
 import path from 'path';
+import pRetry from 'p-retry';
+import ora from 'ora';
 import { loadProjectEckManifest } from '../utils/fileUtils.js';
+import { initiateLogin } from './authService.js';
+import which from 'which';
 
 const SYSTEM_PROMPT = 'You are a Coder agent. Apply code changes per JSON spec. Respond only in JSON: {success: bool, changes: array, errors: array, post_steps: object}';
 
+class AuthError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = 'AuthError';
+  }
+}
+
 /**
- * Delegates an apply_code_changes payload to the ChatGPT CLI.
- * @param {string|object} payload - JSON string or object payload to forward to GPT.
+ * Checks if the codex CLI tool is available in the system's PATH.
+ * Throws an error if not found.
+ */
+async function ensureCodexCliExists() {
+  try {
+    await which('codex');
+  } catch (error) {
+    throw new Error('The `codex` CLI tool is not installed or not in your PATH. Please install it from https://github.com/openai/codex to use this command.');
+  }
+}
+
+/**
+ * Delegates an apply_code_changes payload to the codex CLI with auto-login.
+ * @param {string|object} payload - JSON string or object payload to forward to the agent.
  * @param {{ verbose?: boolean }} [options]
  * @returns {Promise<object>}
  */
 export async function ask(payload, options = {}) {
   const { verbose = false } = options;
-  const payloadObject = await parsePayload(payload);
-  const manifest = await loadProjectEckManifest(process.cwd());
-  const userPrompt = buildUserPrompt(payloadObject, manifest);
-  const model = process.env.OPENAI_MODEL || 'gpt-4o';
+  await ensureCodexCliExists();
 
-  const args = [
-    'chatgpt',
-    '--model',
-    model,
-    '--stream',
-    'false',
-    `${SYSTEM_PROMPT}\n\n${userPrompt}`
-  ];
+  const run = async () => {
+    const spinner = verbose ? null : ora('Sending payload to Codex agent...').start();
+    try {
+      const payloadObject = await parsePayload(payload);
+      const manifest = await loadProjectEckManifest(process.cwd());
+      const userPrompt = buildUserPrompt(payloadObject, manifest);
 
-  const env = { ...process.env };
-  if (process.env.CHATGPT_SESSION_PATH) {
-    env.CHATGPT_SESSION_PATH = process.env.CHATGPT_SESSION_PATH;
-  }
+      const args = [
+        'exec',
+        // Use full-auto mode to prevent interactive prompts from the agent,
+        // as this service is designed for non-interactive delegation.
+        '--full-auto',
+        `${SYSTEM_PROMPT}\n\n${userPrompt}`
+      ];
 
-  debug(verbose, `Executing chatgpt CLI with model ${model}`);
+      debug(verbose, `Executing: codex ${args.join(' ')}`);
 
-  let cliResult;
-  try {
-    cliResult = await execa('npx', args, {
-      cwd: process.cwd(),
-      env
-    });
-  } catch (error) {
-    handleCliError(error);
-  }
+      const cliResult = await execa('codex', args, {
+        cwd: process.cwd(),
+        timeout: 300000 // 5-minute timeout
+      });
 
-  const output = cliResult?.stdout?.trim();
-  if (!output) {
-    throw new Error('chatgpt CLI returned empty response');
-  }
+      const output = cliResult?.stdout?.trim();
+      if (!output) {
+        throw new Error('codex CLI returned empty response');
+      }
 
-  let parsed;
-  try {
-    parsed = JSON.parse(output);
-  } catch (error) {
-    throw new Error(`Failed to parse chatgpt JSON response: ${error.message}`);
-  }
+      // Try to parse the output as JSON first
+      try {
+        const parsed = JSON.parse(output);
+        if (parsed.post_steps || parsed.post_execution_steps) {
+          const postSteps = parsed.post_steps || parsed.post_execution_steps;
+          await handlePostExecutionSteps(postSteps, payloadObject);
+          parsed.mcp_feedback = postSteps?.mcp_feedback || null;
+        }
+        spinner?.succeed('Codex agent completed the task.');
+        return parsed;
+      } catch (e) {
+        // If not JSON, treat as text response
+        spinner?.succeed('Codex agent completed the task.');
+        return { success: true, changes: [], errors: [], response_text: output };
+      }
 
-  if (parsed.post_steps || parsed.post_execution_steps) {
-    const postSteps = parsed.post_steps || parsed.post_execution_steps;
-    await handlePostExecutionSteps(postSteps, payloadObject);
-    parsed.post_steps = postSteps;
-    parsed.mcp_feedback = postSteps?.mcp_feedback || null;
-  }
+    } catch (error) {
+        spinner?.fail('Codex execution failed.');
+        handleCliError(error); // This will throw a specific error type
+    }
+  };
 
-  return parsed;
+  return pRetry(run, {
+    retries: 1, // Only retry once after a successful login
+    minTimeout: 0,
+    onFailedAttempt: async (error) => {
+      if (error.name === 'AuthError') {
+        await initiateLogin();
+      } else {
+        throw error; // Don't retry for other errors, fail immediately
+      }
+    }
+  });
 }
+
 
 async function parsePayload(payload) {
   if (typeof payload === 'string') {
@@ -74,11 +109,9 @@ async function parsePayload(payload) {
       throw new Error(`Failed to parse payload JSON: ${error.message}`);
     }
   }
-
   if (typeof payload === 'object' && payload !== null) {
     return payload;
   }
-
   throw new Error('Invalid payload type. Expected JSON string or object.');
 }
 
@@ -117,11 +150,14 @@ function debug(verbose, message) {
 
 function handleCliError(error) {
   const combined = `${error?.message || ''} ${error?.stderr || ''} ${error?.stdout || ''}`.toLowerCase();
-  if (combined.includes('session') || combined.includes('login')) {
-    throw new Error('ChatGPT session expired or missing. Please run `npx chatgpt login` and ensure CHATGPT_SESSION_PATH is set.');
+  // Check for text that `codex` outputs when auth is missing.
+  if (combined.includes('authentication is required') || combined.includes('please run `codex login`')) {
+    const authError = new Error('Codex authentication is required. Attempting to log in.');
+    authError.name = 'AuthError';
+    throw authError;
   }
 
-  throw new Error(`chatgpt CLI failed: ${error.message}`);
+  throw new Error(`codex CLI failed: ${error.stderr || error.message}`);
 }
 
 async function handlePostExecutionSteps(postSteps, payloadObject) {

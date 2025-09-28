@@ -52,7 +52,10 @@
       "Bash(! grep -q \"async function runFileSnapshot\" src/cli/commands/createSnapshot.js)",
       "Bash(npm test)",
       "Bash(pkill:*)",
-      "Bash(npx vitest run:*)"
+      "Bash(npx vitest run:*)",
+      "Bash(npm search:*)",
+      "Bash(npm test:*)",
+      "Bash(codex:*)"
     ],
     "deny": [],
     "defaultMode": "acceptEdits"

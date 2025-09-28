@@ -104,6 +104,144 @@ You can mix and match profile names and glob patterns. Use a `-` prefix to exclu
 
 This system provides maximum flexibility, allowing you to use well-defined profiles for common tasks and ad-hoc patterns for specific, one-off snapshots.
 
+## AI Agent Integration
+
+### ChatGPT Integration with `ask-gpt`
+
+The `ask-gpt` command allows you to delegate tasks to OpenAI's Codex agent directly from the command line. This feature integrates your project context and automatically handles authentication.
+
+#### Prerequisites
+
+1. **Install OpenAI Codex CLI**:
+   ```bash
+   # Install the official OpenAI Codex CLI
+   npm install -g @openai/codex
+   ```
+
+2. **Authenticate with OpenAI**:
+   ```bash
+   # Login to your OpenAI account (requires ChatGPT Plus/Pro subscription)
+   codex login
+   ```
+   This will open your browser and authenticate with your OpenAI account. Your credentials are saved locally for future use.
+
+#### Usage
+
+**Basic Question:**
+```bash
+# Ask a simple question
+eck-snapshot ask-gpt '{"objective": "Calculate 5+2 and respond with just the number"}'
+```
+
+**Code Modification Request:**
+```bash
+# Request code changes with full context
+eck-snapshot ask-gpt '{
+  "target_agent": "local_dev",
+  "command_for_agent": "apply_code_changes",
+  "task_id": "feature-123",
+  "payload": {
+    "objective": "Add error handling to the user login function",
+    "context": "The login function needs proper try-catch blocks",
+    "files_to_modify": [
+      {
+        "path": "src/auth/login.js",
+        "action": "modify",
+        "details": "Add try-catch around authentication calls"
+      }
+    ]
+  },
+  "post_execution_steps": {
+    "journal_entry": {
+      "type": "feat",
+      "scope": "auth",
+      "summary": "Add error handling to login function",
+      "details": "- Added try-catch blocks\n- Improved error messages"
+    }
+  }
+}' --verbose
+```
+
+#### Features
+
+- **Automatic Authentication**: Uses your existing OpenAI login credentials
+- **Project Context**: Automatically includes `.eck` project manifest (CONTEXT.md, OPERATIONS.md, JOURNAL.md, ENVIRONMENT.md)
+- **Auto-retry on Auth Errors**: If authentication expires, automatically triggers re-login
+- **Journal Integration**: Supports automatic journal entries and git commits
+- **Verbose Mode**: Use `--verbose` flag to see detailed execution logs
+
+#### Authentication Troubleshooting
+
+If you encounter authentication issues:
+
+1. **Re-login to Codex**:
+   ```bash
+   codex login
+   ```
+
+2. **Check Codex Status**:
+   ```bash
+   codex --help
+   ```
+
+3. **Verify Subscription**: Ensure you have an active ChatGPT Plus or Pro subscription
+
+### Claude Code Integration
+
+This project also works seamlessly with Claude Code for development tasks:
+
+#### Setup Claude Code
+
+1. **Install Claude Code CLI**:
+   ```bash
+   # Follow installation instructions from Anthropic
+   curl -fsSL https://claude.com/cli/install.sh | sh
+   ```
+
+2. **Authenticate**:
+   ```bash
+   claude auth login
+   ```
+
+#### Using with eckSnapshot
+
+**Generate Snapshots for Claude:**
+```bash
+# Create a snapshot optimized for Claude Code
+eck-snapshot --agent --profile "src/**/*.js,docs/**/*.md"
+```
+
+**Ask Claude about your project:**
+```bash
+# Use Claude to analyze your codebase
+claude "Analyze this codebase and suggest improvements" < snapshot.md
+```
+
+**Combined Workflow:**
+```bash
+# 1. Create snapshot
+eck-snapshot --agent -o snapshot.md
+
+# 2. Ask Claude for code review
+claude "Review this code and suggest improvements" < snapshot.md
+
+# 3. Ask ChatGPT to implement changes
+eck-snapshot ask-gpt '{
+  "objective": "Implement the code improvements suggested by Claude",
+  "context": "Focus on performance and error handling"
+}' --verbose
+```
+
+#### AI Agent Comparison
+
+| Feature | ChatGPT (ask-gpt) | Claude Code |
+|---------|-------------------|-------------|
+| **Authentication** | OpenAI account + subscription | Anthropic account |
+| **Code Execution** | Via Codex agent | Direct code assistance |
+| **Project Context** | Auto-loads `.eck` manifest | Manual snapshot feeding |
+| **Git Integration** | Auto-commit journal entries | Manual commit needed |
+| **Best For** | Automated code changes | Code analysis & review |
+
 ## License
 
 This project is licensed under the MIT License.

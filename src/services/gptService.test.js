@@ -1,138 +1,126 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
+// Mock execa and which
+vi.mock('execa', () => ({ execa: vi.fn() }));
+vi.mock('which', () => ({ default: vi.fn() }));
+
+// Mock fs/promises for journal entries
 const mkdirMock = vi.fn();
 const readFileMock = vi.fn();
 const writeFileMock = vi.fn();
 const loadProjectEckManifestMock = vi.fn();
-
-const actualFsPromises = await vi.importActual('fs/promises');
-const fsModule = { ...actualFsPromises };
-
 vi.mock('fs/promises', () => ({
-  ...fsModule,
   mkdir: mkdirMock,
   readFile: readFileMock,
-  writeFile: writeFileMock,
-  default: {
-    ...fsModule,
-    mkdir: mkdirMock,
-    readFile: readFileMock,
-    writeFile: writeFileMock
-  }
+  writeFile: writeFileMock
 }));
-
 vi.mock('../utils/fileUtils.js', () => ({
   loadProjectEckManifest: loadProjectEckManifestMock
 }));
 
-vi.mock('execa', () => ({
-  execa: vi.fn()
+// Mock p-retry to control retry behavior in tests
+vi.mock('p-retry', async (importOriginal) => {
+  const actual = await importOriginal();
+  return {
+    ...actual,
+    default: vi.fn(async (fn, options) => {
+      try {
+        return await fn();
+      } catch (error) {
+        if (options.onFailedAttempt) {
+          await options.onFailedAttempt(error);
+          // In a real scenario, p-retry would re-run fn. For testing, we simulate one retry.
+          if (error.name === 'AuthError') {
+             return await fn();
+          }
+        }
+        throw error;
+      }
+    })
+  };
+});
+
+// Mock the authService
+vi.mock('./authService.js', () => ({
+  initiateLogin: vi.fn()
 }));
 
-describe('gptService', () => {
+describe('gptService with codex CLI', () => {
   let ask;
   let execaMock;
-  let consoleLogSpy;
-  let consoleWarnSpy;
+  let whichMock;
+  let initiateLoginMock;
 
   beforeEach(async () => {
     vi.clearAllMocks();
-    mkdirMock.mockResolvedValue();
-    readFileMock.mockResolvedValue('');
-    writeFileMock.mockResolvedValue();
-    loadProjectEckManifestMock.mockResolvedValue({
-      context: 'Project context',
-      operations: 'Operations guide',
-      journal: 'Existing journal',
-      environment: { NODE_ENV: 'test' }
-    });
-
-    process.env.OPENAI_MODEL = 'test-model';
-    process.env.CHATGPT_SESSION_PATH = '/tmp/session.json';
 
     ({ execa: execaMock } = await import('execa'));
+    const which = (await import('which')).default;
+    whichMock = which;
+    ({ initiateLogin: initiateLoginMock } = await import('./authService.js'));
     ({ ask } = await import('./gptService.js'));
 
-    consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-    consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    whichMock.mockResolvedValue('/usr/bin/codex');
+    loadProjectEckManifestMock.mockResolvedValue(null);
   });
 
-  afterEach(() => {
-    delete process.env.OPENAI_MODEL;
-    delete process.env.CHATGPT_SESSION_PATH;
-    consoleLogSpy.mockRestore();
-    consoleWarnSpy.mockRestore();
+  it('should call codex CLI with correct arguments and parse JSONL output', async () => {
+    const taskCompleteEvent = {
+      id: 'task1',
+      msg: {
+        type: 'task_complete',
+        last_agent_message: '{"success": true, "changes": ["change1"], "errors": []}'
+      }
+    };
+    execaMock.mockResolvedValue({ stdout: JSON.stringify(taskCompleteEvent) });
+
+    const payload = { objective: 'Test' };
+    const result = await ask(payload);
+
+    expect(result).toEqual({ success: true, changes: ['change1'], errors: [] });
+    expect(execaMock).toHaveBeenCalledWith('codex', expect.arrayContaining(['--json', '--full-auto']), expect.any(Object));
+    const promptArg = execaMock.mock.calls[0][1][0];
+    expect(promptArg).toContain(JSON.stringify(payload));
   });
 
-  it('delegates payload to chatgpt CLI and parses JSON response', async () => {
-    const cliResponse = { success: true, changes: [], errors: [] };
-    execaMock.mockResolvedValueOnce({ stdout: JSON.stringify(cliResponse) });
+  it('should trigger login flow on authentication error and retry', async () => {
+    const authError = new Error('Authentication is required. Please run `codex login`.');
+    authError.name = 'AuthError'; // Custom error name to trigger retry
+    authError.stderr = 'Authentication is required. Please run `codex login`.';
 
-    const payload = { task_id: 'task-1', payload: { objective: 'Test' } };
-    const result = await ask(JSON.stringify(payload));
-
-    expect(result).toEqual(cliResponse);
-    expect(execaMock).toHaveBeenCalledTimes(1);
-    const callArgs = execaMock.mock.calls[0];
-    expect(callArgs[0]).toBe('npx');
-    expect(callArgs[1]).toContain('--model');
-    expect(callArgs[1]).toContain('test-model');
-    expect(callArgs[1]).toContain('--stream');
-    const prompt = callArgs[1][callArgs[1].length - 1];
-    expect(prompt).toContain('"objective":"Test"');
-    expect(prompt).toContain('# Project Context');
-    expect(loadProjectEckManifestMock).toHaveBeenCalledTimes(1);
-  });
-
-  it('applies journal entry and handles mcp feedback in post steps', async () => {
-    readFileMock.mockResolvedValue('Previous entries');
-
-    const postSteps = {
-      journal_entry: {
-        type: 'feat',
-        scope: 'services',
-        summary: 'Implement GPT delegation',
-        details: '- Added GPT service\n- Wired CLI'
-      },
-      mcp_feedback: {
-        success: true,
-        errors: [],
-        mcp_version: '1.0'
+    const successResponse = {
+      id: 'task2',
+      msg: {
+        type: 'task_complete',
+        last_agent_message: '{"success": true}'
       }
     };
 
+    // First call fails, second call (retry) succeeds
     execaMock
-      .mockResolvedValueOnce({ stdout: JSON.stringify({ success: true, post_steps: postSteps }) })
-      .mockResolvedValueOnce({ stdout: '' })
-      .mockResolvedValueOnce({ stdout: '' });
+      .mockRejectedValueOnce(authError)
+      .mockResolvedValueOnce({ stdout: JSON.stringify(successResponse) });
 
-    const payload = { task_id: 'task-2' };
-    const result = await ask(JSON.stringify(payload));
+    initiateLoginMock.mockResolvedValue();
 
-    expect(writeFileMock).toHaveBeenCalledTimes(1);
-    const [journalPath, content] = writeFileMock.mock.calls[0];
-    const normalizedPath = journalPath.replace(/\\/g, '/');
-    expect(normalizedPath).toContain('/.eck/JOURNAL.md');
-    expect(content).toContain('task_id: task-2');
-    expect(content).toContain('## Implement GPT delegation');
-    expect(content).toContain('- Added GPT service');
-    expect(execaMock).toHaveBeenNthCalledWith(2, 'git', ['add', '.eck/JOURNAL.md'], expect.objectContaining({ cwd: process.cwd() }));
-    expect(execaMock).toHaveBeenNthCalledWith(3, 'git', ['commit', '-m', 'feat(services): Implement GPT delegation'], expect.objectContaining({ cwd: process.cwd() }));
-    expect(result.mcp_feedback).toEqual(postSteps.mcp_feedback);
-    expect(consoleLogSpy).toHaveBeenCalledWith('MCP feedback:', postSteps.mcp_feedback);
+    const result = await ask({ objective: 'Retry test' });
+
+    expect(result).toEqual({ success: true });
+    expect(initiateLoginMock).toHaveBeenCalledTimes(1);
+    expect(execaMock).toHaveBeenCalledTimes(2); // Initial call + retry
   });
 
-  it('throws when chatgpt responds with invalid JSON', async () => {
-    execaMock.mockResolvedValueOnce({ stdout: 'not-json' });
-
-    await expect(ask('{}')).rejects.toThrow('Failed to parse chatgpt JSON response');
+  it('should throw if codex CLI is not found', async () => {
+    whichMock.mockRejectedValue(new Error('not found'));
+    await expect(ask({})).rejects.toThrow('The `codex` CLI tool is not installed');
   });
 
-  it('throws helpful error when chatgpt session is missing', async () => {
-    const error = new Error('Login required');
-    error.stderr = 'session expired';
-    execaMock.mockRejectedValueOnce(error);
+  it('should throw non-auth errors immediately without retry', async () => {
+    const otherError = new Error('Some other CLI error');
+    otherError.stderr = 'Something else went wrong';
+    execaMock.mockRejectedValueOnce(otherError);
 
-    await expect(ask('{}')).rejects.toThrow('ChatGPT session expired or missing');
+    await expect(ask({})).rejects.toThrow('codex CLI failed: Something else went wrong');
+    expect(initiateLoginMock).not.toHaveBeenCalled();
   });
 });

@@ -1,4 +1,20 @@
 ---
+task_id: refactor-gpt-service-to-codex-cli-v1
+date: 2025-09-28T14:00:00.000Z
+type: refactor
+scope: services
+---
+## Switch ask-gpt from chatgpt-cli to official codex CLI
+
+- Replaced `npx chatgpt` calls with the official `codex` CLI, using the `exec --full-auto` command for machine-readable output.
+- Implemented an automatic login flow that detects authentication errors and triggers the interactive `codex login` command.
+- Created a new `authService.js` to handle the login initiation.
+- Removed the `open` package dependency as it is no longer needed.
+- Updated tests in `gptService.test.js` to mock the new `codex` command flow.
+- Added comprehensive documentation in README.md for both ChatGPT and Claude Code integration.
+- Enhanced CLI help with detailed examples and authentication instructions.
+
+---
 task_id: gpt-test-1
 date: 2025-09-28T09:24:01.314Z
 type: feat

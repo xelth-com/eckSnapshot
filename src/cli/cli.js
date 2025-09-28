@@ -159,10 +159,42 @@ Examples for --profile:
 
   program
     .command('ask-gpt')
-    .description('Delegate apply_code_changes payload to ChatGPT CLI')
-    .argument('<payload>', 'JSON payload string')
-    .option('-v, --verbose', 'Enable verbose logging')
-    .action((payloadArg, cmd) => askGpt(payloadArg, cmd));
+    .description('Delegate tasks to OpenAI Codex agent with automatic authentication')
+    .argument('<payload>', 'JSON payload string (e.g. \'{"objective": "Calculate 5+2"}\')')
+    .option('-v, --verbose', 'Enable verbose logging and detailed execution output')
+    .action((payloadArg, cmd) => askGpt(payloadArg, cmd))
+    .addHelpText('after', `
+Examples:
+  Ask a simple question:
+    eck-snapshot ask-gpt '{"objective": "What is 5+2?"}'
+
+  Request code changes with context:
+    eck-snapshot ask-gpt '{
+      "target_agent": "local_dev",
+      "task_id": "feature-123",
+      "payload": {
+        "objective": "Add error handling to login function",
+        "files_to_modify": [{"path": "src/auth.js", "action": "modify"}]
+      },
+      "post_execution_steps": {
+        "journal_entry": {
+          "type": "feat",
+          "scope": "auth",
+          "summary": "Add error handling"
+        }
+      }
+    }' --verbose
+
+Prerequisites:
+  1. Install Codex CLI: npm install -g @openai/codex
+  2. Login: codex login (requires ChatGPT Plus/Pro subscription)
+  3. The command automatically loads .eck project context
+
+Authentication:
+  - Uses your existing 'codex login' credentials
+  - Auto-retries on authentication errors
+  - Supports ChatGPT Plus/Pro subscriptions
+`);
 
   // Project detection command
   program
