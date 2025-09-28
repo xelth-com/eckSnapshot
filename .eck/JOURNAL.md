@@ -1,5 +1,16 @@
 ---
 task_id: gpt-test-1
+date: 2025-09-28T09:24:01.314Z
+type: feat
+scope: test
+---
+## GPT integration test
+
+- Delegated simple change
+- Committed journal
+
+---
+task_id: gpt-test-1
 date: 2025-09-28T09:23:41.532Z
 type: feat
 scope: test
