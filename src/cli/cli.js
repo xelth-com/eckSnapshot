@@ -16,7 +16,6 @@ import { trainTokens, showTokenStats } from './commands/trainTokens.js';
 import { askGpt } from './commands/askGpt.js';
 import { ask as askGptService } from '../services/gptService.js';
 import { executePrompt, executePromptWithSession } from '../services/claudeCliService.js';
-import { executePrompt as executeGeminiPrompt } from '../services/geminiWebService.js';
 import { detectProfiles } from './commands/detectProfiles.js';
 import { setupGemini } from './commands/setupGemini.js';
 import { generateAutoDocs } from './commands/autoDocs.js';
@@ -279,20 +278,6 @@ Authentication:
       }
     });
 
-  // Ask Gemini command (requires GEMINI_API_KEY)
-  program
-    .command('ask-gemini')
-    .description('Execute a prompt using gemini-cli (requires GEMINI_API_KEY environment variable)')
-    .argument('<prompt>', 'Prompt to send to Gemini')
-    .action(async (prompt) => {
-      try {
-        const result = await executeGeminiPrompt(prompt);
-        console.log(JSON.stringify(result, null, 2));
-      } catch (error) {
-        console.error('Failed to execute prompt with Gemini:', error.message);
-        process.exit(1);
-      }
-    });
 
 
 
