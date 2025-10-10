@@ -8,6 +8,7 @@ import Parser from 'tree-sitter';
 import Python from 'tree-sitter-python';
 import Java from 'tree-sitter-java';
 import Kotlin from 'tree-sitter-kotlin';
+import C from 'tree-sitter-c';
 
 function generateHash(content) {
   return crypto.createHash('sha256').update(content).digest('hex');
@@ -18,6 +19,8 @@ const languageParsers = {
     '.py': Python,
     '.java': Java,
     '.kt': Kotlin,
+    '.c': C,
+    '.h': C,
 };
 
 async function _segmentWithTreeSitter(content, filePath, language) {
@@ -32,6 +35,7 @@ async function _segmentWithTreeSitter(content, filePath, language) {
             'function_definition': 'function', 'class_definition': 'class', // Python
             'function_declaration': 'function', 'class_declaration': 'class', // Kotlin/Java
             'method_declaration': 'function', // Java
+            'struct_specifier': 'struct', 'enum_specifier': 'enum', 'union_specifier': 'union', 'type_definition': 'typedef', // C
         };
 
         if (nodeTypeMap[node.type]) {

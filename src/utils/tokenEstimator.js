@@ -20,6 +20,7 @@ const DEFAULT_COEFFICIENTS = {
   'python': [0, 0.22, 0, 0],
   'rust': [0, 0.18, 0, 0],
   'go': [0, 0.19, 0, 0],
+  'c': [0, 0.23, 0, 0],
   'unknown': [0, 0.25, 0, 0]
 };
 
