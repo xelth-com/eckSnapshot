@@ -6,14 +6,25 @@ import { scanDirectoryRecursively, generateDirectoryTree, initializeEckManifest,
 import { loadSetupConfig } from '../../config.js';
 
 /**
- * Extracts a JSON object from a string that might contain markdown wrappers.
+ * Extracts a JSON object from a string that might contain markdown wrappers or log output.
+ * Finds the first opening brace '{' and the last closing brace '}' to extract the JSON.
  */
 function extractJson(text) {
+  // First try markdown code block extraction
   const match = text.match(/```(json)?([\s\S]*?)```/);
   if (match && match[2]) {
     return match[2].trim();
   }
-  return text.trim(); // Assume it's raw JSON if no markdown block
+
+  // Find first '{' and last '}' to extract JSON from surrounding text
+  const firstBrace = text.indexOf('{');
+  const lastBrace = text.lastIndexOf('}');
+
+  if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+    return text.substring(firstBrace, lastBrace + 1).trim();
+  }
+
+  return text.trim(); // Assume it's raw JSON if no braces found
 }
 
 /**

@@ -57,3 +57,6 @@ create-snapshot/
 !.claude/commands/
 !.claude/commands/eck/
 !.claude/commands/eck/**
+
+# Third-party managed components
+/managed_components/

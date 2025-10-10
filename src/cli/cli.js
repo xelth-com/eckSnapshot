@@ -10,7 +10,7 @@ import { createRepoSnapshot } from './commands/createSnapshot.js';
 import { restoreSnapshot } from './commands/restoreSnapshot.js';
 import { generateConsilium } from './commands/consilium.js';
 import { indexProject } from './commands/indexProject.js';
-import { queryProject } from './commands/queryProject.js';
+import { queryProject, viewIndex } from './commands/queryProject.js';
 import { detectProject, testFileParsing } from './commands/detectProject.js';
 import { trainTokens, showTokenStats } from './commands/trainTokens.js';
 import { askGpt } from './commands/askGpt.js';
@@ -156,6 +156,15 @@ Examples for --profile:
     .option('--profile <name>', 'Use a specific context profile for querying')
     .option('--import <filename>', 'Use a portable index file for the query instead of the local database.')
     .action(queryProject);
+
+  // Index view command
+  program
+    .command('index-view')
+    .description('View the contents of the code chunks database')
+    .option('--limit <number>', 'Number of records to display', (val) => parseInt(val), 10)
+    .option('--offset <number>', 'Number of records to skip', (val) => parseInt(val), 0)
+    .option('--file <path>', 'Filter by file path')
+    .action(viewIndex);
 
   program
     .command('ask-gpt')

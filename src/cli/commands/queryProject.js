@@ -125,3 +125,66 @@ export async function queryProject(query, options) {
     await destroyDb();
   }
 }
+
+export async function viewIndex(options) {
+  const spinner = ora('Connecting to database...').start();
+  const knex = getKnex();
+
+  try {
+    await initDb();
+
+    spinner.text = 'Fetching code chunks from database...';
+
+    // Build query with optional filters
+    let query = knex('code_chunks')
+      .select('id', 'file_path', 'chunk_type', 'chunk_name', 'profile')
+      .orderBy('id', 'asc');
+
+    // Apply file filter if specified
+    if (options.file) {
+      query = query.where('file_path', 'like', `%${options.file}%`);
+      spinner.info(`Filtering by file path: ${options.file}`);
+    }
+
+    // Apply pagination
+    if (options.limit) {
+      query = query.limit(options.limit);
+    }
+    if (options.offset) {
+      query = query.offset(options.offset);
+    }
+
+    const chunks = await query;
+
+    if (chunks.length === 0) {
+      spinner.warn('No code chunks found in the database.');
+      return;
+    }
+
+    spinner.succeed(`Found ${chunks.length} code chunks`);
+
+    // Display results in a formatted table
+    console.log('\n📊 Code Chunks Index:');
+    console.log('═'.repeat(100));
+    console.table(chunks.map(chunk => ({
+      ID: chunk.id,
+      'File Path': chunk.file_path.replace(process.cwd(), '.'),
+      Type: chunk.chunk_type,
+      Name: chunk.chunk_name,
+      Profile: chunk.profile || 'default'
+    })));
+
+    // Show summary
+    const totalCount = await knex('code_chunks').count('* as count').first();
+    console.log(`\nShowing ${chunks.length} of ${totalCount.count} total chunks`);
+
+    if (options.limit && chunks.length === options.limit) {
+      console.log(`\n💡 Use --offset ${(options.offset || 0) + options.limit} to view the next page`);
+    }
+
+  } catch (error) {
+    spinner.fail(`Failed to view index: ${error.message}`);
+  } finally {
+    await destroyDb();
+  }
+}
