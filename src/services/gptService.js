@@ -44,6 +44,7 @@ export async function ask(payload, options = {}) {
       const payloadObject = await parsePayload(payload);
       const manifest = await loadProjectEckManifest(process.cwd());
       const userPrompt = buildUserPrompt(payloadObject, manifest);
+      const promptInput = `${SYSTEM_PROMPT}\n\n${userPrompt}`;
 
       const args = [
         'exec',
@@ -51,15 +52,15 @@ export async function ask(payload, options = {}) {
         // as this service is designed for non-interactive delegation.
         '--full-auto',
         '--model', model,
-        '-c', `model_reasoning_effort=${reasoning}`,
-        `${SYSTEM_PROMPT}\n\n${userPrompt}`
+        '-c', `model_reasoning_effort=${reasoning}`
       ];
 
-      debug(verbose, `Executing: codex ${args.join(' ')}`);
+      debug(verbose, `Executing: codex ${args.join(' ')} <stdin>`);
 
       const cliResult = await execa('codex', args, {
         cwd: process.cwd(),
-        timeout: 300000 // 5-minute timeout
+        timeout: 300000, // 5-minute timeout
+        input: promptInput // Stream large prompts via stdin to avoid argv limits
       });
 
       const output = cliResult?.stdout?.trim();
@@ -67,9 +68,8 @@ export async function ask(payload, options = {}) {
         throw new Error('codex CLI returned empty response');
       }
 
-      // Try to parse the output as JSON first
-      try {
-        const parsed = JSON.parse(output);
+      const parsed = extractFinalJson(output);
+      if (parsed) {
         if (parsed.post_steps || parsed.post_execution_steps) {
           const postSteps = parsed.post_steps || parsed.post_execution_steps;
           await handlePostExecutionSteps(postSteps, payloadObject);
@@ -77,11 +77,11 @@ export async function ask(payload, options = {}) {
         }
         spinner?.succeed('Codex agent completed the task.');
         return parsed;
-      } catch (e) {
-        // If not JSON, treat as text response
-        spinner?.succeed('Codex agent completed the task.');
-        return { success: true, changes: [], errors: [], response_text: output };
       }
+
+      // If parsing fails, surface the raw response text for upstream handling.
+      spinner?.succeed('Codex agent completed the task.');
+      return { success: true, changes: [], errors: [], response_text: output };
 
     } catch (error) {
         spinner?.fail('Codex execution failed.');
@@ -147,6 +147,41 @@ function buildUserPrompt(payloadObject, manifest) {
 function debug(verbose, message) {
   if (verbose) {
     console.log(`[ask-gpt] ${message}`);
+  }
+}
+
+function extractFinalJson(text) {
+  const trimmed = text?.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(trimmed);
+  } catch (error) {
+    // Continue with fallback parsing when logs precede the JSON payload.
+  }
+
+  const fencedMatch = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  if (fencedMatch && fencedMatch[1]) {
+    const fencedContent = fencedMatch[1].trim();
+    try {
+      return JSON.parse(fencedContent);
+    } catch (error) {
+      // Ignore and fall through to final brace search.
+    }
+  }
+
+  const lastBraceIndex = trimmed.lastIndexOf('{');
+  if (lastBraceIndex === -1) {
+    return null;
+  }
+
+  const jsonCandidate = trimmed.slice(lastBraceIndex);
+  try {
+    return JSON.parse(jsonCandidate);
+  } catch (error) {
+    return null;
   }
 }
 

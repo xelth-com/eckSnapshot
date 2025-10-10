@@ -1,4 +1,19 @@
 ---
+task_id: feat-c-language-support-v1
+date: 2025-10-10
+type: feat
+scope: core
+---
+
+# Add support for C language projects
+
+- Added C project detection (Makefile, CMakeLists.txt, *.c, *.h)
+- Added C-specific file filtering for compiled objects (.o, .a, .so)
+- Installed tree-sitter-c@0.21.4 parser
+- Integrated C parser into segmenter for functions, structs, enums, unions
+- Added token estimation coefficients for C (0.23 ratio)
+
+---
 task_id: refactor-claude-skip-permissions-default-v1
 date: 2025-09-28T14:30:00.000Z
 type: refactor

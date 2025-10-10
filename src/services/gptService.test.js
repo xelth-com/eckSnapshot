@@ -64,23 +64,17 @@ describe('gptService with codex CLI', () => {
     loadProjectEckManifestMock.mockResolvedValue(null);
   });
 
-  it('should call codex CLI with correct arguments and parse JSONL output', async () => {
-    const taskCompleteEvent = {
-      id: 'task1',
-      msg: {
-        type: 'task_complete',
-        last_agent_message: '{"success": true, "changes": ["change1"], "errors": []}'
-      }
-    };
-    execaMock.mockResolvedValue({ stdout: JSON.stringify(taskCompleteEvent) });
+  it('should call codex CLI with correct arguments and parse final JSON from noisy output', async () => {
+    const codexLogs = '[2025-10-06 20:04:22] OpenAI Codex v0.42.0\nSome setup log...\n\n{"success": true, "changes": ["change1"], "errors": []}';
+    execaMock.mockResolvedValue({ stdout: codexLogs });
 
     const payload = { objective: 'Test' };
     const result = await ask(payload);
 
     expect(result).toEqual({ success: true, changes: ['change1'], errors: [] });
-    expect(execaMock).toHaveBeenCalledWith('codex', expect.arrayContaining(['--json', '--full-auto']), expect.any(Object));
-    const promptArg = execaMock.mock.calls[0][1][0];
-    expect(promptArg).toContain(JSON.stringify(payload));
+    expect(execaMock).toHaveBeenCalledWith('codex', expect.arrayContaining(['exec', '--full-auto', '--model']), expect.any(Object));
+    const [, , options] = execaMock.mock.calls[0];
+    expect(options.input).toContain(JSON.stringify(payload));
   });
 
   it('should trigger login flow on authentication error and retry', async () => {

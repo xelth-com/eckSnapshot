@@ -63,12 +63,10 @@ export async function indexProject(projectPath, options) {
         mainSpinner.text = `[1/2] Анализ кода (${chunksToProcessAI.length} чанков)...`;
         const summaries = await Promise.all(chunksToProcessAI.map(c => getCodeSummary(c.code)));
         for (let i = 0; i < chunksToProcessAI.length; i++) { chunksToProcessAI[i].summary = summaries[i]; }
-        await releaseAnalysisModel();
 
         mainSpinner.text = `[2/2] Создание эмбеддингов...`;
         const embeddings = await generateBatchEmbeddings(chunksToProcessAI.map(c => c.code));
         for (let i = 0; i < chunksToProcessAI.length; i++) { chunksToProcessAI[i].embedding = embeddings[i]; }
-        await releaseEmbeddingModel();
     }
 
     mainSpinner.text = 'Сохранение данных в БД...';
@@ -127,6 +125,8 @@ export async function indexProject(projectPath, options) {
   } catch (error) {
     mainSpinner.fail(`Ошибка в процессе индексации: ${error.message}`);
   } finally {
+    await releaseAnalysisModel();
+    await releaseEmbeddingModel();
     await destroyDb();
     mainSpinner.succeed('Индексация завершена.');
   }
