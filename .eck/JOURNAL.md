@@ -1,4 +1,19 @@
 ---
+task_id: fix-profile-detect-and-add-index-viewer-v1
+date: 2025-10-10
+type: fix
+scope: cli
+---
+
+# Fix JSON parsing in profile-detect
+
+- Modified extractJson to be more robust against AI log wrappers
+- Finds first '{' and last '}' to extract JSON from surrounding text
+- Added /managed_components/ to .gitignore
+- Implemented new index-view command to inspect code chunks database
+- This resolves the crash when running the profile-detect command
+
+---
 task_id: feat-c-language-support-v1
 date: 2025-10-10
 type: feat
