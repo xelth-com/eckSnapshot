@@ -8,6 +8,7 @@ const __dirname = path.dirname(__filename);
 
 import { createRepoSnapshot } from './commands/createSnapshot.js';
 import { restoreSnapshot } from './commands/restoreSnapshot.js';
+import { pruneSnapshot } from './commands/pruneSnapshot.js';
 import { generateConsilium } from './commands/consilium.js';
 import { indexProject } from './commands/indexProject.js';
 import { queryProject, viewIndex } from './commands/queryProject.js';
@@ -111,6 +112,14 @@ Examples for --profile:
     .option('--exclude <patterns...>', 'Exclude patterns')
     .option('--concurrency <number>', 'Concurrent operations', (val) => parseInt(val), 10)
     .action(restoreSnapshot);
+
+  // Prune command
+  program
+    .command('prune')
+    .description('Intelligently reduce snapshot size using AI file ranking')
+    .argument('<snapshot_file>', 'Path to the snapshot file to prune')
+    .option('--target-size <size>', 'Target size (e.g., 500KB, 1MB)', '500KB')
+    .action(pruneSnapshot);
 
   // Consilium command
   program
