@@ -131,6 +131,92 @@ To use `eck-snapshot` to its full potential, you will need:
     node index.js query "How does the authentication middleware work?"
     ```
 
+## Working with Profiles
+
+Profiles allow you to focus snapshots on specific parts of your codebase, making AI interactions more efficient and targeted.
+
+### Auto-Generating Profiles
+
+The `profile-detect` command analyzes your project structure and automatically creates context profiles:
+
+```bash
+node index.js profile-detect
+```
+
+This command:
+1. Scans your entire project directory tree
+2. Uses AI (Claude) to analyze the structure and identify logical components
+3. Generates profiles with include/exclude glob patterns
+4. Saves them to `.eck/profiles.json`
+
+**Example output:**
+```
+✨ Detected Profiles:
+---------------------------
+  - cli
+  - core
+  - database
+  - services
+  - utils
+  - templates
+  - tests
+  - config
+  - docs
+
+✔ Successfully detected and saved 10 profiles to .eck/profiles.json
+```
+
+### Profile File Structure
+
+Profiles are stored in `.eck/profiles.json`:
+
+```json
+{
+  "backend": {
+    "include": ["src/server/**", "src/database/**"],
+    "exclude": ["**/*.test.js"]
+  },
+  "frontend": {
+    "include": ["src/client/**", "src/components/**"],
+    "exclude": ["**/*.spec.js"]
+  },
+  "docs": {
+    "include": ["docs/**", "*.md"],
+    "exclude": []
+  }
+}
+```
+
+### Using Profiles
+
+Once profiles are generated, use them with the `--profile` flag:
+
+**Single profile:**
+```bash
+node index.js snapshot --profile backend
+```
+
+**Multiple profiles:**
+```bash
+node index.js snapshot --profile "backend,database"
+```
+
+**Profile with exclusions:**
+```bash
+node index.js snapshot --profile "backend,-**/tests/**"
+```
+
+**Mix profiles with ad-hoc patterns:**
+```bash
+node index.js snapshot --profile "backend,src/utils/**,-**/*.test.js"
+```
+
+**Benefits:**
+- ✅ Smaller, more focused snapshots
+- ✅ Faster AI processing
+- ✅ More relevant context for AI agents
+- ✅ Reusable across multiple snapshot operations
+
 ## Community & Contribution
 
 Developing and testing tools that leverage large language models is a complex task. Running and debugging large models locally requires significant computational resources.

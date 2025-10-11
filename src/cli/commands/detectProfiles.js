@@ -1,7 +1,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import ora from 'ora';
-import { dispatchAnalysisTask } from '../../services/dispatcherService.js';
+import { executePrompt as askClaude } from '../../services/claudeCliService.js';
 import { scanDirectoryRecursively, generateDirectoryTree, initializeEckManifest, loadConfig } from '../../utils/fileUtils.js';
 import { loadSetupConfig } from '../../config.js';
 
@@ -62,8 +62,8 @@ Example: {"frontend": {"include": ["packages/ui/**"], "exclude": []}, "docs": {"
 DO NOT add any conversational text, introductory sentences, or explanations. Your entire response must be ONLY the JSON object.`;
 
     spinner.text = 'Asking AI to analyze directory tree and detect profiles...';
-    const aiResponseObject = await dispatchAnalysisTask(prompt);
-    const rawText = aiResponseObject.result || aiResponseObject.response_text;
+    const aiResponseObject = await askClaude(prompt, { taskSize: allFiles.length });
+    const rawText = aiResponseObject.result;
 
     if (!rawText || typeof rawText.replace !== 'function') {
       throw new Error(`AI returned invalid content type: ${typeof rawText}`);

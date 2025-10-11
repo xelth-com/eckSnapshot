@@ -5,10 +5,11 @@ import pRetry from 'p-retry';
 /**
  * Executes a prompt using the claude-code CLI in non-interactive print mode.
  * @param {string} prompt The prompt to send to Claude.
- * @param {boolean} continueConversation Whether to continue the last conversation with -c flag.
+ * @param {object} options Options object, e.g., { continueConversation: boolean, taskSize: number }.
  * @returns {Promise<object>} A promise that resolves with the final JSON output object from Claude.
  */
-export async function executePrompt(prompt, continueConversation = false) {
+export async function executePrompt(prompt, options = {}) {
+  const { continueConversation = false } = options;
   try {
     // Ensure the log directory exists
     try {
@@ -27,7 +28,7 @@ export async function executePrompt(prompt, continueConversation = false) {
       }
     }
 
-    return await attemptClaudeExecution(prompt, sessionId);
+    return await attemptClaudeExecution(prompt, sessionId, options);
   } catch (error) {
     // Check for claude session limits first
     if (isSessionLimitError(error)) {
@@ -64,7 +65,7 @@ export async function executePrompt(prompt, continueConversation = false) {
         await new Promise(resolve => setTimeout(resolve, 1000));
         
         // Now try the original prompt again
-        return await attemptClaudeExecution(prompt, sessionId);
+        return await attemptClaudeExecution(prompt, sessionId, options);
       } catch (retryError) {
         // Логируем неудачу восстановления
         const failureLogFile = `./.eck/logs/claude-recovery-failure-${Date.now()}.log`;
@@ -95,15 +96,16 @@ export async function executePrompt(prompt, continueConversation = false) {
  * Attempts to execute a claude command and parse the JSON output.
  * @param {string} prompt The prompt to send to Claude.
  * @param {string|null} sessionId Session ID to resume, or null for new session.
+ * @param {object} options Options object for task configuration.
  * @returns {Promise<object>} The parsed result object.
  */
-async function attemptClaudeExecution(prompt, sessionId = null) {
+async function attemptClaudeExecution(prompt, sessionId = null, options = {}) {
   const timestamp = new Date().toISOString();
   const logFile = `./.eck/logs/claude-execution-${Date.now()}.log`;
   
   try {
     // Use spawn instead of execa for better control over streaming and timeouts
-    const result = await executeClaudeWithDynamicTimeout(prompt, sessionId);
+    const result = await executeClaudeWithDynamicTimeout(prompt, sessionId, options);
     const { stdout, stderr } = result;
 
     // Логируем весь вывод в файл
@@ -388,22 +390,24 @@ async function getLastSessionId() {
  * Executes a prompt with a specific session ID.
  * @param {string} prompt The prompt to send to Claude.
  * @param {string} sessionId The specific session ID to resume.
+ * @param {object} options Options object for task configuration.
  * @returns {Promise<object>} A promise that resolves with the final JSON output object from Claude.
  */
-export async function executePromptWithSession(prompt, sessionId) {
+export async function executePromptWithSession(prompt, sessionId, options = {}) {
   console.log(`Resuming conversation with session: ${sessionId}`);
-  return await attemptClaudeExecution(prompt, sessionId);
+  return await attemptClaudeExecution(prompt, sessionId, options);
 }
 
 /**
  * Executes claude with dynamic timeout that extends when output is detected.
  * @param {string} prompt The prompt to send to Claude.
  * @param {string|null} sessionId Session ID to resume, or null for new session.
+ * @param {object} options Options object with taskSize for calculating dynamic timeout.
  * @returns {Promise<{stdout: string, stderr: string}>} The execution result.
  */
-async function executeClaudeWithDynamicTimeout(prompt, sessionId = null) {
+async function executeClaudeWithDynamicTimeout(prompt, sessionId = null, options = {}) {
   return new Promise((resolve, reject) => {
-    
+
     const args = [];
     if (sessionId) {
       args.push('--resume', sessionId);
@@ -413,18 +417,25 @@ async function executeClaudeWithDynamicTimeout(prompt, sessionId = null) {
     args.push('--dangerously-skip-permissions');
 
     args.push(prompt, '-p', '--output-format=stream-json', '--verbose');
-    
+
     const child = spawn('claude', args, {
       stdio: ['ignore', 'pipe', 'pipe']
     });
-    
+
     let stdout = '';
     let stderr = '';
     let lastOutputTime = Date.now();
     let isFinished = false;
-    
+
+    // Dynamic timeout calculation based on task size
+    const taskSize = options.taskSize || 0;
+    const BASE_TIMEOUT = 60000; // 60 seconds base
+    const PER_ITEM_TIMEOUT = 200; // 200ms per file/item
+    const ACTIVITY_TIMEOUT = BASE_TIMEOUT + (taskSize * PER_ITEM_TIMEOUT);
+
+    console.log(`⏱️  Using dynamic activity timeout: ${(ACTIVITY_TIMEOUT / 1000).toFixed(1)}s for ${taskSize} items`);
+
     const INITIAL_TIMEOUT = 30000; // 30 seconds initial
-    const ACTIVITY_TIMEOUT = 60000; // 1 minute of inactivity allowed
     const MAX_TOTAL_TIME = 20 * 60000; // 20 minutes maximum
     
     // Reset timeout whenever we see new output
@@ -448,10 +459,10 @@ async function executeClaudeWithDynamicTimeout(prompt, sessionId = null) {
       }
       
       if (timeSinceLastOutput > ACTIVITY_TIMEOUT) {
-        console.log('💀 No activity detected for 1 minute, killing process');
+        console.log(`💀 No activity detected for ${(ACTIVITY_TIMEOUT/1000).toFixed(1)}s, killing process`);
         child.kill('SIGTERM');
         clearInterval(activityChecker);
-        reject(new Error(`No output received for ${ACTIVITY_TIMEOUT/1000} seconds`));
+        reject(new Error(`No output received for ${(ACTIVITY_TIMEOUT/1000).toFixed(1)} seconds`));
         return;
       }
       

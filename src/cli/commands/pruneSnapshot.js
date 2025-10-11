@@ -1,7 +1,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import ora from 'ora';
-import { dispatchAnalysisTask } from '../../services/dispatcherService.js';
+import { executePrompt as askClaude } from '../../services/claudeCliService.js';
 import { parseSnapshotContent, parseSize, formatSize } from '../../utils/fileUtils.js';
 
 function extractJson(text) {
@@ -39,10 +39,20 @@ export async function pruneSnapshot(snapshotFile, options) {
 
     spinner.text = 'Asking AI to rank files by importance...';
     const filePaths = files.map(f => f.path);
-    const prompt = `You are a software architect. Given the following list of file paths from a project snapshot, rank them by importance for understanding the project's core functionality. The most critical files (e.g., entry points, core logic, configurations) should be first. Your output MUST be ONLY a JSON array of strings, with the file paths in ranked order. Do not add any other text.\n\nFILE LIST:\n${JSON.stringify(filePaths, null, 2)}`;
 
-    const aiResponseObject = await dispatchAnalysisTask(prompt);
-    const rawText = aiResponseObject.result || aiResponseObject.response_text;
+    const prompt = `Return a JSON array ranking these file paths by importance (most important first).
+
+Important files: package.json, index.js, main entry points, core logic, configuration
+Less important: tests, documentation, examples
+
+Files to rank:
+${filePaths.join('\n')}
+
+Return format (NOTHING else, no markdown, no explanations, ONLY the array):
+["file1", "file2", "file3"]`;
+
+    const aiResponseObject = await askClaude(prompt);
+    const rawText = aiResponseObject.response || aiResponseObject.response_text || aiResponseObject.result;
     const cleanedJson = extractJson(rawText);
 
     let rankedFiles;
