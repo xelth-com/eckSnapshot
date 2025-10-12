@@ -18,6 +18,7 @@ import { askGpt } from './commands/askGpt.js';
 import { ask as askGptService } from '../services/gptService.js';
 import { executePrompt, executePromptWithSession } from '../services/claudeCliService.js';
 import { detectProfiles } from './commands/detectProfiles.js';
+import { generateProfileGuide } from './commands/generateProfileGuide.js';
 import { setupGemini } from './commands/setupGemini.js';
 import { generateAutoDocs } from './commands/autoDocs.js';
 import inquirer from 'inquirer';
@@ -254,6 +255,13 @@ Authentication:
     .description('Use AI to scan the directory tree and auto-generate local context profiles (saves to .eck/profiles.json)')
     .argument('[repoPath]', 'Path to the repository', process.cwd())
     .action(detectProfiles);
+
+  program
+    .command('generate-profile-guide')
+    .description('Generate a markdown guide with a prompt and directory tree for manual profile creation')
+    .argument('[repoPath]', 'Path to the repository', process.cwd())
+    .option('--config <path>', 'Configuration file path')
+    .action((repoPath, options) => generateProfileGuide(repoPath, options));
 
   // Ask Claude command
   program
