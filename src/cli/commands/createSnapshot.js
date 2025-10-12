@@ -20,6 +20,7 @@ import { estimateTokensWithPolynomial, generateTrainingCommand } from '../../uti
 import { indexProject } from './indexProject.js';
 import { loadSetupConfig, getProfile } from '../../config.js';
 import { applyProfileFilter } from '../../utils/fileUtils.js';
+import { createAbstract } from '../../core/abstractParser.js';
 
 /**
  * Creates dynamic project context based on detection results
@@ -129,6 +130,7 @@ function createDynamicProjectContext(detection) {
 import { generateEnhancedAIHeader } from '../../utils/aiHeader.js';
 
 const gzip = promisify(zlib.gzip);
+const ABSTRACT_EXTENSIONS = new Set(['.c', '.h']);
 
 async function getProjectFiles(projectPath, config) {
   const isGitRepo = await checkGitRepository(projectPath);
@@ -304,7 +306,7 @@ async function processProjectFiles(repoPath, options, config, projectType = null
           trackSkippedFile(normalizedPath, `File extension filter (${fileExtension})`);
           return null;
         }
-        
+
         if (matchesPattern(normalizedPath, config.filesToIgnore)) {
           stats.excludedFiles++;
           trackSkippedFile(normalizedPath, 'File pattern filter');
@@ -326,9 +328,40 @@ async function processProjectFiles(repoPath, options, config, projectType = null
         const content = await readFileWithSizeCheck(fullPath, maxFileSize);
         stats.includedFiles++;
         stats.processedSize += fileStats.size;
-        
+        let fileContent = content;
+        let usedAbstractContent = false;
+
+        if (options.abstract && ABSTRACT_EXTENSIONS.has(fileExtension.toLowerCase())) {
+          try {
+            // Parse level: true -> 5, '3' -> 3, undefined -> skip (won't reach here)
+            const level = options.abstract === true ? 5 : parseInt(options.abstract, 10) || 5;
+            const abstractOutput = await createAbstract(content, level);
+            const trimmedAbstract = abstractOutput.trim();
+            if (trimmedAbstract) {
+              fileContent = trimmedAbstract;
+              usedAbstractContent = true;
+            } else if (options.verbose) {
+              console.warn(`⚠️  Abstract snapshot for ${normalizedPath} was empty; using original content.`);
+            }
+          } catch (error) {
+            if (options.verbose) {
+              console.warn(`⚠️  Failed to abstract ${normalizedPath}: ${error.message}`);
+            }
+          }
+        }
+        let outputBody = usedAbstractContent ? fileContent : content;
+
+        // Apply max-lines-per-file truncation if specified
+        if (options.maxLinesPerFile && options.maxLinesPerFile > 0) {
+          const lines = outputBody.split('\n');
+          if (lines.length > options.maxLinesPerFile) {
+            outputBody = lines.slice(0, options.maxLinesPerFile).join('\n') +
+              `\n\n[... truncated ${lines.length - options.maxLinesPerFile} lines ...]`;
+          }
+        }
+
         return {
-          content: `--- File: /${normalizedPath} ---\n\n${content}\n\n`,
+          content: `--- File: /${normalizedPath} ---\n\n${outputBody}\n\n`,
           path: normalizedPath,
           size: fileStats.size
         };
@@ -490,14 +523,15 @@ export async function createRepoSnapshot(repoPath, options) {
         const isGitRepo = await checkGitRepository(processedRepoPath);
 
         const architectHeader = await generateEnhancedAIHeader({ stats, repoName, mode: 'file', eckManifest, options: architectOptions, repoPath: processedRepoPath }, isGitRepo);
-        const architectBaseFilename = `${repoName}_snapshot_${timestamp}${gitHash ? `_${gitHash}` : ''}`;
+        const abstractSuffix = options.abstract ? '_abstract' : '';
+        const architectBaseFilename = `${repoName}_snapshot_${timestamp}${gitHash ? `_${gitHash}` : ''}${abstractSuffix}`;
         const architectFilename = `${architectBaseFilename}.${fileExtension}`;
         const architectFilePath = path.join(outputPath, architectFilename);
         await fs.writeFile(architectFilePath, architectHeader + fileBody);
 
         // --- File 2: Junior Architect Snapshot --- 
         let jaFilePath = null;
-        if (!options.profile && !options.agent && fileExtension === 'md') { // Only create JA snapshot if main is MD
+        if (options.withJa && fileExtension === 'md') { // Only create JA snapshot if requested and main is MD
           console.log('🖋️ Generating Junior Architect (_ja) snapshot...');
           const jaOptions = { ...options, agent: true, noTree: false, noAiHeader: false };
           const jaHeader = await generateEnhancedAIHeader({ stats, repoName, mode: 'file', eckManifest, options: jaOptions, repoPath: processedRepoPath }, isGitRepo);

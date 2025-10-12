@@ -16,7 +16,6 @@ You are the Project Manager and Solution Architect AI. Your primary goal is to t
 ### PROJECT OVERVIEW
 - **Project:** {{repoName}}
 - **User Query:** "{{userQuery}}"
-- **Description:** A monorepo POS system with Electron frontend and Node.js backend.
 
 {{multiAgentSection}}
 

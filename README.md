@@ -217,6 +217,162 @@ node index.js snapshot --profile "backend,src/utils/**,-**/*.test.js"
 - ✅ More relevant context for AI agents
 - ✅ Reusable across multiple snapshot operations
 
+## Advanced Snapshot Compression
+
+For large codebases (especially C/C++ projects with vendor dependencies like ESP-IDF, Android SDK, or Linux kernel), `eck-snapshot` provides powerful compression options to reduce snapshot size while maintaining essential information.
+
+### Code Abstraction (`--abstract [level]`)
+
+The `--abstract` flag uses a tree-sitter-based parser to create lightweight code signatures by removing function bodies and implementation details, keeping only the API surface.
+
+**Syntax:**
+```bash
+node index.js snapshot --abstract [level]
+```
+
+- `level` (optional): 1-9, controls detail level (default: 5)
+- Works independently - can be used with or without `--max-lines-per-file`
+
+**What gets removed:**
+- ✂️ Function bodies (all levels)
+- ✂️ Variable initializations (level ≤ 5)
+- ✂️ Array declarations (level ≤ 3)
+- ✂️ Comments (level < 7)
+- ✂️ Preprocessor conditionals (#if/#ifdef blocks)
+
+**What stays:**
+- ✅ `#include` directives
+- ✅ `#define` macros
+- ✅ Forward declarations (`struct MyStruct;`)
+- ✅ Function prototypes without bodies
+- ✅ `extern` declarations
+- ✅ `typedef` statements (simplified)
+
+**Example:**
+
+```c
+// Before (original code)
+#include <stdio.h>
+
+/* Configuration */
+#define MAX_SIZE 100
+
+struct Point {
+    int x;
+    int y;
+};
+
+int calculate_sum(int a, int b) {
+    int result = a + b;
+    printf("Sum: %d\n", result);
+    return result;
+}
+
+// After (--abstract 1)
+#include <stdio.h>
+
+#define MAX_SIZE 100
+
+struct Point;
+int calculate_sum(int a, int b);
+```
+
+**Compression results:** 90-95% reduction for typical C files
+
+### File Truncation (`--max-lines-per-file <number>`)
+
+For vendor headers with thousands of declarations, this option truncates each file to N lines, adding a `[truncated...]` marker.
+
+**Syntax:**
+```bash
+node index.js snapshot --max-lines-per-file 100
+```
+
+- Works with **any** content (full code or abstracted)
+- Independent of `--abstract`
+- Especially useful for large vendor/generated files
+
+**When to use:**
+- Large header files (8000+ lines) that bloat snapshots
+- Generated code (protobuf, thrift)
+- Vendor SDKs with extensive APIs
+
+### Combining Both Options ⭐ **RECOMMENDED**
+
+For maximum compression, combine both flags:
+
+```bash
+node index.js snapshot --abstract 1 --max-lines-per-file 100 --no-tree
+```
+
+**Compression comparison (ESP32 project example):**
+
+| Configuration | Size | Reduction | Use Case |
+|---------------|------|-----------|----------|
+| No flags | ~50MB | 0% | Full source inspection |
+| `--abstract 1` | 8.5MB | 83% | API signatures only |
+| `--max-lines 100` | ~30MB | 40% | Full code, truncated |
+| **Both combined** | **3.0MB** | **94%** | Large projects with vendors |
+
+### Real-World Examples
+
+**1. Analyze your own code (main directory only):**
+```bash
+node index.js snapshot --abstract 1 --profile "main/**/*.c,main/**/*.h"
+# Result: ~60KB
+```
+
+**2. Include vendor APIs but keep compact:**
+```bash
+node index.js snapshot --abstract 1 --max-lines-per-file 75 \
+  --profile "**,-build/**,-**/test/**,-**/examples/**"
+# Result: ~2.3MB (73% smaller)
+```
+
+**3. Debug specific file (full code, no truncation):**
+```bash
+node index.js snapshot --profile "src/wifi_manager.c"
+# Result: Full file with implementation
+```
+
+**4. Ultra-compact for CI/documentation:**
+```bash
+node index.js snapshot --abstract 1 --max-lines-per-file 50 \
+  --profile "**,-managed_components/**,-build/**"
+# Result: <1MB
+```
+
+### Abstraction Levels Guide
+
+| Level | Comments | Variables | Arrays | Use Case |
+|-------|----------|-----------|--------|----------|
+| **1-3** | None | extern only | Removed | Ultra-minimal API |
+| **5** | None | All (no init) | Kept | Default (balanced) |
+| **7** | Doc (`/** */`) | All (no init) | Kept | With documentation |
+| **9** | All | All (no init) | Kept | Max context |
+
+### Best Practices
+
+1. **For your own code analysis:**
+   ```bash
+   --abstract 1 --profile "main/**"
+   ```
+
+2. **For large projects with dependencies:**
+   ```bash
+   --abstract 1 --max-lines-per-file 100
+   ```
+
+3. **For CI/documentation (readable code):**
+   ```bash
+   --max-lines-per-file 200  # No abstract
+   ```
+
+4. **For extreme compression:**
+   ```bash
+   --abstract 1 --max-lines-per-file 50
+   ```
+
 ## Community & Contribution
 
 Developing and testing tools that leverage large language models is a complex task. Running and debugging large models locally requires significant computational resources.

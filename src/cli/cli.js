@@ -89,6 +89,9 @@ export function run() {
     .option('--enhanced', 'Use enhanced multi-agent headers (default: true)', true)
     .option('--profile <name>', 'Filter files using profiles and/or ad-hoc glob patterns.')
     .option('--agent', 'Generate a snapshot optimized for a command-line agent')
+    .option('--with-ja', 'Generate a detailed snapshot for the Junior Architect agent')
+    .option('--abstract [level]', 'Generate a lightweight snapshot with code signatures. Optionally specify level 1-9 (default: 5).')
+    .option('--max-lines-per-file <number>', 'Truncate files to max N lines (e.g., 200 for compact snapshots)', (val) => parseInt(val))
     .action(createRepoSnapshot)
     .addHelpText('after', `
 Examples for --profile:

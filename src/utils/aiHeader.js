@@ -77,6 +77,88 @@ function buildEckManifestSection(eckManifest) {
   return section;
 }
 
+function extractMeaningfulLine(block) {
+  if (!block || typeof block !== 'string') {
+    return null;
+  }
+
+  const lines = block.split(/\r?\n/);
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) {
+      continue;
+    }
+    const withoutBullet = trimmed.replace(/^[-*]\s*/, '').trim();
+    if (withoutBullet) {
+      return withoutBullet.replace(/\s+/g, ' ');
+    }
+  }
+  return null;
+}
+
+function extractDescriptionFromManifest(eckManifest) {
+  if (!eckManifest) {
+    return null;
+  }
+
+  if (typeof eckManifest.description === 'string' && eckManifest.description.trim()) {
+    return eckManifest.description.trim();
+  }
+
+  if (eckManifest.project && typeof eckManifest.project.description === 'string' && eckManifest.project.description.trim()) {
+    return eckManifest.project.description.trim();
+  }
+
+  if (typeof eckManifest.context === 'string' && eckManifest.context.trim()) {
+    const sectionMatch = eckManifest.context.match(/##\s*Description\s*([\s\S]*?)(?=^##\s|^#\s|\Z)/im);
+    if (sectionMatch && sectionMatch[1]) {
+      const meaningful = extractMeaningfulLine(sectionMatch[1]);
+      if (meaningful) {
+        return meaningful;
+      }
+    }
+
+    const fallback = extractMeaningfulLine(eckManifest.context);
+    if (fallback) {
+      return fallback;
+    }
+  }
+
+  return null;
+}
+
+async function resolveProjectDescription(context) {
+  const defaultDescription = 'Project description not provided.';
+
+  const manifestDescription = extractDescriptionFromManifest(context.eckManifest);
+  if (manifestDescription) {
+    const normalized = manifestDescription.trim();
+    const genericPatterns = [
+      /^brief description of what this project does/i,
+      /^no project context provided/i
+    ];
+    const isGeneric = genericPatterns.some(pattern => pattern.test(normalized));
+    if (!isGeneric) {
+      return normalized;
+    }
+  }
+
+  if (context.repoPath) {
+    try {
+      const packageJsonPath = path.join(context.repoPath, 'package.json');
+      const pkgRaw = await fs.readFile(packageJsonPath, 'utf-8');
+      const pkg = JSON.parse(pkgRaw);
+      if (typeof pkg.description === 'string' && pkg.description.trim()) {
+        return pkg.description.trim();
+      }
+    } catch (error) {
+      // Ignore errors - package.json may not exist or be readable
+    }
+  }
+
+  return defaultDescription;
+}
+
 export async function generateEnhancedAIHeader(context, isGitRepo = false) {
   try {
     const setupConfig = await loadSetupConfig();
@@ -123,9 +205,10 @@ export async function generateEnhancedAIHeader(context, isGitRepo = false) {
     }
 
     // --- Build common context sections --- 
+    const projectDescription = await resolveProjectDescription(context);
     const projectOverview = `### PROJECT OVERVIEW
 - **Project:** ${context.repoName || 'Unknown'}
-- **Description:** A monorepo POS system with Electron frontend and Node.js backend.
+- **Description:** ${projectDescription}
 `;
     const normalizedEck = normalizeManifest(context.eckManifest);
     let eckManifestSection = '';
