@@ -4,7 +4,7 @@ import { execa } from 'execa';
 import ignore from 'ignore';
 import { detectProjectType, getProjectSpecificFiltering } from './projectDetector.js';
 import { executePrompt as askClaude } from '../services/claudeCliService.js';
-import { getProfile } from '../config.js';
+import { getProfile, loadSetupConfig } from '../config.js';
 import micromatch from 'micromatch';
 
 export function parseSize(sizeStr) {
@@ -674,7 +674,17 @@ export async function applyProfileFilter(allFiles, profileString, repoPath) {
  */
 export async function initializeEckManifest(projectPath) {
   const eckDir = path.join(projectPath, '.eck');
-  
+
+  // Load setup configuration to check AI generation settings
+  let aiGenerationEnabled = false;
+  try {
+    const setupConfig = await loadSetupConfig();
+    aiGenerationEnabled = setupConfig?.aiInstructions?.manifestInitialization?.aiGenerationEnabled ?? false;
+  } catch (error) {
+    // If setup config fails to load, default to disabled
+    console.warn(`   ⚠️ Could not load setup config: ${error.message}. AI generation disabled.`);
+  }
+
   try {
     // Check if .eck directory already exists and has all required files
     let needsInitialization = false;
@@ -876,20 +886,20 @@ Track technical debt, refactoring needs, and code quality issues.
       let fileContent = file.content; // Start with fallback
       let generatedByAI = false;
 
-      // For files with a prompt, try to dynamically generate
-      if (file.prompt) {
+      // For files with a prompt, try to dynamically generate (only if enabled)
+      if (file.prompt && aiGenerationEnabled) {
         try {
           console.log(`   🧠 Attempting to auto-generate ${file.name} via Claude...`);
           const aiResponseObject = await askClaude(file.prompt); // Use the prompt
           const rawText = aiResponseObject.result; // Handle Claude response
-          
+
           if (!rawText || typeof rawText.replace !== 'function') {
              throw new Error(`AI returned invalid content type: ${typeof rawText}`);
           }
 
           // Basic cleanup of potential markdown code blocks from Claude
           const cleanedResponse = rawText.replace(/^```(markdown|yaml)?\n|```$/g, '').trim();
-          
+
           if (cleanedResponse) {
             fileContent = cleanedResponse;
             generatedByAI = true;

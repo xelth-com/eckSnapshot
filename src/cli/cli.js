@@ -91,13 +91,49 @@ export function run() {
     .option('--max-lines-per-file <number>', 'Truncate files to max N lines (e.g., 200 for compact snapshots)', (val) => parseInt(val))
     .action(createRepoSnapshot)
     .addHelpText('after', `
-Examples for --profile:
-  --profile backend                      (Uses the 'backend' profile)
-  --profile "backend,-**/tests/**"         (Uses 'backend' profile, excludes all test files)
-  --profile "src/**/*.js,-**/*.test.js"  (Includes all JS files in src, excludes tests)
+Profile Usage Guide:
+  Profiles allow you to curate focused snapshots by filtering files using glob patterns.
+  Define reusable profiles in .eck/profiles.json or use ad-hoc patterns directly.
 
-  Combine predefined profiles (from .eck/profiles.json) with ad-hoc glob patterns.
-  Prefix a profile name or glob pattern with '-' to exclude it.
+Profile Structure (.eck/profiles.json):
+  {
+    "backend": {
+      "include": ["src/api/**", "src/services/**"],
+      "exclude": ["**/*.test.js"]
+    },
+    "frontend": {
+      "include": ["src/components/**", "src/pages/**"],
+      "exclude": ["**/*.spec.js"]
+    }
+  }
+
+Examples:
+  --profile backend
+    Uses the 'backend' profile defined in .eck/profiles.json
+
+  --profile "backend,-**/tests/**"
+    Uses 'backend' profile, then excludes all test directories
+
+  --profile "src/**/*.js,-**/*.test.js"
+    Ad-hoc filtering: includes all JS files in src/, excludes test files
+
+  --profile "frontend,src/utils/**"
+    Combines 'frontend' profile with additional utility files
+
+Glob Pattern Reference:
+  **          Matches any number of directories
+  *           Matches any characters within a directory level
+  {a,b}       Matches either 'a' or 'b'
+  [0-9]       Matches any digit
+  -pattern    Prefix with '-' to exclude matching files
+
+Creating Custom Profiles:
+  1. Run: eck-snapshot generate-profile-guide
+  2. Follow the generated guide in .eck/profile_generation_guide.md
+  3. Save your custom profiles to .eck/profiles.json
+
+  Alternatively, use AI detection:
+    eck-snapshot profile-detect   (auto-generates profiles using AI)
 `);
 
   // Restore command
