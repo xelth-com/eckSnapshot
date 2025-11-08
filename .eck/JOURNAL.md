@@ -1,4 +1,17 @@
 ---
+task_id: feat-implement-english-help-guide-v2
+date: 2025-11-08
+type: feat
+scope: cli
+---
+
+# Implement detailed, workflow-driven help text
+
+- Replaced the main `--help` output with a step-by-step guide in English, formatted for console readability.
+- The guide now prioritizes the core workflow: snapshot, profile-detect, using profiles, and pruning.
+- Added clear, console-style usage examples for each key step.
+
+---
 task_id: fix-profile-detect-and-add-index-viewer-v1
 date: 2025-10-10
 type: fix

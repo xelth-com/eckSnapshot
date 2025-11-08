@@ -63,10 +63,90 @@ async function checkCodeBoundaries(filePath, agentId) {
 export function run() {
   const program = new Command();
 
+  const helpGuide = `eck-snapshot (v4.0.0) - A lightweight, platform-independent CLI for creating project snapshots.
+
+--- Getting Started: Environment Setup ---
+
+This tool is designed to work with Large Language Models (LLMs). For the best results, you'll need:
+1. An 'Architect' LLM (like Gemini, GPT-4, or Grok) to analyze snapshots.
+2. A 'Coder' LLM (like Claude Code) to execute coding tasks.
+
+--- Core Workflow: A Step-by-Step Guide ---
+
+Step 1: Create a Full Project Snapshot
+This is your primary command. It scans your project and packs all code into a single file.
+
+> Usage:
+  $ eck-snapshot
+
+-> This creates a file like 'myProject_snapshot_... .md' in the .eck/snapshots/ directory.
+   You can now pass this file to your Architect LLM for analysis.
+
+
+Step 2: Handle Large Projects with Auto-Profiling
+If your project is too big for the LLM's context window, \`profile-detect\` will automatically
+slice it into logical parts (profiles) using AI.
+
+> Usage:
+  $ eck-snapshot profile-detect
+
+-> Output:
+  ✨ Detected Profiles:
+  ---------------------------
+    - cli
+    - services
+    - core
+    - templates
+    - docs
+    - config
+
+
+Step 3: Use Profiles to Create Focused Snapshots
+Use the --profile option to create smaller snapshots of specific project areas.
+
+> Example 1: Combine and exclude profiles
+  $ eck-snapshot --profile "core,services,cli,-docs,-config"
+
+-> Creates a snapshot with code from the 'core', 'services', and 'cli' profiles,
+   while excluding anything from 'docs' and 'config'.
+
+> Example 2: Use ad-hoc glob patterns
+  $ eck-snapshot --profile "src/**/*.js,-**/*.test.js"
+
+-> Includes all .js files in the 'src' directory and its subdirectories,
+   but excludes any file ending in '.test.js'.
+   Note: Quotes are required for complex patterns.
+
+
+Step 4: Intelligently Prune a Snapshot
+If a snapshot is still too large, \`prune\` uses AI to shrink it to a target size,
+keeping only the most important files.
+
+> Usage:
+  $ eck-snapshot prune myProject_snapshot.md --target-size 500KB
+
+
+Step 5 (Alternative): Truncate Files by Line Count
+A faster, non-AI method to reduce size by keeping only the top N lines of each file.
+Useful for a high-level overview.
+
+> Usage:
+  $ eck-snapshot --max-lines-per-file 200
+
+--- Auxiliary Commands ---
+
+- restore:                  Restore a project from a snapshot file.
+- generate-profile-guide:   Create a manual guide for creating profiles with an LLM.
+- detect:                   Show how eckSnapshot identifies your project type.
+- ask-gpt / ask-claude:     Directly query the configured AI coder agents.
+- setup-gemini:             Auto-configure integration with gemini-cli.
+`;
+
   program
     .name('eck-snapshot')
-    .description('Multi-agent aware snapshot tool for repositories with consilium support')
-    .version('4.0.0');
+    .description('A lightweight, platform-independent CLI for creating project snapshots.')
+    .version('4.0.0')
+    .addHelpText('before', helpGuide);
 
   // Main snapshot command
   program
