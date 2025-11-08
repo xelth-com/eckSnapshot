@@ -1,4 +1,15 @@
 ---
+task_id: refine-help-guide-text-v2
+date: 2025-11-08
+type: docs
+scope: cli
+---
+
+# Refine help text for generate-profile-guide
+
+- Clarified that `generate-profile-guide` is the recommended alternative to `profile-detect` for very large projects where the underlying AI's context window may be insufficient.
+
+---
 task_id: feat-implement-english-help-guide-v2
 date: 2025-11-08
 type: feat

@@ -136,7 +136,7 @@ Useful for a high-level overview.
 --- Auxiliary Commands ---
 
 - restore:                  Restore a project from a snapshot file.
-- generate-profile-guide:   Create a manual guide for creating profiles with an LLM.
+- generate-profile-guide:   Creates a guide for manual profile creation. Use this if 'profile-detect' fails on very large projects, as it allows you to use an LLM with a larger context window (e.g., a web UI).
 - detect:                   Show how eckSnapshot identifies your project type.
 - ask-gpt / ask-claude:     Directly query the configured AI coder agents.
 - setup-gemini:             Auto-configure integration with gemini-cli.
