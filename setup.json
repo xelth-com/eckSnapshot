@@ -229,14 +229,6 @@
       }
     }
   },
-  "smartMode": {
-    "tokenThreshold": 7000000,
-    "_comment": "Projects over this token count will use vector indexing instead of single file snapshots"
-  },
-  "vectorIndex": {
-    "autoExportOnIndex": true,
-    "_comment": "Automatically export the vector index to a file after every successful 'index' command."
-  },
   "contextProfiles": {
     "backend": {
       "description": "Backend API, database, business logic",

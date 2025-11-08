@@ -10,9 +10,6 @@ import { createRepoSnapshot } from './commands/createSnapshot.js';
 import { restoreSnapshot } from './commands/restoreSnapshot.js';
 import { pruneSnapshot } from './commands/pruneSnapshot.js';
 import { generateConsilium } from './commands/consilium.js';
-import { indexAnalyze } from './commands/indexAnalyze.js';
-import { indexEmbed } from './commands/indexEmbed.js';
-import { queryProject, viewIndex } from './commands/queryProject.js';
 import { detectProject, testFileParsing } from './commands/detectProject.js';
 import { trainTokens, showTokenStats } from './commands/trainTokens.js';
 import { askGpt } from './commands/askGpt.js';
@@ -91,7 +88,6 @@ export function run() {
     .option('--profile <name>', 'Filter files using profiles and/or ad-hoc glob patterns.')
     .option('--agent', 'Generate a snapshot optimized for a command-line agent')
     .option('--with-ja', 'Generate a detailed snapshot for the Junior Architect agent')
-    .option('--abstract [level]', 'Generate a lightweight snapshot with code signatures. Optionally specify level 1-9 (default: 5).')
     .option('--max-lines-per-file <number>', 'Truncate files to max N lines (e.g., 200 for compact snapshots)', (val) => parseInt(val))
     .action(createRepoSnapshot)
     .addHelpText('after', `
@@ -150,40 +146,6 @@ Examples for --profile:
       const result = await checkCodeBoundaries(file, options.agent || 'UNKNOWN');
       console.log(JSON.stringify(result, null, 2));
     });
-
-  // Index commands
-  program
-    .command('index-analyze')
-    .description('[Step 1/2] Analyzes and summarizes all code chunks.')
-    .argument('[projectPath]', 'Path to the project', process.cwd())
-    .option('--profile <name>', 'Use a specific context profile for indexing')
-    .action(indexAnalyze);
-
-  program
-    .command('index-embed')
-    .description('[Step 2/2] Generates vector embeddings for analyzed chunks.')
-    .option('--profile <name>', 'Use a specific context profile for indexing')
-    .action(indexEmbed);
-
-  // Query command
-  program
-    .command('query')
-    .description('Query the project with context-aware search')
-    .argument('<query>', 'Search query')
-    .option('-k, --top-k <number>', 'Number of top results', (val) => parseInt(val), 10)
-    .option('-o, --output <file>', 'Output file for snapshot')
-    .option('--profile <name>', 'Use a specific context profile for querying')
-    .option('--import <filename>', 'Use a portable index file for the query instead of the local database.')
-    .action(queryProject);
-
-  // Index view command
-  program
-    .command('index-view')
-    .description('View the contents of the code chunks database')
-    .option('--limit <number>', 'Number of records to display', (val) => parseInt(val), 10)
-    .option('--offset <number>', 'Number of records to skip', (val) => parseInt(val), 0)
-    .option('--file <path>', 'Filter by file path')
-    .action(viewIndex);
 
   program
     .command('ask-gpt')

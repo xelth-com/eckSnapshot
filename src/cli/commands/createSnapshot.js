@@ -17,11 +17,8 @@ import {
 } from '../../utils/fileUtils.js';
 import { detectProjectType, getProjectSpecificFiltering } from '../../utils/projectDetector.js';
 import { estimateTokensWithPolynomial, generateTrainingCommand } from '../../utils/tokenEstimator.js';
-import { indexAnalyze } from './indexAnalyze.js';
-import { indexEmbed } from './indexEmbed.js';
 import { loadSetupConfig, getProfile } from '../../config.js';
 import { applyProfileFilter } from '../../utils/fileUtils.js';
-import { createAbstract } from '../../core/abstractParser.js';
 
 /**
  * Creates dynamic project context based on detection results
@@ -131,7 +128,6 @@ function createDynamicProjectContext(detection) {
 import { generateEnhancedAIHeader } from '../../utils/aiHeader.js';
 
 const gzip = promisify(zlib.gzip);
-const ABSTRACT_EXTENSIONS = new Set(['.c', '.h']);
 
 async function getProjectFiles(projectPath, config) {
   const isGitRepo = await checkGitRepository(projectPath);
@@ -329,28 +325,7 @@ async function processProjectFiles(repoPath, options, config, projectType = null
         const content = await readFileWithSizeCheck(fullPath, maxFileSize);
         stats.includedFiles++;
         stats.processedSize += fileStats.size;
-        let fileContent = content;
-        let usedAbstractContent = false;
-
-        if (options.abstract && ABSTRACT_EXTENSIONS.has(fileExtension.toLowerCase())) {
-          try {
-            // Parse level: true -> 5, '3' -> 3, undefined -> skip (won't reach here)
-            const level = options.abstract === true ? 5 : parseInt(options.abstract, 10) || 5;
-            const abstractOutput = await createAbstract(content, level);
-            const trimmedAbstract = abstractOutput.trim();
-            if (trimmedAbstract) {
-              fileContent = trimmedAbstract;
-              usedAbstractContent = true;
-            } else if (options.verbose) {
-              console.warn(`⚠️  Abstract snapshot for ${normalizedPath} was empty; using original content.`);
-            }
-          } catch (error) {
-            if (options.verbose) {
-              console.warn(`⚠️  Failed to abstract ${normalizedPath}: ${error.message}`);
-            }
-          }
-        }
-        let outputBody = usedAbstractContent ? fileContent : content;
+        let outputBody = content;
 
         // Apply max-lines-per-file truncation if specified
         if (options.maxLinesPerFile && options.maxLinesPerFile > 0) {
@@ -442,7 +417,6 @@ export async function createRepoSnapshot(repoPath, options) {
       ...userConfig, // Start with old defaults
       ...setupConfig.fileFiltering, // Overwrite with setup.json values
       ...setupConfig.performance,
-      smartModeTokenThreshold: setupConfig.smartMode.tokenThreshold,
       defaultFormat: setupConfig.output?.defaultFormat || 'md',
       aiHeaderEnabled: setupConfig.aiInstructions?.header?.defaultEnabled ?? true,
       ...options // Command-line options have the final say
@@ -466,12 +440,7 @@ export async function createRepoSnapshot(repoPath, options) {
     const estimation = await estimateProjectTokens(repoPath, config, projectDetection.type);
     spinner.info(`Estimated project size: ~${Math.round(estimation.estimatedTokens).toLocaleString()} tokens.`);
 
-    if (estimation.estimatedTokens > config.smartModeTokenThreshold) {
-      spinner.succeed('Project is large. Switching to vector indexing mode.');
-      await indexAnalyze(repoPath, options);
-      await indexEmbed(options);
-    } else {
-      spinner.succeed('Project is small. Creating dual snapshots...');
+    spinner.succeed('Creating snapshots...');
       
       // Step 1: Process all files ONCE
       const { 
@@ -525,8 +494,7 @@ export async function createRepoSnapshot(repoPath, options) {
         const isGitRepo = await checkGitRepository(processedRepoPath);
 
         const architectHeader = await generateEnhancedAIHeader({ stats, repoName, mode: 'file', eckManifest, options: architectOptions, repoPath: processedRepoPath }, isGitRepo);
-        const abstractSuffix = options.abstract ? '_abstract' : '';
-        const architectBaseFilename = `${repoName}_snapshot_${timestamp}${gitHash ? `_${gitHash}` : ''}${abstractSuffix}`;
+        const architectBaseFilename = `${repoName}_snapshot_${timestamp}${gitHash ? `_${gitHash}` : ''}`;
         const architectFilename = `${architectBaseFilename}.${fileExtension}`;
         const architectFilePath = path.join(outputPath, architectFilename);
         await fs.writeFile(architectFilePath, architectHeader + fileBody);
@@ -626,7 +594,6 @@ export async function createRepoSnapshot(repoPath, options) {
       } finally {
         process.chdir(originalCwd); // Final reset back to original CWD
       }
-    }
   } catch (error) {
     spinner.fail(`Operation failed: ${error.message}`);
     process.exit(1);

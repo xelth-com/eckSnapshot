@@ -57,18 +57,15 @@ export async function detectProject(projectPath = '.', options = {}) {
     
     // Provide suggestions
     console.log(chalk.blue('💡 Suggested commands:'));
-    
+
     if (detection.type === 'android') {
       console.log('   eck-snapshot snapshot --profile android-core    # Core Android files');
       console.log('   eck-snapshot snapshot --profile android-config  # Build configuration');
-      console.log('   eck-snapshot index                              # For large projects');
     } else if (detection.type === 'nodejs') {
       console.log('   eck-snapshot snapshot --profile backend         # Backend code');
       console.log('   eck-snapshot snapshot --profile frontend        # Frontend code');
-      console.log('   eck-snapshot index                              # For large projects');
     } else {
       console.log('   eck-snapshot snapshot                           # Full project snapshot');
-      console.log('   eck-snapshot index                              # For semantic search');
     }
     
   } catch (error) {
