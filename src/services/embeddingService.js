@@ -1,24 +1,27 @@
-import { pipeline } from '@xenova/transformers';
+import { pipeline, env } from '@xenova/transformers';
+
+env.logLevel = 'error';
 
 class EmbeddingService {
-    static instance = null;
-    static modelName = 'Xenova/jina-embeddings-v2-base-en'; // Can be made configurable
+    static instancePromise = null;
+    static modelName = 'Xenova/jina-embeddings-v2-base-en';
 
-    static async getInstance() {
-        if (this.instance === null) {
+    static getInstance() {
+        if (this.instancePromise === null) {
             console.log(`Загрузка модели-индексатора: ${this.modelName}...`);
-            this.instance = await pipeline('feature-extraction', this.modelName);
-            console.log('Модель-индексатор готова.');
+            this.instancePromise = pipeline('feature-extraction', this.modelName);
         }
-        return this.instance;
+        return this.instancePromise;
     }
 
-    static releaseModel() {
-        if (this.instance) {
+    static async releaseModel() {
+        if (this.instancePromise) {
             console.log(`Выгрузка модели-индексатора: ${this.modelName}...`);
-            this.instance = null;
-            // In Node.js, there's no explicit GPU memory release, 
-            // relying on the garbage collector is the standard way.
+            const instance = await this.instancePromise.catch(() => null);
+            if (instance && typeof instance.dispose === 'function') {
+                await instance.dispose();
+            }
+            this.instancePromise = null;
         }
     }
 }
@@ -44,4 +47,4 @@ export async function generateBatchEmbeddings(texts) {
     return embeddings;
 }
 
-export const releaseModel = EmbeddingService.releaseModel;
+export const releaseModel = EmbeddingService.releaseModel.bind(EmbeddingService);

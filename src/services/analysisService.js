@@ -1,22 +1,27 @@
-import { pipeline } from '@xenova/transformers';
+import { pipeline, env } from '@xenova/transformers';
+
+env.logLevel = 'error';
 
 class AnalysisService {
-    static instance = null;
-    static modelName = 'Xenova/distilgpt2'; // Can be made configurable
+    static instancePromise = null;
+    static modelName = 'Xenova/flan-t5-small'; // Upgraded model
 
-    static async getInstance() {
-        if (this.instance === null) {
+    static getInstance() {
+        if (this.instancePromise === null) {
             console.log(`Загрузка модели-аналитика: ${this.modelName}...`);
-            this.instance = await pipeline('text-generation', this.modelName);
-            console.log('Модель-аналитик готова.');
+            this.instancePromise = pipeline('text2text-generation', this.modelName);
         }
-        return this.instance;
+        return this.instancePromise;
     }
 
-    static releaseModel() {
-        if (this.instance) {
+    static async releaseModel() {
+        if (this.instancePromise) {
             console.log(`Выгрузка модели-аналитика: ${this.modelName}...`);
-            this.instance = null;
+            const instance = await this.instancePromise.catch(() => null);
+            if (instance && typeof instance.dispose === 'function') {
+                await instance.dispose();
+            }
+            this.instancePromise = null;
         }
     }
 }
@@ -24,17 +29,17 @@ class AnalysisService {
 export async function getCodeSummary(codeChunk) {
     const generator = await AnalysisService.getInstance();
 
-    const prompt = `This code:\n${codeChunk.substring(0, 150)}\nSummary:`;
+    // Updated prompt format for instruction-tuned model
+    const prompt = `Summarize this code in one concise line:\n\n${codeChunk.substring(0, 500)}`;
 
     const output = await generator(prompt, {
         max_new_tokens: 50,
-        temperature: 0.7,
-        do_sample: true
+        temperature: 0.2,
+        no_repeat_ngram_size: 3
     });
 
-    const generatedText = output[0].generated_text;
-    const summary = generatedText.replace(prompt, '').trim() || 'Auto-generated description';
-    return summary.substring(0, 200); // Limit summary length
+    const summary = output[0].generated_text.trim() || 'Auto-generated description';
+    return summary.substring(0, 200);
 }
 
-export const releaseModel = AnalysisService.releaseModel;
+export const releaseModel = AnalysisService.releaseModel.bind(AnalysisService);

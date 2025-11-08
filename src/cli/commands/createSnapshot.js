@@ -17,7 +17,8 @@ import {
 } from '../../utils/fileUtils.js';
 import { detectProjectType, getProjectSpecificFiltering } from '../../utils/projectDetector.js';
 import { estimateTokensWithPolynomial, generateTrainingCommand } from '../../utils/tokenEstimator.js';
-import { indexProject } from './indexProject.js';
+import { indexAnalyze } from './indexAnalyze.js';
+import { indexEmbed } from './indexEmbed.js';
 import { loadSetupConfig, getProfile } from '../../config.js';
 import { applyProfileFilter } from '../../utils/fileUtils.js';
 import { createAbstract } from '../../core/abstractParser.js';
@@ -467,7 +468,8 @@ export async function createRepoSnapshot(repoPath, options) {
 
     if (estimation.estimatedTokens > config.smartModeTokenThreshold) {
       spinner.succeed('Project is large. Switching to vector indexing mode.');
-      await indexProject(repoPath, options);
+      await indexAnalyze(repoPath, options);
+      await indexEmbed(options);
     } else {
       spinner.succeed('Project is small. Creating dual snapshots...');
       

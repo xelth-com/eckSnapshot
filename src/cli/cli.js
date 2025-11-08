@@ -10,7 +10,8 @@ import { createRepoSnapshot } from './commands/createSnapshot.js';
 import { restoreSnapshot } from './commands/restoreSnapshot.js';
 import { pruneSnapshot } from './commands/pruneSnapshot.js';
 import { generateConsilium } from './commands/consilium.js';
-import { indexProject } from './commands/indexProject.js';
+import { indexAnalyze } from './commands/indexAnalyze.js';
+import { indexEmbed } from './commands/indexEmbed.js';
 import { queryProject, viewIndex } from './commands/queryProject.js';
 import { detectProject, testFileParsing } from './commands/detectProject.js';
 import { trainTokens, showTokenStats } from './commands/trainTokens.js';
@@ -150,14 +151,19 @@ Examples for --profile:
       console.log(JSON.stringify(result, null, 2));
     });
 
-  // Index command
+  // Index commands
   program
-    .command('index')
-    .description('Index the project for intelligent search')
+    .command('index-analyze')
+    .description('[Step 1/2] Analyzes and summarizes all code chunks.')
     .argument('[projectPath]', 'Path to the project', process.cwd())
     .option('--profile <name>', 'Use a specific context profile for indexing')
-    .option('--export [filename]', 'Export the synchronized index to a JSON file. If no filename is provided, one will be generated.')
-    .action(indexProject);
+    .action(indexAnalyze);
+
+  program
+    .command('index-embed')
+    .description('[Step 2/2] Generates vector embeddings for analyzed chunks.')
+    .option('--profile <name>', 'Use a specific context profile for indexing')
+    .action(indexEmbed);
 
   // Query command
   program

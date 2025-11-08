@@ -30,6 +30,12 @@
       0,
       0
     ],
+    "c": [
+      0,
+      0.45718772384153394,
+      0,
+      0
+    ],
     "unknown": [
       0,
       0.25,
@@ -58,6 +64,14 @@
         "estimatedTokens": 65403,
         "actualTokens": 80909,
         "timestamp": "2025-09-22T01:50:24.392Z"
+      }
+    ],
+    "c": [
+      {
+        "fileSizeInBytes": 72596,
+        "estimatedTokens": 16697,
+        "actualTokens": 33190,
+        "timestamp": "2025-10-13T22:41:24.445Z"
       }
     ]
   }

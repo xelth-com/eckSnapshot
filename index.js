@@ -1,29 +1,21 @@
 #!/usr/bin/env node
 
+import { spawn } from 'child_process';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
-import os from 'os';
 
-// Get the directory of this script
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Always load .env from the program directory, not current working directory
-const envPath = path.join(__dirname, '.env');
-dotenv.config({ path: envPath });
-
-// Auto-detect WSL and adjust DB_HOST if needed
 function detectWSLAndSetupDB() {
-  const isWSL = process.platform === 'linux' && 
-    (process.env.WSL_DISTRO_NAME || 
-     fs.existsSync('/proc/version') && fs.readFileSync('/proc/version', 'utf8').includes('Microsoft'));
-  
+  const isWSL = process.platform === 'linux' &&
+    (process.env.WSL_DISTRO_NAME ||
+     (fs.existsSync('/proc/version') && fs.readFileSync('/proc/version', 'utf8').includes('Microsoft')));
+
   if (isWSL) {
-    // Always override DB_HOST in WSL if it's localhost or not set
     if (!process.env.DB_HOST || process.env.DB_HOST === 'localhost' || process.env.DB_HOST === '127.0.0.1') {
-      // Try to find Windows host IP in WSL
       try {
         const resolveConf = fs.readFileSync('/etc/resolv.conf', 'utf8');
         const nameserverMatch = resolveConf.match(/nameserver\s+(\d+\.\d+\.\d+\.\d+)/);
@@ -31,12 +23,10 @@ function detectWSLAndSetupDB() {
           process.env.DB_HOST = nameserverMatch[1];
           console.log(`🔍 WSL detected, using Windows host: ${process.env.DB_HOST}`);
         } else {
-          // Fallback to common WSL2 gateway
           process.env.DB_HOST = '172.29.16.1';
           console.log(`🔍 WSL detected, using fallback host: ${process.env.DB_HOST}`);
         }
       } catch (e) {
-        // Fallback to common WSL2 gateway
         process.env.DB_HOST = '172.29.16.1';
         console.log(`🔍 WSL detected, using fallback host: ${process.env.DB_HOST}`);
       }
@@ -46,8 +36,36 @@ function detectWSLAndSetupDB() {
   }
 }
 
-detectWSLAndSetupDB();
+async function bootstrap() {
+  if (typeof global.gc !== 'function' && !process.execArgv.includes('--expose-gc')) {
+    const args = ['--expose-gc', ...process.execArgv.filter((arg) => arg !== '--expose-gc'), __filename, ...process.argv.slice(2)];
 
-import { run } from './src/cli/cli.js';
+    try {
+      const { code, signal } = await new Promise((resolve, reject) => {
+        const child = spawn(process.argv[0], args, { stdio: 'inherit' });
+        child.on('error', reject);
+        child.on('exit', (code, signal) => resolve({ code, signal }));
+      });
 
-run();
+      if (signal) {
+        process.kill(process.pid, signal);
+      } else {
+        process.exit(code ?? 0);
+      }
+      return;
+    } catch (error) {
+      console.warn('Не удалось перезапустить процесс с флагом --expose-gc:', error.message);
+      console.warn('Продолжаем выполнение без ручного доступа к сборщику мусора.');
+    }
+  }
+
+  const envPath = path.join(__dirname, '.env');
+  dotenv.config({ path: envPath });
+
+  detectWSLAndSetupDB();
+
+  const { run } = await import('./src/cli/cli.js');
+  run();
+}
+
+bootstrap();
