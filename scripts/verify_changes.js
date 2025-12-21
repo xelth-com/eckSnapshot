@@ -47,8 +47,15 @@ async function verifySnapshots() {
     const jaAgentFile = jaFiles.find(f => f.includes('_ja.md'));
     const jaAgentContent = await fs.readFile(path.join('test_verify_ja', jaAgentFile), 'utf-8');
 
-    if (jaAgentContent.includes('HIERARCHICAL AGENT WORKFLOW')) {
-      throw new Error('❌ JA agent snapshot should NOT have HIERARCHICAL AGENT WORKFLOW (it uses agent template)');
+    // Extract just the AI instructions header for JA agent snapshot
+    const jaAgentHeader = jaAgentContent.split('## Directory Structure')[0];
+
+    if (jaAgentHeader.includes('HIERARCHICAL AGENT WORKFLOW')) {
+      throw new Error('❌ JA agent snapshot header should NOT have HIERARCHICAL AGENT WORKFLOW (it uses agent template)');
+    }
+    // Verify it has the agent template marker
+    if (!jaAgentHeader.includes('Project Snapshot Information')) {
+      throw new Error('❌ JA agent snapshot missing agent template marker');
     }
     console.log('✅ JA agent snapshot (_ja.md): OK (Uses agent template as expected)');
 
