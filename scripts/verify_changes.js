@@ -24,21 +24,33 @@ async function verifySnapshots() {
     }
     console.log('✅ Standard snapshot: OK (Simple AGENT WORKFLOW)');
 
-    // 2. Generate JA Snapshot
+    // 2. Generate Snapshot with --with-ja flag
     await execa('node', ['index.js', 'snapshot', '--with-ja', '--no-tree', '--output', 'test_verify_ja']);
     const jaFiles = await fs.readdir('test_verify_ja');
-    const jaContent = await fs.readFile(path.join('test_verify_ja', jaFiles.find(f => f.includes('_ja.md'))), 'utf-8');
 
-    // Extract just the AI instructions header for JA snapshot
-    const jaHeader = jaContent.split('## Directory Structure')[0];
+    // Check the MAIN architect snapshot (not the _ja version)
+    const mainJaFile = jaFiles.find(f => f.endsWith('.md') && !f.includes('_ja.md'));
+    const mainJaContent = await fs.readFile(path.join('test_verify_ja', mainJaFile), 'utf-8');
 
-    if (!jaHeader.includes('HIERARCHICAL AGENT WORKFLOW')) {
-      throw new Error('❌ JA snapshot header missing HIERARCHICAL AGENT WORKFLOW');
+    // Extract just the AI instructions header for architect snapshot
+    const mainJaHeader = mainJaContent.split('## Directory Structure')[0];
+
+    if (!mainJaHeader.includes('HIERARCHICAL AGENT WORKFLOW')) {
+      throw new Error('❌ Architect snapshot (with --with-ja) missing HIERARCHICAL AGENT WORKFLOW');
     }
-    if (!jaHeader.includes('Junior Architect')) {
-      throw new Error('❌ JA snapshot missing Junior Architect references');
+    if (!mainJaHeader.includes('Junior Architect')) {
+      throw new Error('❌ Architect snapshot (with --with-ja) missing Junior Architect references');
     }
-    console.log('✅ JA snapshot: OK (HIERARCHICAL AGENT WORKFLOW with JA delegation)');
+    console.log('✅ Architect snapshot (with --with-ja): OK (HIERARCHICAL AGENT WORKFLOW with JA delegation)');
+
+    // Also verify the _ja snapshot uses agent mode
+    const jaAgentFile = jaFiles.find(f => f.includes('_ja.md'));
+    const jaAgentContent = await fs.readFile(path.join('test_verify_ja', jaAgentFile), 'utf-8');
+
+    if (jaAgentContent.includes('HIERARCHICAL AGENT WORKFLOW')) {
+      throw new Error('❌ JA agent snapshot should NOT have HIERARCHICAL AGENT WORKFLOW (it uses agent template)');
+    }
+    console.log('✅ JA agent snapshot (_ja.md): OK (Uses agent template as expected)');
 
   } catch (e) {
     console.error('Snapshot verification failed:', e.message);
