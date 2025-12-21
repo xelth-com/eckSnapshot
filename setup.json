@@ -568,7 +568,9 @@
           "electron debug",
           "file editing",
           "testing commands",
-          "browser automation"
+          "browser automation (chrome_mcp)",
+          "visual regression testing",
+          "network logging"
         ],
         "restrictions": [
           "no PM2 commands",
@@ -712,6 +714,22 @@
           "Cannot access WSL-only tools like claude"
         ]
       }
+    },
+    "browserAutomation": {
+      "enabled": true,
+      "provider": "Claude in Chrome MCP",
+      "availableFor": ["local_dev"],
+      "capabilities": {
+        "navigation": "Navigate URLs, handle tabs/windows",
+        "interaction": "Click, type, scroll, drag-and-drop",
+        "inspection": "Read DOM, extract text, verify styles",
+        "debugging": "Access console logs, network activity",
+        "visual": "Generate screenshots, record GIF"
+      },
+      "restrictions": [
+        "No non-consensual file downloads",
+        "No sensitive credentials interaction"
+      ]
     },
     "header": {
       "defaultEnabled": true,

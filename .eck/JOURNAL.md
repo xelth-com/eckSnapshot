@@ -1,4 +1,17 @@
 ---
+task_id: feat-browser-automation-config-v1
+date: 2025-12-21
+type: feat
+scope: config
+---
+
+# Enable Claude Chrome MCP browser automation capabilities
+
+- Added browser automation capabilities to local_dev agent: 'browser automation (chrome_mcp)', 'visual regression testing', 'network logging'
+- Created browserAutomation section in aiInstructions with detailed capabilities and restrictions
+- Documented Chrome MCP integration for frontend testing, debugging, and visual regression
+
+---
 task_id: refine-help-guide-text-v2
 date: 2025-11-08
 type: docs
