@@ -719,6 +719,7 @@
       "enabled": true,
       "provider": "Claude in Chrome MCP",
       "availableFor": ["local_dev"],
+      "usage_protocol": "CRITICAL: Browser tasks MUST be executed directly by the interactive 'local_dev' agent using its internal tools. DO NOT delegate browser tasks via the 'eck-snapshot ask-claude' CLI command, as the subprocess lacks MCP context.",
       "capabilities": {
         "navigation": "Navigate URLs, handle tabs/windows",
         "interaction": "Click, type, scroll, drag-and-drop",
@@ -728,7 +729,8 @@
       },
       "restrictions": [
         "No non-consensual file downloads",
-        "No sensitive credentials interaction"
+        "No sensitive credentials interaction",
+        "MUST NOT use 'eck-snapshot ask-claude' wrapper for these tasks"
       ]
     },
     "header": {
