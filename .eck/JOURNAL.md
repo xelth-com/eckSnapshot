@@ -1,4 +1,14 @@
 ---
+type: refactor
+scope: cli
+summary: Make JA workflow instructions conditional
+timestamp: 2025-12-21T22:09:31Z
+---
+
+- Replaced static JA workflow text in templates with dynamic placeholders
+- Updated aiHeader.js to only inject JA instructions if --with-ja flag is present
+- Simplified workflow description for standard snapshots
+---
 task_id: feat-browser-automation-config-v1
 date: 2025-12-21
 type: feat
