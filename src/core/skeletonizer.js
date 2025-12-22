@@ -80,13 +80,14 @@ function skeletonizeJs(content) {
             Function(path) {
                 if (path.node.body && path.node.body.type === 'BlockStatement') {
                     path.node.body.body = [];
-                    path.node.body.innerComments = [{ type: 'CommentBlock', value: ' Implementation hidden. Use `eck-snapshot show` to view. ' }];
+                    // Minimal comment to save tokens
+                    path.node.body.innerComments = [{ type: 'CommentBlock', value: ' ... ' }];
                 }
             },
             ClassMethod(path) {
                 if (path.node.body && path.node.body.type === 'BlockStatement') {
                     path.node.body.body = [];
-                    path.node.body.innerComments = [{ type: 'CommentBlock', value: ' Implementation hidden ' }];
+                    path.node.body.innerComments = [{ type: 'CommentBlock', value: ' ... ' }];
                 }
             }
         });
@@ -94,7 +95,7 @@ function skeletonizeJs(content) {
         const output = generate(ast, {}, content);
         return output.code;
     } catch (e) {
-        return content + '\n// [Skeleton generation warning: Babel parse failed, returning full content]';
+        return content + '\n// [Skeleton parse error]';
     }
 }
 
@@ -104,19 +105,8 @@ function skeletonizeTreeSitter(content, language) {
         parser.setLanguage(language);
         const tree = parser.parse(content);
 
-        // We will reconstruct the file by slicing the original string,
-        // skipping over the bodies of functions/methods.
-
         // Define node types that represent function bodies for different languages
         const bodyTypes = ['block', 'function_body', 'compound_statement'];
-
-        // Helper to traverse and find bodies
-        // Note: Tree-sitter traversal for modification is tricky. 
-        // A simpler approach for "skeleton" is to find Definition nodes and capture their signatures,
-        // but replacing in-place is harder without a printer.
-        // 
-        // ALTERNATIVE SIMPLIFIED APPROACH for v1 stability:
-        // Iterate specific node types that define functions, locate their 'body' child, and create a replacement map.
 
         const replacements = [];
 
@@ -141,22 +131,23 @@ function skeletonizeTreeSitter(content, language) {
                 }
 
                 if (bodyNode) {
-                    // Identify indentation for nice formatting
                     const start = bodyNode.startIndex;
                     const end = bodyNode.endIndex;
-                    replacements.push({ start, end, text: '{ /* Implementation hidden */ }' });
+                    // Use minimal replacement to save tokens
+                    replacements.push({ start, end, text: '{ /* ... */ }' });
                     return; // Don't traverse inside the body we just stripped
                 }
             }
 
             // Python uses colons and indentation, distinct from {} blocks
+            // Use Python's Ellipsis literal for maximum brevity
             if (node.type === 'function_definition' && language === Python) {
                 const body = node.lastChild;
                 if (body && body.type === 'block') {
                     replacements.push({
                         start: body.startIndex,
                         end: body.endIndex,
-                        text: 'pass  # Implementation hidden'
+                        text: '...'  // Python Ellipsis literal - minimal tokens
                     });
                     return;
                 }
@@ -180,6 +171,6 @@ function skeletonizeTreeSitter(content, language) {
         return currentContent;
 
     } catch (e) {
-        return content + `\n// [Skeleton generation warning: Tree-sitter failed: ${e.message}]`;
+        return content + `\n// [Skeleton error: ${e.message}]`;
     }
 }

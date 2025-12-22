@@ -1,15 +1,16 @@
 
 ### ☠️ SKELETON MODE ACTIVE
 
-**NOTICE:** To save context window, most function bodies in this snapshot have been hidden (replaced with comments).
+**NOTICE:** Function bodies have been stripped to save context.
 
-**PROTOCOL FOR REQUESTING CODE:**
-If you need to analyze the implementation logic of specific files to perform your task, you must ask the user to reveal them.
+**LEGEND:**
+- `/* ... */` or `...`  👉 **Implementation Hidden**
 
-**Output this command block:**
+**PROTOCOL:**
+If you need to see the code inside these blocks to perform your task, you **MUST** request it.
+
+**Command to request code:**
 ```bash
-eck-snapshot show path/to/file1.js path/to/file2.js src/utils/helper.js
+eck-snapshot show path/to/file1.js path/to/file2.js
 ```
-
-**IMPORTANT:** You can (and should) request **multiple files at once** separated by spaces.
-The user will run this and paste the full content of all requested files into the chat.
+**(Batch multiple files in one command!)**
