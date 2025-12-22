@@ -10,8 +10,8 @@ import ora from 'ora';
 import micromatch from 'micromatch';
 
 import {
-  parseSize, formatSize, matchesPattern, checkGitRepository, 
-  scanDirectoryRecursively, loadGitignore, readFileWithSizeCheck, 
+  parseSize, formatSize, matchesPattern, checkGitRepository,
+  scanDirectoryRecursively, loadGitignore, readFileWithSizeCheck,
   generateDirectoryTree, loadConfig, displayProjectInfo, loadProjectEckManifest,
   ensureSnapshotsInGitignore, initializeEckManifest
 } from '../../utils/fileUtils.js';
@@ -19,6 +19,8 @@ import { detectProjectType, getProjectSpecificFiltering } from '../../utils/proj
 import { estimateTokensWithPolynomial, generateTrainingCommand } from '../../utils/tokenEstimator.js';
 import { loadSetupConfig, getProfile } from '../../config.js';
 import { applyProfileFilter } from '../../utils/fileUtils.js';
+import { saveGitAnchor } from '../../utils/gitUtils.js';
+import { skeletonize } from '../../core/skeletonizer.js';
 
 /**
  * Creates dynamic project context based on detection results
@@ -30,13 +32,13 @@ function createDynamicProjectContext(detection) {
     type: type,
     detectedAt: new Date().toISOString()
   };
-  
+
   // Create architecture info based on project type
   const architecture = {
     stack: [],
     structure: type
   };
-  
+
   switch (type) {
     case 'android':
       architecture.stack = ['Android', details.language || 'Java', 'Gradle'];
@@ -44,7 +46,7 @@ function createDynamicProjectContext(detection) {
         context.packageName = details.packageName;
       }
       break;
-      
+
     case 'nodejs':
       architecture.stack = ['Node.js'];
       if (details.framework) {
@@ -54,7 +56,7 @@ function createDynamicProjectContext(detection) {
         architecture.stack.push('TypeScript');
       }
       break;
-      
+
     case 'nodejs-monorepo':
       architecture.stack = ['Node.js', 'Monorepo'];
       if (details.monorepoTool) {
@@ -67,7 +69,7 @@ function createDynamicProjectContext(detection) {
         architecture.stack.push('TypeScript');
       }
       break;
-      
+
     case 'python-poetry':
     case 'python-pip':
     case 'python-conda':
@@ -76,53 +78,53 @@ function createDynamicProjectContext(detection) {
         architecture.stack.push(details.packageManager);
       }
       break;
-      
+
     case 'django':
       architecture.stack = ['Python', 'Django'];
       break;
-      
+
     case 'flask':
       architecture.stack = ['Python', 'Flask'];
       break;
-      
+
     case 'rust':
       architecture.stack = ['Rust', 'Cargo'];
       if (details.edition) {
         architecture.stack.push(`Rust ${details.edition}`);
       }
       break;
-      
+
     case 'go':
       architecture.stack = ['Go'];
       if (details.goVersion) {
         architecture.stack.push(`Go ${details.goVersion}`);
       }
       break;
-      
+
     case 'dotnet':
       architecture.stack = ['.NET'];
       if (details.language) {
         architecture.stack.push(details.language);
       }
       break;
-      
+
     case 'flutter':
       architecture.stack = ['Flutter', 'Dart'];
       break;
-      
+
     case 'react-native':
       architecture.stack = ['React Native', 'JavaScript'];
       if (details.hasTypescript) {
         architecture.stack.push('TypeScript');
       }
       break;
-      
+
     default:
       architecture.stack = ['Unknown'];
   }
-  
+
   context.architecture = architecture;
-  
+
   return context;
 }
 import { generateEnhancedAIHeader } from '../../utils/aiHeader.js';
@@ -157,9 +159,9 @@ async function estimateProjectTokens(projectPath, config, projectType = null) {
     const detection = await detectProjectType(projectPath);
     projectType = detection.type;
   }
-  
+
   const projectSpecific = await getProjectSpecificFiltering(projectType);
-  
+
   // Merge project-specific filters with global config (same as in scanDirectoryRecursively)
   const effectiveConfig = {
     ...config,
@@ -167,59 +169,59 @@ async function estimateProjectTokens(projectPath, config, projectType = null) {
     filesToIgnore: [...(config.filesToIgnore || []), ...(projectSpecific.filesToIgnore || [])],
     extensionsToIgnore: [...(config.extensionsToIgnore || []), ...(projectSpecific.extensionsToIgnore || [])]
   };
-  
+
   const files = await getProjectFiles(projectPath, effectiveConfig);
   const gitignore = await loadGitignore(projectPath);
   const maxFileSize = parseSize(effectiveConfig.maxFileSize);
   let totalSize = 0;
   let includedFiles = 0;
-  
+
   for (const file of files) {
     try {
       const normalizedPath = file.replace(/\\/g, '/');
-      
+
       // Apply the same filtering logic as in runFileSnapshot
       if (effectiveConfig.dirsToIgnore.some(dir => normalizedPath.startsWith(dir))) {
         continue;
       }
-      
+
       if (gitignore.ignores(normalizedPath)) {
         continue;
       }
-      
+
       if (isBinaryPath(file)) {
         continue;
       }
-      
+
       const fileExtension = path.extname(file);
       if (effectiveConfig.extensionsToIgnore.includes(fileExtension)) {
         continue;
       }
-      
+
       if (matchesPattern(normalizedPath, effectiveConfig.filesToIgnore)) {
         continue;
       }
-      
+
       const stats = await fs.stat(path.join(projectPath, file));
       if (stats.size > maxFileSize) {
         continue;
       }
-      
+
       totalSize += stats.size;
       includedFiles++;
     } catch (e) { /* ignore errors for estimation */ }
   }
-  
+
   // Use adaptive polynomial estimation
   const estimatedTokens = await estimateTokensWithPolynomial(projectType, totalSize);
-  
+
   return { estimatedTokens, totalSize, includedFiles };
 }
 
 async function processProjectFiles(repoPath, options, config, projectType = null) {
   const originalCwd = process.cwd();
   console.log(`\n📸 Processing files for: ${path.basename(repoPath)}`);
-  
+
   const stats = {
     totalFiles: 0,
     includedFiles: 0,
@@ -236,7 +238,7 @@ async function processProjectFiles(repoPath, options, config, projectType = null
 
   try {
     process.chdir(repoPath);
-    
+
     console.log('🔍 Scanning repository...');
     let allFiles = await getProjectFiles(repoPath, config);
 
@@ -250,9 +252,9 @@ async function processProjectFiles(repoPath, options, config, projectType = null
     }
     const gitignore = await loadGitignore(repoPath);
     stats.totalFiles = allFiles.length;
-    
+
     console.log(`📊 Found ${stats.totalFiles} files`);
-    
+
     const progressBar = new SingleBar({
       format: '📄 Processing |{bar}| {percentage}% | {value}/{total} files | {filename}',
       barCompleteChar: '\u2588',
@@ -260,7 +262,7 @@ async function processProjectFiles(repoPath, options, config, projectType = null
       hideCursor: true
     }, Presets.rect);
     progressBar.start(allFiles.length, 0);
-    
+
     const trackSkippedFile = (filePath, reason) => {
       if (!stats.skippedFilesDetails.has(reason)) {
         stats.skippedFilesDetails.set(reason, []);
@@ -268,12 +270,12 @@ async function processProjectFiles(repoPath, options, config, projectType = null
       stats.skippedFilesDetails.get(reason).push(filePath);
       stats.skipReasons.set(reason, (stats.skipReasons.get(reason) || 0) + 1);
     };
-    
+
     const limit = pLimit(config.concurrency);
     const processFile = async (filePath, index) => {
       const normalizedPath = filePath.replace(/\\/g, '/');
       progressBar.update(index + 1, { filename: normalizedPath.slice(0, 50) });
-      
+
       try {
         // Check if file should be ignored by directory patterns
         if (config.dirsToIgnore.some(dir => normalizedPath.startsWith(dir))) {
@@ -281,21 +283,21 @@ async function processProjectFiles(repoPath, options, config, projectType = null
           trackSkippedFile(normalizedPath, 'Directory ignore patterns');
           return null;
         }
-        
+
         // Check gitignore patterns
         if (gitignore.ignores(normalizedPath)) {
           stats.ignoredFiles++;
           trackSkippedFile(normalizedPath, 'Gitignore rules');
           return null;
         }
-        
+
         // Check if binary file
         if (isBinaryPath(filePath)) {
           stats.binaryFiles++;
           trackSkippedFile(normalizedPath, 'Binary files');
           return null;
         }
-        
+
         // Check extensions and file patterns
         const fileExtension = path.extname(filePath);
         if (config.extensionsToIgnore.includes(fileExtension)) {
@@ -309,22 +311,32 @@ async function processProjectFiles(repoPath, options, config, projectType = null
           trackSkippedFile(normalizedPath, 'File pattern filter');
           return null;
         }
-        
+
         // Read file with size check
         const fullPath = path.join(repoPath, filePath);
         const fileStats = await fs.stat(fullPath);
         stats.totalSize += fileStats.size;
-        
+
         const maxFileSize = parseSize(config.maxFileSize);
         if (fileStats.size > maxFileSize) {
           stats.oversizedFiles++;
           trackSkippedFile(normalizedPath, `File too large (${formatSize(fileStats.size)} > ${formatSize(maxFileSize)})`);
           return null;
         }
-        
-        const content = await readFileWithSizeCheck(fullPath, maxFileSize);
+
+        let content = await readFileWithSizeCheck(fullPath, maxFileSize);
         stats.includedFiles++;
         stats.processedSize += fileStats.size;
+
+        // Apply skeletonization if enabled
+        if (options.skeleton) {
+          // Check if file should be focused (kept full)
+          const isFocused = options.focus && micromatch.isMatch(normalizedPath, options.focus);
+          if (!isFocused) {
+            content = await skeletonize(content, normalizedPath);
+          }
+        }
+
         let outputBody = content;
 
         // Apply max-lines-per-file truncation if specified
@@ -350,7 +362,7 @@ async function processProjectFiles(repoPath, options, config, projectType = null
 
     const results = await Promise.all(allFiles.map((fp, index) => limit(() => processFile(fp, index))));
     progressBar.stop();
-    
+
     const successfulFileObjects = results.filter(Boolean);
     const contentArray = successfulFileObjects.map(f => f.content);
 
@@ -363,7 +375,7 @@ async function processProjectFiles(repoPath, options, config, projectType = null
       originalCwd,
       repoPath
     };
-    
+
   } finally {
     process.chdir(originalCwd); // Ensure we always change back
   }
@@ -374,7 +386,7 @@ export async function createRepoSnapshot(repoPath, options) {
   try {
     // Ensure snapshots/ is in .gitignore to prevent accidental commits
     await ensureSnapshotsInGitignore(repoPath);
-    
+
     // Initialize .eck manifest directory if it doesn't exist
     await initializeEckManifest(repoPath);
 
@@ -398,20 +410,20 @@ export async function createRepoSnapshot(repoPath, options) {
       }
     }
     spinner.text = 'Analyzing project...'; // Reset spinner text
-    
+
     // Detect project type first
     const projectDetection = await detectProjectType(repoPath);
     spinner.stop();
     displayProjectInfo(projectDetection);
-    
+
     const setupConfig = await loadSetupConfig();
     const userConfig = await loadConfig(options.config);
-    
+
     // Update project context based on detection
     if (projectDetection.type !== 'unknown' && projectDetection.details) {
       setupConfig.projectContext = createDynamicProjectContext(projectDetection);
     }
-    
+
     // Merge configs: setup.json base, user overrides, command options
     const config = {
       ...userConfig, // Start with old defaults
@@ -421,7 +433,7 @@ export async function createRepoSnapshot(repoPath, options) {
       aiHeaderEnabled: setupConfig.aiInstructions?.header?.defaultEnabled ?? true,
       ...options // Command-line options have the final say
     };
-    
+
     // Apply defaults for options that may not be provided via command line
     if (!config.output) {
       config.output = setupConfig.output?.defaultPath || './snapshots';
@@ -441,159 +453,162 @@ export async function createRepoSnapshot(repoPath, options) {
     spinner.info(`Estimated project size: ~${Math.round(estimation.estimatedTokens).toLocaleString()} tokens.`);
 
     spinner.succeed('Creating snapshots...');
-      
-      // Step 1: Process all files ONCE
-      const { 
-        stats, 
-        contentArray, 
-        successfulFileObjects, 
-        allFiles, 
-        originalCwd: processingOriginalCwd, // We get originalCwd from the processing function
-        repoPath: processedRepoPath 
-      } = await processProjectFiles(repoPath, options, config, projectDetection.type);
 
-      const originalCwd = process.cwd(); // Get CWD *before* chdir
-      process.chdir(processedRepoPath); // Go back to repo path for git hash and tree
+    // Step 1: Process all files ONCE
+    const {
+      stats,
+      contentArray,
+      successfulFileObjects,
+      allFiles,
+      originalCwd: processingOriginalCwd, // We get originalCwd from the processing function
+      repoPath: processedRepoPath
+    } = await processProjectFiles(repoPath, options, config, projectDetection.type);
 
-      try {
-        // --- Common Data --- 
-        const timestamp = new Date().toISOString().slice(0, 19).replace('T', '_').replace(/:/g, '-');
-        const repoName = path.basename(processedRepoPath);
-        const gitHash = await getGitCommitHash(processedRepoPath);
-        const fileExtension = options.format || config.defaultFormat || 'md';
-        const outputPath = options.output || path.resolve(originalCwd, config.output);
-        await fs.mkdir(outputPath, { recursive: true });
+    const originalCwd = process.cwd(); // Get CWD *before* chdir
+    process.chdir(processedRepoPath); // Go back to repo path for git hash and tree
 
-        const shouldIncludeTree = config.tree && !options.noTree;
-        let directoryTree = '';
-        if (shouldIncludeTree) {
-          console.log('🌳 Generating directory tree...');
-          directoryTree = await generateDirectoryTree(processedRepoPath, '', allFiles, 0, config.maxDepth || 10, config);
-        }
+    try {
+      // --- Common Data --- 
+      const timestamp = new Date().toISOString().slice(0, 19).replace('T', '_').replace(/:/g, '-');
+      const repoName = path.basename(processedRepoPath);
+      const gitHash = await getGitCommitHash(processedRepoPath);
+      const fileExtension = options.format || config.defaultFormat || 'md';
+      const outputPath = options.output || path.resolve(originalCwd, config.output);
+      await fs.mkdir(outputPath, { recursive: true });
 
-        // Calculate included file stats by extension
-        const includedFilesByType = new Map();
-        for (const fileObj of successfulFileObjects) {
-            try {
-                let ext = path.extname(fileObj.path);
-                if (ext === '') ext = '.no-extension';
-                includedFilesByType.set(ext, (includedFilesByType.get(ext) || 0) + 1);
-            } catch (e) { /* Silently ignore */ }
-        }
-        const sortedIncludedStats = [...includedFilesByType.entries()].sort((a, b) => b[1] - a[1]);
-
-        // Calculate Top 10 Largest Files
-        const largestFiles = [...successfulFileObjects].sort((a, b) => b.size - a.size).slice(0, 10);
-
-        const fileBody = (directoryTree ? `\n## Directory Structure\n\n\`\`\`\n${directoryTree}\`\`\`\n\n` : '') + contentArray.join('');
-
-        // --- File 1: Architect Snapshot --- 
-        const architectOptions = { ...options, agent: false };
-        // Load manifest for headers
-        const eckManifest = await loadProjectEckManifest(processedRepoPath);
-        const isGitRepo = await checkGitRepository(processedRepoPath);
-
-        const architectHeader = await generateEnhancedAIHeader({ stats, repoName, mode: 'file', eckManifest, options: architectOptions, repoPath: processedRepoPath }, isGitRepo);
-        const architectBaseFilename = `${repoName}_snapshot_${timestamp}${gitHash ? `_${gitHash}` : ''}`;
-        const architectFilename = `${architectBaseFilename}.${fileExtension}`;
-        const architectFilePath = path.join(outputPath, architectFilename);
-        await fs.writeFile(architectFilePath, architectHeader + fileBody);
-
-        // --- File 2: Junior Architect Snapshot --- 
-        let jaFilePath = null;
-        if (options.withJa && fileExtension === 'md') { // Only create JA snapshot if requested and main is MD
-          console.log('🖋️ Generating Junior Architect (_ja) snapshot...');
-          const jaOptions = { ...options, agent: true, noTree: false, noAiHeader: false };
-          const jaHeader = await generateEnhancedAIHeader({ stats, repoName, mode: 'file', eckManifest, options: jaOptions, repoPath: processedRepoPath }, isGitRepo);
-          const jaFilename = `${architectBaseFilename}_ja.${fileExtension}`;
-          jaFilePath = path.join(outputPath, jaFilename);
-          await fs.writeFile(jaFilePath, jaHeader + fileBody);
-        }
-
-        // --- Combined Report --- 
-        console.log('\n✅ Snapshot generation complete!');
-        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-        console.log(`📄 Architect File: ${architectFilePath}`);
-        if (jaFilePath) {
-          console.log(`📄 Junior Arch File: ${jaFilePath}`);
-        }
-        console.log(`📊 Files processed: ${stats.includedFiles}/${stats.totalFiles}`);
-        console.log(`📏 Total size: ${formatSize(stats.totalSize)}`);
-        console.log(`📦 Processed size: ${formatSize(stats.processedSize)}`);
-        console.log(`📋 Format: ${fileExtension.toUpperCase()}`);
-
-        if (sortedIncludedStats.length > 0) {
-          console.log('\n📦 Included File Types:');
-          console.log('---------------------------------');
-          for (const [ext, count] of sortedIncludedStats.slice(0, 10)) {
-              console.log(`   - ${String(ext).padEnd(15)} ${String(count).padStart(5)} files`);
-          }
-          if (sortedIncludedStats.length > 10) {
-              console.log(`   ... and ${sortedIncludedStats.length - 10} other types.`);
-          }
-        }
-
-        if (largestFiles.length > 0) {
-          console.log('\n🐘 Top 10 Largest Files (Included):');
-          console.log('---------------------------------');
-          for (const fileObj of largestFiles) {
-              console.log(`   - ${String(formatSize(fileObj.size)).padEnd(15)} ${fileObj.path}`);
-          }
-        }
-        
-        // Excluded/Skipped Files Section
-        const hasExcludedContent = stats.excludedFiles > 0 || stats.binaryFiles > 0 || stats.oversizedFiles > 0 || stats.ignoredFiles > 0 || stats.errors.length > 0;
-        if (hasExcludedContent) {
-          console.log('\n🚫 Excluded/Skipped Files:');
-          console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-        }
-        
-        if (stats.excludedFiles > 0) {
-          console.log(`🚫 Excluded files: ${stats.excludedFiles}`);
-        }
-        if (stats.binaryFiles > 0) {
-          console.log(`📱 Binary files skipped: ${stats.binaryFiles}`);
-        }
-        if (stats.oversizedFiles > 0) {
-          console.log(`📏 Oversized files skipped: ${stats.oversizedFiles}`);
-        }
-        if (stats.ignoredFiles > 0) {
-          console.log(`🙈 Ignored files: ${stats.ignoredFiles}`);
-        }
-        if (stats.errors.length > 0) {
-          console.log(`❌ Errors: ${stats.errors.length}`);
-          if (options.verbose) {
-            stats.errors.forEach(err => console.log(`   ${err}`));
-          }
-        }
-        
-        // Print detailed skip reasons report
-        if (stats.skippedFilesDetails.size > 0) {
-          console.log('\n📋 Skip Reasons:');
-          console.log('---------------------------------');
-          
-          for (const [reason, files] of stats.skippedFilesDetails.entries()) {
-            console.log(`\n🔸 ${reason} (${files.length} files):`);
-            files.forEach(file => {
-              console.log(`   • ${file}`);
-            });
-          }
-          console.log('---------------------------------');
-        } else {
-          console.log('---------------------------------');
-        }
-        
-        // Generate training command string if estimation data is available
-        if (estimation && projectDetection.type && !options.profile) {
-          const trainingCommand = generateTrainingCommand(projectDetection.type, estimation.estimatedTokens, estimation.totalSize, repoPath);
-          console.log('\n🎯 To improve token estimation accuracy, run this command after checking actual tokens:');
-          console.log(`${trainingCommand}[ACTUAL_TOKENS_HERE]`);
-          console.log('   Replace [ACTUAL_TOKENS_HERE] with the real token count from your LLM');
-        }
-
-      } finally {
-        process.chdir(originalCwd); // Final reset back to original CWD
+      const shouldIncludeTree = config.tree && !options.noTree;
+      let directoryTree = '';
+      if (shouldIncludeTree) {
+        console.log('🌳 Generating directory tree...');
+        directoryTree = await generateDirectoryTree(processedRepoPath, '', allFiles, 0, config.maxDepth || 10, config);
       }
+
+      // Calculate included file stats by extension
+      const includedFilesByType = new Map();
+      for (const fileObj of successfulFileObjects) {
+        try {
+          let ext = path.extname(fileObj.path);
+          if (ext === '') ext = '.no-extension';
+          includedFilesByType.set(ext, (includedFilesByType.get(ext) || 0) + 1);
+        } catch (e) { /* Silently ignore */ }
+      }
+      const sortedIncludedStats = [...includedFilesByType.entries()].sort((a, b) => b[1] - a[1]);
+
+      // Calculate Top 10 Largest Files
+      const largestFiles = [...successfulFileObjects].sort((a, b) => b.size - a.size).slice(0, 10);
+
+      const fileBody = (directoryTree ? `\n## Directory Structure\n\n\`\`\`\n${directoryTree}\`\`\`\n\n` : '') + contentArray.join('');
+
+      // --- File 1: Architect Snapshot --- 
+      const architectOptions = { ...options, agent: false };
+      // Load manifest for headers
+      const eckManifest = await loadProjectEckManifest(processedRepoPath);
+      const isGitRepo = await checkGitRepository(processedRepoPath);
+
+      const architectHeader = await generateEnhancedAIHeader({ stats, repoName, mode: 'file', eckManifest, options: architectOptions, repoPath: processedRepoPath }, isGitRepo);
+      const architectBaseFilename = `${repoName}_snapshot_${timestamp}${gitHash ? `_${gitHash}` : ''}`;
+      const architectFilename = `${architectBaseFilename}.${fileExtension}`;
+      const architectFilePath = path.join(outputPath, architectFilename);
+      await fs.writeFile(architectFilePath, architectHeader + fileBody);
+
+      // --- File 2: Junior Architect Snapshot ---
+      let jaFilePath = null;
+      if (options.withJa && fileExtension === 'md') { // Only create JA snapshot if requested and main is MD
+        console.log('🖋️ Generating Junior Architect (_ja) snapshot...');
+        const jaOptions = { ...options, agent: true, noTree: false, noAiHeader: false };
+        const jaHeader = await generateEnhancedAIHeader({ stats, repoName, mode: 'file', eckManifest, options: jaOptions, repoPath: processedRepoPath }, isGitRepo);
+        const jaFilename = `${architectBaseFilename}_ja.${fileExtension}`;
+        jaFilePath = path.join(outputPath, jaFilename);
+        await fs.writeFile(jaFilePath, jaHeader + fileBody);
+      }
+
+      // Save git anchor for future delta updates
+      await saveGitAnchor(processedRepoPath);
+
+      // --- Combined Report --- 
+      console.log('\n✅ Snapshot generation complete!');
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      console.log(`📄 Architect File: ${architectFilePath}`);
+      if (jaFilePath) {
+        console.log(`📄 Junior Arch File: ${jaFilePath}`);
+      }
+      console.log(`📊 Files processed: ${stats.includedFiles}/${stats.totalFiles}`);
+      console.log(`📏 Total size: ${formatSize(stats.totalSize)}`);
+      console.log(`📦 Processed size: ${formatSize(stats.processedSize)}`);
+      console.log(`📋 Format: ${fileExtension.toUpperCase()}`);
+
+      if (sortedIncludedStats.length > 0) {
+        console.log('\n📦 Included File Types:');
+        console.log('---------------------------------');
+        for (const [ext, count] of sortedIncludedStats.slice(0, 10)) {
+          console.log(`   - ${String(ext).padEnd(15)} ${String(count).padStart(5)} files`);
+        }
+        if (sortedIncludedStats.length > 10) {
+          console.log(`   ... and ${sortedIncludedStats.length - 10} other types.`);
+        }
+      }
+
+      if (largestFiles.length > 0) {
+        console.log('\n🐘 Top 10 Largest Files (Included):');
+        console.log('---------------------------------');
+        for (const fileObj of largestFiles) {
+          console.log(`   - ${String(formatSize(fileObj.size)).padEnd(15)} ${fileObj.path}`);
+        }
+      }
+
+      // Excluded/Skipped Files Section
+      const hasExcludedContent = stats.excludedFiles > 0 || stats.binaryFiles > 0 || stats.oversizedFiles > 0 || stats.ignoredFiles > 0 || stats.errors.length > 0;
+      if (hasExcludedContent) {
+        console.log('\n🚫 Excluded/Skipped Files:');
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      }
+
+      if (stats.excludedFiles > 0) {
+        console.log(`🚫 Excluded files: ${stats.excludedFiles}`);
+      }
+      if (stats.binaryFiles > 0) {
+        console.log(`📱 Binary files skipped: ${stats.binaryFiles}`);
+      }
+      if (stats.oversizedFiles > 0) {
+        console.log(`📏 Oversized files skipped: ${stats.oversizedFiles}`);
+      }
+      if (stats.ignoredFiles > 0) {
+        console.log(`🙈 Ignored files: ${stats.ignoredFiles}`);
+      }
+      if (stats.errors.length > 0) {
+        console.log(`❌ Errors: ${stats.errors.length}`);
+        if (options.verbose) {
+          stats.errors.forEach(err => console.log(`   ${err}`));
+        }
+      }
+
+      // Print detailed skip reasons report
+      if (stats.skippedFilesDetails.size > 0) {
+        console.log('\n📋 Skip Reasons:');
+        console.log('---------------------------------');
+
+        for (const [reason, files] of stats.skippedFilesDetails.entries()) {
+          console.log(`\n🔸 ${reason} (${files.length} files):`);
+          files.forEach(file => {
+            console.log(`   • ${file}`);
+          });
+        }
+        console.log('---------------------------------');
+      } else {
+        console.log('---------------------------------');
+      }
+
+      // Generate training command string if estimation data is available
+      if (estimation && projectDetection.type && !options.profile) {
+        const trainingCommand = generateTrainingCommand(projectDetection.type, estimation.estimatedTokens, estimation.totalSize, repoPath);
+        console.log('\n🎯 To improve token estimation accuracy, run this command after checking actual tokens:');
+        console.log(`${trainingCommand}[ACTUAL_TOKENS_HERE]`);
+        console.log('   Replace [ACTUAL_TOKENS_HERE] with the real token count from your LLM');
+      }
+
+    } finally {
+      process.chdir(originalCwd); // Final reset back to original CWD
+    }
   } catch (error) {
     spinner.fail(`Operation failed: ${error.message}`);
     process.exit(1);

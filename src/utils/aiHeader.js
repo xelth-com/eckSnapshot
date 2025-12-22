@@ -249,7 +249,7 @@ ${eckManifestSection}
     let commandFormats = '';
 
     if (withJa) {
-        hierarchicalWorkflow = `### HIERARCHICAL AGENT WORKFLOW
+      hierarchicalWorkflow = `### HIERARCHICAL AGENT WORKFLOW
 
 Your primary role is **Senior Architect**. You formulate high-level strategy. For complex code implementation, you will delegate to a **Junior Architect** agent (\`gemini_wsl\`), who has a detailed (\`_ja.md\`) snapshot and the ability to command a **Coder** agent (\`claude\`).
 
@@ -257,7 +257,7 @@ Your primary role is **Senior Architect**. You formulate high-level strategy. Fo
   - **Junior Architect (\`gemini_wsl\`):** Receives strategic tasks, analyzes the \`_ja.md\` snapshot, breaks the task down, and commands the Coder.
   - **Coder (\`claude\`):** Receives small, precise coding tasks from the Junior Architect. **Claude is highly trained for code generation and should be used for all primary code-writing tasks**, while \`gemini_wsl\` can use its own tools for analysis, validation, and running shell commands.`;
 
-        commandFormats = `### COMMAND FORMATS
+      commandFormats = `### COMMAND FORMATS
 
 You MUST use one of two JSON command formats based on your target:
 
@@ -337,14 +337,14 @@ Use \`execute_strategic_task\` for complex features. The JA will use its own sna
 }
 \`\`\``;
     } else {
-        hierarchicalWorkflow = `### AGENT WORKFLOW
+      hierarchicalWorkflow = `### AGENT WORKFLOW
 
 Your role is **Architect**. You formulate technical plans and delegate code implementation tasks directly to the **Coder** agents (e.g., \`local_dev\`).
 
   - **Architect (You):** Sets strategy, defines tasks.
   - **Coder (e.g., \`local_dev\`):** Receives precise coding tasks and executes them.`;
 
-        commandFormats = `### COMMAND FORMATS
+      commandFormats = `### COMMAND FORMATS
 
 You MUST use the following JSON command format for Coders:
 
@@ -432,18 +432,29 @@ ${eckManifestSection}
     };
 
     let renderedTemplate = render(template, data);
-    
+
+    // Inject skeleton mode instructions if enabled
+    if (context.options && context.options.skeleton) {
+      try {
+        const skeletonInstructionPath = path.join(__dirname, '..', 'templates', 'skeleton-instruction.md');
+        const skeletonInstructions = await fs.readFile(skeletonInstructionPath, 'utf-8');
+        renderedTemplate += '\n\n' + skeletonInstructions + '\n\n';
+      } catch (e) {
+        console.warn('Warning: Could not load skeleton-instruction.md', e.message);
+      }
+    }
+
     // Inject dynamic profile context if a profile is active
     if (context.options && context.options.profile && context.repoPath) {
       let metadataHeader = '\n\n## Partial Snapshot Context\n';
       metadataHeader += `- **Profile(s) Active:** ${context.options.profile}\n`;
       try {
-          const allProfiles = await getAllProfiles(context.repoPath);
-          const activeProfileNames = context.options.profile.split(',').map(p => p.trim().replace(/^-/, ''));
-          const allProfileNames = Object.keys(allProfiles).filter(p => !activeProfileNames.includes(p));
-          if (allProfileNames.length > 0) {
-               metadataHeader += `- **Other Available Profiles:** ${allProfileNames.join(', ')}\n`;
-          }
+        const allProfiles = await getAllProfiles(context.repoPath);
+        const activeProfileNames = context.options.profile.split(',').map(p => p.trim().replace(/^-/, ''));
+        const allProfileNames = Object.keys(allProfiles).filter(p => !activeProfileNames.includes(p));
+        if (allProfileNames.length > 0) {
+          metadataHeader += `- **Other Available Profiles:** ${allProfileNames.join(', ')}\n`;
+        }
       } catch (e) { /* fail silently on metadata generation */ }
 
       const insertMarker = "### "; // Generic marker since we change the H1s

@@ -7,6 +7,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 import { createRepoSnapshot } from './commands/createSnapshot.js';
+import { updateSnapshot } from './commands/updateSnapshot.js';
 import { restoreSnapshot } from './commands/restoreSnapshot.js';
 import { pruneSnapshot } from './commands/pruneSnapshot.js';
 import { generateConsilium } from './commands/consilium.js';
@@ -19,6 +20,7 @@ import { detectProfiles } from './commands/detectProfiles.js';
 import { generateProfileGuide } from './commands/generateProfileGuide.js';
 import { setupGemini } from './commands/setupGemini.js';
 import { generateAutoDocs } from './commands/autoDocs.js';
+import { showFile } from './commands/showFile.js';
 import inquirer from 'inquirer';
 import ora from 'ora';
 import { execa } from 'execa';
@@ -31,10 +33,10 @@ async function checkCodeBoundaries(filePath, agentId) {
   try {
     const content = await fs.readFile(filePath, 'utf-8');
     const boundaryRegex = /\/\* AGENT_BOUNDARY:\[([^\]]+)\] START \*\/([\s\S]*?)\/\* AGENT_BOUNDARY:\[[^\]]+\] END \*\//g;
-    
+
     const boundaries = [];
     let match;
-    
+
     while ((match = boundaryRegex.exec(content)) !== null) {
       boundaries.push({
         owner: match[1],
@@ -43,7 +45,7 @@ async function checkCodeBoundaries(filePath, agentId) {
         content: match[2]
       });
     }
-    
+
     return {
       file: filePath,
       hasBoundaries: boundaries.length > 0,
@@ -168,6 +170,7 @@ Useful for a high-level overview.
     .option('--profile <name>', 'Filter files using profiles and/or ad-hoc glob patterns.')
     .option('--agent', 'Generate a snapshot optimized for a command-line agent')
     .option('--with-ja', 'Generate a detailed snapshot for the Junior Architect agent')
+    .option('--skeleton', 'Enable skeleton mode: strip function bodies to save context window tokens')
     .option('--max-lines-per-file <number>', 'Truncate files to max N lines (e.g., 200 for compact snapshots)', (val) => parseInt(val))
     .action(createRepoSnapshot)
     .addHelpText('after', `
@@ -215,6 +218,14 @@ Creating Custom Profiles:
   Alternatively, use AI detection:
     eck-snapshot profile-detect   (auto-generates profiles using AI)
 `);
+
+  // Update snapshot command
+  program
+    .command('update')
+    .description('Create a delta snapshot of changed files since the last full snapshot')
+    .argument('[repoPath]', 'Path to the repository', process.cwd())
+    .option('--config <path>', 'Configuration file path')
+    .action(updateSnapshot);
 
   // Restore command
   program
@@ -422,6 +433,13 @@ Authentication:
     .command('docs-auto')
     .description('Auto-generate documentation from gemini-extension.json files')
     .action(generateAutoDocs);
+
+  // Show file command (for skeleton mode lazy loading)
+  program
+    .command('show')
+    .description('Output the full content of a specific file (for AI lazy loading)')
+    .argument('<filePath>', 'Path to the file')
+    .action(showFile);
 
   program.parse(process.argv);
 }
