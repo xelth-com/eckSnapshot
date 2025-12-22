@@ -437,8 +437,8 @@ Authentication:
   // Show file command (for skeleton mode lazy loading)
   program
     .command('show')
-    .description('Output the full content of a specific file (for AI lazy loading)')
-    .argument('<filePath>', 'Path to the file')
+    .description('Output the full content of specific file(s) (for AI lazy loading)')
+    .argument('<filePaths...>', 'Space-separated paths to files')
     .action(showFile);
 
   program.parse(process.argv);

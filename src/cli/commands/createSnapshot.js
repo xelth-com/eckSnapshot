@@ -506,7 +506,13 @@ export async function createRepoSnapshot(repoPath, options) {
       const isGitRepo = await checkGitRepository(processedRepoPath);
 
       const architectHeader = await generateEnhancedAIHeader({ stats, repoName, mode: 'file', eckManifest, options: architectOptions, repoPath: processedRepoPath }, isGitRepo);
-      const architectBaseFilename = `${repoName}_snapshot_${timestamp}${gitHash ? `_${gitHash}` : ''}`;
+      let architectBaseFilename = `${repoName}_snapshot_${timestamp}${gitHash ? `_${gitHash}` : ''}`;
+
+      // Add '_sk' suffix for skeleton mode snapshots
+      if (options.skeleton) {
+        architectBaseFilename += '_sk';
+      }
+
       const architectFilename = `${architectBaseFilename}.${fileExtension}`;
       const architectFilePath = path.join(outputPath, architectFilename);
       await fs.writeFile(architectFilePath, architectHeader + fileBody);
