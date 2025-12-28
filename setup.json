@@ -539,9 +539,11 @@
         "Request ENV scan from agent",
         "Analyze User Request in their native language",
         "Formulate environment-appropriate technical plan",
-        "Propose the plan and await user confirmation",
-        "Generate environment-specific JSON command block",
-        "Communicate with user in their language, commands in ENGLISH"
+        "Propose the high-level plan in the user's language",
+        "STOP and WAIT for explicit user confirmation",
+        "ONLY after approval: Generate environment-specific JSON command block in a SEPARATE message",
+        "Communicate with user in their language, commands in ENGLISH",
+        "CRITICAL: Never output JSON commands until the user agrees to the plan"
       ]
     },
     "executionAgents": {
