@@ -65,83 +65,55 @@ async function checkCodeBoundaries(filePath, agentId) {
 export function run() {
   const program = new Command();
 
-  const helpGuide = `eck-snapshot (v4.0.0) - A lightweight, platform-independent CLI for creating project snapshots.
+  const helpGuide = `eck-snapshot (v4.0.0) - AI-Native Repository Context Tool.
 
---- Getting Started: Environment Setup ---
+--- 🚀 Core Workflow: Optimized for Web LLMs (Gemini/ChatGPT) ---
 
-This tool is designed to work with Large Language Models (LLMs). For the best results, you'll need:
-1. An 'Architect' LLM (like Gemini, GPT-4, or Grok) to analyze snapshots.
-2. A 'Coder' LLM (like Claude Code) to execute coding tasks.
+1. Initial Context (Maximum Compression)
+   Create a lightweight map of your entire project. Bodies of functions are hidden.
+   This fits huge monoliths into the context window.
+   
+   $ eck-snapshot --skeleton
+   -> Generates: .eck/snapshots/<name>_sk.md (Upload this to AI)
 
---- Core Workflow: A Step-by-Step Guide ---
+2. Lazy Loading (On-Demand Details)
+   If the AI needs to see the implementation of specific files, it will ask you.
+   You can display multiple files at once to copy-paste back to the chat.
+   
+   $ eck-snapshot show src/auth.js src/utils/hash.js
 
-Step 1: Create a Full Project Snapshot
-This is your primary command. It scans your project and packs all code into a single file.
+3. Working & Updating
+   As you apply changes, the AI loses context. Instead of re-sending the full repo,
+   send only what changed since the last snapshot.
+   
+   $ eck-snapshot update
+   -> Generates: .eck/snapshots/update_<timestamp>.md (Contains changed files + git diff)
 
-> Usage:
-  $ eck-snapshot
+--- 🛠️ Managing Context Profiles ---
 
--> This creates a file like 'myProject_snapshot_... .md' in the .eck/snapshots/ directory.
-   You can now pass this file to your Architect LLM for analysis.
+Option A: Auto-Detection (Best for start)
+   Uses AI to scan folders and suggest profiles (backend, frontend, etc).
+   $ eck-snapshot profile-detect
 
+Option B: Manual Guide (Best for large repos)
+   If the project is too big for auto-detection, this generates a prompt text file
+   that you can paste into a powerful Web LLM (like Gemini 1.5 Pro) to design profiles manually.
+   
+   1. Run:  $ eck-snapshot generate-profile-guide
+   2. Open: .eck/profile_generation_guide.md
+   3. Copy: Paste the content into your AI chat.
+   4. Save: Take the JSON response and save it to .eck/profiles.json
 
-Step 2: Handle Large Projects with Auto-Profiling
-If your project is too big for the LLM's context window, \`profile-detect\` will automatically
-slice it into logical parts (profiles) using AI.
+Option C: Using Profiles
+   $ eck-snapshot --profile backend
+   $ eck-snapshot --profile "frontend,-**/*.test.js" (Ad-hoc filtering)
 
-> Usage:
-  $ eck-snapshot profile-detect
+--- 🧩 Auxiliary Commands ---
 
--> Output:
-  ✨ Detected Profiles:
-  ---------------------------
-    - cli
-    - services
-    - core
-    - templates
-    - docs
-    - config
-
-
-Step 3: Use Profiles to Create Focused Snapshots
-Use the --profile option to create smaller snapshots of specific project areas.
-
-> Example 1: Combine and exclude profiles
-  $ eck-snapshot --profile "core,services,cli,-docs,-config"
-
--> Creates a snapshot with code from the 'core', 'services', and 'cli' profiles,
-   while excluding anything from 'docs' and 'config'.
-
-> Example 2: Use ad-hoc glob patterns
-  $ eck-snapshot --profile "src/**/*.js,-**/*.test.js"
-
--> Includes all .js files in the 'src' directory and its subdirectories,
-   but excludes any file ending in '.test.js'.
-   Note: Quotes are required for complex patterns.
-
-
-Step 4: Intelligently Prune a Snapshot
-If a snapshot is still too large, \`prune\` uses AI to shrink it to a target size,
-keeping only the most important files.
-
-> Usage:
-  $ eck-snapshot prune myProject_snapshot.md --target-size 500KB
-
-
-Step 5 (Alternative): Truncate Files by Line Count
-A faster, non-AI method to reduce size by keeping only the top N lines of each file.
-Useful for a high-level overview.
-
-> Usage:
-  $ eck-snapshot --max-lines-per-file 200
-
---- Auxiliary Commands ---
-
-- restore:                  Restore a project from a snapshot file.
-- generate-profile-guide:   Creates a guide for manual profile creation. Use this if 'profile-detect' fails on very large projects, as it allows you to use an LLM with a larger context window (e.g., a web UI).
-- detect:                   Show how eckSnapshot identifies your project type.
-- ask-gpt / ask-claude:     Directly query the configured AI coder agents.
-- setup-gemini:             Auto-configure integration with gemini-cli.
+- restore:            Restore files from a snapshot to disk.
+- prune:              Use AI to shrink a snapshot file by importance.
+- ask-gpt/claude:     Delegate tasks to agents directly (via API).
+- setup-gemini:       Configure gemini-cli integration.
 `;
 
   program
