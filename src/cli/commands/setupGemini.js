@@ -134,7 +134,7 @@ args = ["${indexJsPath}", "ask-claude"]
 # gemini-cli claude "Generate a project overview"
 
 [claude.metadata]
-version = "4.0.0"
+version = "4.1.0"
 author = "eck-snapshot"
 generated_at = "${new Date().toISOString()}"
 platform = "${process.platform}"

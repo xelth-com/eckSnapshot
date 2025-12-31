@@ -39,7 +39,7 @@ command = "node"
 args = ["${indexJsPath}", "ask-claude"]
 
 [claude.metadata]
-version = "4.0.0"
+version = "4.1.0"
 author = "eck-snapshot"
 platform = "${process.platform}"
 working_directory = "${indexJsPath.replace('/index.js', '')}"`;
