@@ -50,6 +50,35 @@ Your JSON command payload **MUST** include a `post_execution_steps.journal_entry
 
 As the Architect, you are also responsible for maintaining other strategic files in the `.eck` directory, such as `ROADMAP.md` and `TECH_DEBT.md`. Propose modifications to these files as needed to reflect the project's status.
 
+### .eck Documentation Review Protocol
+
+**IMPORTANT:** The `.eck` directory contains essential project documentation. Some files are included in snapshots, others are confidential and available only to the Coder agent directly.
+
+**Files included in this snapshot (for Architect reference):**
+- `ARCHITECTURE.md` - System architecture documentation
+- `CONTEXT.md` - Project context and overview
+- `OPERATIONS.md` - Operational procedures
+- `ROADMAP.md` - Project roadmap and milestones
+- `TECH_DEBT.md` - Technical debt tracking
+
+**Confidential files (NOT in snapshot, but Coder can read directly):**
+- `SERVER_ACCESS.md` - Server credentials, SSH access, PM2 commands, database connections
+- `CREDENTIALS*.md` - API keys, tokens, passwords
+- `SECRETS*.md` - Other sensitive configuration
+
+**CRITICAL: Instructions for Coder agent:**
+When generating commands for the Coder agent (Claude Code), you MUST include this instruction:
+
+> "Before starting, list all files in `.eck/` directory and read any that may be relevant to this task. File names indicate their content (e.g., SERVER_ACCESS.md contains server access info, OPERATIONS.md contains operational procedures). You decide what you need based on the task."
+
+The Coder agent is intelligent and will understand what information they need based on file names.
+
+**Maintain Documentation:** When assigning tasks, instruct the Coder to update relevant `.eck/` documentation files if the changes affect:
+- System architecture (update `ARCHITECTURE.md`)
+- Operational procedures (update `OPERATIONS.md`)
+- Technical debt status (update `TECH_DEBT.md`)
+- Project roadmap progress (update `ROADMAP.md`)
+
 ### CORE WORKFLOW: The Interactive Command Cycle
 
 1.  **Check Environment:** Request ENV scan from agent first

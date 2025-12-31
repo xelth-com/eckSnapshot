@@ -374,7 +374,6 @@
     "dirsToIgnore": [
       "node_modules/",
       ".git/",
-      ".eck/",
       "dist/",
       "build/",
       ".next/",
@@ -387,6 +386,27 @@
       "create-snapshot/"
     ],
     "includeHidden": false,
+    "eckDirectoryFiltering": {
+      "_comment": "Smart filtering for .eck directory - includes documentation but excludes confidential files",
+      "enabled": true,
+      "confidentialPatterns": [
+        "SERVER_ACCESS.md",
+        "CREDENTIALS*.md",
+        "SECRETS*.md",
+        "*.secret",
+        "*.key",
+        "*.pem",
+        ".env*"
+      ],
+      "alwaysIncludePatterns": [
+        "ARCHITECTURE.md",
+        "CONTEXT.md",
+        "OPERATIONS.md",
+        "ROADMAP.md",
+        "TECH_DEBT.md",
+        "README.md"
+      ]
+    },
     "projectSpecific": {
       "android": {
         "filesToIgnore": [

@@ -40,6 +40,34 @@ export function matchesPattern(filePath, patterns) {
   });
 }
 
+/**
+ * Applies smart filtering for files within the .eck directory.
+ * Includes documentation files while excluding confidential files.
+ * @param {string} fileName - The file name to check
+ * @param {object} eckConfig - The eckDirectoryFiltering config object
+ * @returns {boolean} True if the file should be included, false otherwise
+ */
+export function applyEckDirectoryFiltering(fileName, eckConfig) {
+  if (!eckConfig || !eckConfig.enabled) {
+    return false; // .eck filtering disabled, exclude all
+  }
+
+  const { confidentialPatterns = [], alwaysIncludePatterns = [] } = eckConfig;
+
+  // First check if file matches confidential patterns (always exclude)
+  if (matchesPattern(fileName, confidentialPatterns)) {
+    return false;
+  }
+
+  // Check if file matches always-include patterns
+  if (matchesPattern(fileName, alwaysIncludePatterns)) {
+    return true;
+  }
+
+  // Default: exclude files not in the include list
+  return false;
+}
+
 export async function checkGitAvailability() {
   try {
     await execa('git', ['--version']);
@@ -90,19 +118,32 @@ export async function scanDirectoryRecursively(dirPath, config, relativeTo = dir
         continue;
       }
       
-      if (!effectiveConfig.includeHidden && entry.name.startsWith('.')) {
+      // Special handling for .eck directory - allow it even when hidden files are excluded
+      const isEckDirectory = entry.name === '.eck' && entry.isDirectory();
+      const isInsideEck = relativePath.startsWith('.eck/');
+
+      if (!effectiveConfig.includeHidden && entry.name.startsWith('.') && !isEckDirectory && !isInsideEck) {
         continue;
       }
-      
+
       if (entry.isDirectory()) {
         const subFiles = await scanDirectoryRecursively(fullPath, effectiveConfig, relativeTo, projectType);
         files.push(...subFiles);
       } else {
-        if (effectiveConfig.extensionsToIgnore.includes(path.extname(entry.name)) ||
-            matchesPattern(relativePath, effectiveConfig.filesToIgnore)) {
-          continue;
+        // Apply smart filtering for files inside .eck directory
+        if (isInsideEck) {
+          const eckConfig = effectiveConfig.eckDirectoryFiltering;
+          if (!applyEckDirectoryFiltering(entry.name, eckConfig)) {
+            continue; // File doesn't pass .eck smart filtering
+          }
+        } else {
+          // Normal filtering for non-.eck files
+          if (effectiveConfig.extensionsToIgnore.includes(path.extname(entry.name)) ||
+              matchesPattern(relativePath, effectiveConfig.filesToIgnore)) {
+            continue;
+          }
         }
-        
+
         files.push(relativePath);
       }
     }
