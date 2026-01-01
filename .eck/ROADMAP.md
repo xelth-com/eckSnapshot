@@ -1,17 +1,17 @@
 # Project Roadmap
 
-## Current Sprint/Phase
-- [ ] Feature 1
-- [ ] Feature 2
-- [ ] Bug fix 1
+## Current Sprint
+- [x] Manifest Maintenance Protocol implementation.
+- [x] Rust and Go support in Skeletonizer.
+- [x] Built-in Secret Scanner.
 
 ## Next Phase
-- [ ] Future feature 1
-- [ ] Future feature 2
+- [ ] Improved Incremental Snapshots (tracking deleted files).
+- [ ] MCP (Model Context Protocol) Server integration for direct IDE tool-use.
+- [ ] Shannon Entropy check in SecretScanner for better credential detection.
 
-## Long-term Goals
-- [ ] Major milestone 1
-- [ ] Major milestone 2
+## Long-term
+- [ ] Web-based snapshot explorer.
 
 ## Completed
 - [x] Project initialization

@@ -2,18 +2,19 @@
 
 ## Development Setup
 ```bash
-# Setup commands
 npm install
-# or yarn install
 ```
 
 ## Running the Project
 ```bash
-# Development mode
-npm run dev
+# Create a standard snapshot
+node index.js snapshot
 
-# Production build
-npm run build
+# Create a skeleton snapshot (compressed)
+node index.js --skeleton
+
+# Update snapshot (incremental)
+node index.js update
 ```
 
 ## Testing
@@ -21,18 +22,15 @@ npm run build
 # Run tests
 npm test
 
-# Run tests in watch mode
-npm run test:watch
+# Run tests with UI
+npm run test:ui
 ```
 
-## Deployment
+## Documentation
 ```bash
-# Deployment commands
-npm run deploy
+# Auto-generate command reference
+npm run docs:auto
 ```
-
-## Troubleshooting
-Common issues and their solutions.
 
 ## Browser Automation & E2E Testing
 
