@@ -1,4 +1,15 @@
 ---
+type: fix
+scope: cli
+summary: Hide Gemini agents in standard snapshots
+timestamp: 2026-01-01T15:45:00Z
+---
+
+- Updated aiHeader.js to filter out gemini-related agents from the prompt unless --with-ja is used
+- Removed gemini_windows from standard mode command formats
+- Prevents context leakage of JA workflow details in standard architectural snapshots
+
+---
 type: refactor
 scope: cli
 summary: Make JA workflow instructions conditional

@@ -414,63 +414,48 @@ Your role is **Architect**. You formulate technical plans and delegate code impl
   - **Architect (You):** Sets strategy, defines tasks.
   - **Coder (e.g., \`local_dev\`):** Receives precise coding tasks and executes them.`;
 
-      commandFormats = `### COMMAND FORMATS
+      commandFormats = `### COMMAND FORMATS (Eck-Protocol v2)
 
-You MUST use the following JSON command format for Coders:
+You MUST use the **Eck-Protocol v2** format for all code execution tasks. This format combines Markdown for analysis, XML tags for file operations, and JSON for routing metadata.
 
-**For Coders (\`local_dev\`, \`production_server\`, \`android_wsl_dev\`):**
-Use \`apply_code_changes\` for direct tasks where you provide all details.
+**Structure:**
 
+\`\`\`markdown
+# Analysis
+[Explain your reasoning here...]
+
+## Changes
+
+<file path="path/to/file.js" action="replace">
+[Code content inside standard fences]
+</file>
+
+<file path="new/file.js" action="create">
+[Full content for new file]
+</file>
+
+## Metadata
 \`\`\`json
 {
   "target_agent": "local_dev",
-  "agent_environment": "Development environment with full GUI support and development tools",
-  "command_for_agent": "apply_code_changes",
-  "task_id": "unique-task-id",
-  "payload": {
-    "objective": "Brief, clear task description",
-    "context": "Why this change is needed - include relevant .eck manifest context",
-    "files_to_modify": [
-      {
-        "path": "exact/file/path.js",
-        "action": "specific action (add, modify, replace, delete)",
-        "location": "line numbers, function name, or search pattern",
-        "details": "precise description of the change"
-      }
-    ],
-    "new_files": [
-      {
-        "path": "path/to/new/file.js",
-        "content_type": "javascript/json/markdown/config",
-        "purpose": "why this file is needed"
-      }
-    ],
-    "dependencies": {
-      "install": ["package-name@version"],
-      "remove": ["old-package-name"]
-    },
-    "validation_steps": [
-      "npm run test",
-      "node index.js --help",
-      "specific command to verify functionality"
-    ],
-    "expected_outcome": "what should work after changes",
-    "post_execution_steps": {
-      "journal_entry": {
-        "type": "feat",
-        "scope": "authentication",
-        "summary": "Brief description of what was accomplished",
-        "details": "Detailed explanation of changes, impacts, and technical notes"
-      },
-      "mcp_feedback": {
-        "success": true,
-        "errors": [],
-        "mcp_version": "1.0"
-      }
+  "task_id": "task-name-123",
+  "post_execution_steps": {
+    "journal_entry": {
+      "type": "feat",
+      "scope": "scope",
+      "summary": "..."
     }
   }
 }
-\`\`\``;
+\`\`\`
+\`\`\`
+
+**File Actions:**
+- \`create\`: Create a new file (requires full content)
+- \`replace\`: Overwrite existing file (requires full content)
+- \`modify\`: Replace specific sections (provide context)
+- \`delete\`: Delete the file
+`;
     }
 
     // --- This is the main/Senior Architect prompt logic ---
