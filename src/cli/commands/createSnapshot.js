@@ -182,36 +182,14 @@ function generateClaudeMdContent(confidentialFiles, repoPath) {
   return content.join('\n');
 }
 
-// Whitelist of .eck files that should be included in snapshots
-const ECK_MANIFEST_FILES = [
-  '.eck/CONTEXT.md',
-  '.eck/JOURNAL.md',
-  '.eck/OPERATIONS.md',
-  '.eck/ROADMAP.md',
-  '.eck/TECH_DEBT.md',
-  '.eck/ENVIRONMENT.md'
-];
-
 async function getProjectFiles(projectPath, config) {
   const isGitRepo = await checkGitRepository(projectPath);
   if (isGitRepo) {
     const { stdout } = await execa('git', ['ls-files'], { cwd: projectPath });
     const gitFiles = stdout.split('\n').filter(Boolean);
-
-    // Only include whitelisted .eck manifest files (not the entire directory)
-    const eckFiles = [];
-    for (const eckFile of ECK_MANIFEST_FILES) {
-      try {
-        await fs.access(path.join(projectPath, eckFile));
-        eckFiles.push(eckFile);
-      } catch {
-        // File doesn't exist, skip
-      }
-    }
-
-    // Combine and deduplicate
-    const allFiles = [...gitFiles, ...eckFiles];
-    return [...new Set(allFiles)]; // Remove duplicates
+    // .eck files are NOT included in snapshot content - architect sees only the tree structure
+    // and a journal summary in the AI header. Full .eck files are for the coder (via CLAUDE.md)
+    return gitFiles;
   }
   return scanDirectoryRecursively(projectPath, config);
 }
@@ -360,9 +338,8 @@ async function processProjectFiles(repoPath, options, config, projectType = null
           return null;
         }
 
-        // Check gitignore patterns (but allow .eck documentation files through)
-        const isEckFile = normalizedPath.startsWith('.eck/');
-        if (gitignore.ignores(normalizedPath) && !isEckFile) {
+        // Check gitignore patterns
+        if (gitignore.ignores(normalizedPath)) {
           stats.ignoredFiles++;
           trackSkippedFile(normalizedPath, 'Gitignore rules');
           return null;

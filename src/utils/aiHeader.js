@@ -39,39 +39,109 @@ function buildAgentDefinitions(executionAgents) {
   return definitions;
 }
 
+/**
+ * Parse journal entries from JOURNAL.md content
+ * @param {string} journalContent - Raw content of JOURNAL.md
+ * @returns {Array} Array of parsed journal entries
+ */
+function parseJournalEntries(journalContent) {
+  if (!journalContent || typeof journalContent !== 'string') {
+    return [];
+  }
+
+  // Split by --- separators, filter empty blocks
+  const blocks = journalContent.split(/^---$/m).filter(b => b.trim());
+  const entries = [];
+
+  for (let i = 0; i < blocks.length; i += 2) {
+    const frontmatter = blocks[i];
+    const body = blocks[i + 1] || '';
+
+    // Parse frontmatter
+    const typeMatch = frontmatter.match(/^type:\s*(.+)$/m);
+    const scopeMatch = frontmatter.match(/^scope:\s*(.+)$/m);
+    const summaryMatch = frontmatter.match(/^summary:\s*(.+)$/m);
+    const dateMatch = frontmatter.match(/^(?:date|timestamp):\s*(.+)$/m);
+    const taskIdMatch = frontmatter.match(/^task_id:\s*(.+)$/m);
+
+    // Extract title from body (first # heading)
+    const titleMatch = body.match(/^#\s+(.+)$/m);
+
+    entries.push({
+      type: typeMatch ? typeMatch[1].trim() : 'unknown',
+      scope: scopeMatch ? scopeMatch[1].trim() : '',
+      summary: summaryMatch ? summaryMatch[1].trim() : (titleMatch ? titleMatch[1].trim() : ''),
+      date: dateMatch ? dateMatch[1].trim() : '',
+      taskId: taskIdMatch ? taskIdMatch[1].trim() : '',
+      body: body.trim()
+    });
+  }
+
+  return entries;
+}
+
+/**
+ * Build a compact journal summary for the architect
+ * Shows: last entry (full) + 5 previous (headers only) + total count
+ */
+function buildJournalSummary(journalContent) {
+  const entries = parseJournalEntries(journalContent);
+
+  if (entries.length === 0) {
+    return 'No journal entries found.';
+  }
+
+  let summary = '';
+
+  // Last entry - show full details
+  const lastEntry = entries[0];
+  summary += `**Latest Entry** (${lastEntry.date || 'no date'}):\n`;
+  summary += `- Type: \`${lastEntry.type}\` | Scope: \`${lastEntry.scope}\`\n`;
+  summary += `- ${lastEntry.summary}\n`;
+  if (lastEntry.body) {
+    // Include body but limit to first 3 lines
+    const bodyLines = lastEntry.body.split('\n').filter(l => l.trim()).slice(0, 4);
+    summary += bodyLines.map(l => `  ${l}`).join('\n') + '\n';
+  }
+
+  // Previous 5 entries - headers only
+  if (entries.length > 1) {
+    summary += '\n**Previous entries:**\n';
+    const previousEntries = entries.slice(1, 6);
+    for (const entry of previousEntries) {
+      summary += `- \`${entry.type}(${entry.scope})\`: ${entry.summary}\n`;
+    }
+  }
+
+  // Total count
+  if (entries.length > 6) {
+    summary += `\n*...and ${entries.length - 6} more entries in .eck/JOURNAL.md*\n`;
+  }
+
+  return summary;
+}
+
 function buildEckManifestSection(eckManifest) {
   if (!eckManifest) {
     return '';
   }
 
-  let section = '\n## Project-Specific Manifest (.eck Directory)\n\n';
-  section += 'This project includes a `.eck` directory with specific context and configuration:\n\n';
+  let section = '\n## Project Context (.eck Directory)\n\n';
+  section += 'This project has a `.eck/` directory with project-specific context files.\n';
+  section += 'The coder agent can read these files when needed. Available files:\n\n';
+  section += '- `CONTEXT.md` - Project overview and architecture\n';
+  section += '- `OPERATIONS.md` - Common commands and workflows\n';
+  section += '- `JOURNAL.md` - Development history\n';
+  section += '- `ROADMAP.md` - Planned features\n';
+  section += '- `TECH_DEBT.md` - Known issues and refactoring needs\n';
+  section += '- `ENVIRONMENT.md` - Environment-specific settings\n\n';
 
-  if (eckManifest.context) {
-    section += '### Project Context\n\n';
-    section += eckManifest.context + '\n\n';
-  }
-
-  if (eckManifest.operations) {
-    section += '### Operations Guide\n\n';
-    section += eckManifest.operations + '\n\n';
-  }
-
+  // Add journal summary (compact view for architect)
   if (eckManifest.journal) {
-    section += '### Development Journal\n\n';
-    section += eckManifest.journal + '\n\n';
+    section += '### Recent Development Activity\n\n';
+    section += buildJournalSummary(eckManifest.journal) + '\n';
   }
 
-  if (Object.keys(eckManifest.environment).length > 0) {
-    section += '### Environment Overrides\n\n';
-    section += 'The following environment settings override auto-detected values:\n\n';
-    for (const [key, value] of Object.entries(eckManifest.environment)) {
-      section += `- **${key}**: ${value}\n`;
-    }
-    section += '\n';
-  }
-
-  section += '**Important**: Use this manifest information when formulating technical plans and briefing execution agents. The context, operations guide, and journal provide crucial project-specific knowledge that should inform your decisions.\n\n';
   section += '---\n\n';
 
   return section;
