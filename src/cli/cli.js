@@ -19,6 +19,7 @@ import { generateProfileGuide } from './commands/generateProfileGuide.js';
 import { setupGemini } from './commands/setupGemini.js';
 import { generateAutoDocs } from './commands/autoDocs.js';
 import { showFile } from './commands/showFile.js';
+import { runDoctor } from './commands/doctor.js';
 import inquirer from 'inquirer';
 import ora from 'ora';
 import { execa } from 'execa';
@@ -361,6 +362,13 @@ Creating Custom Profiles:
     .description('Output the full content of specific file(s) (for AI lazy loading)')
     .argument('<filePaths...>', 'Space-separated paths to files')
     .action(showFile);
+
+  // Doctor command (health check for manifests)
+  program
+    .command('doctor')
+    .description('Check project health and detect unfinished manifest stubs')
+    .argument('[repoPath]', 'Path to the repository', process.cwd())
+    .action(runDoctor);
 
   program.parse(process.argv);
 }

@@ -14,22 +14,37 @@ let Rust = null;
 let Go = null;
 
 async function loadTreeSitter() {
-    if (!Parser) {
-        try {
-            const treeSitterModule = await import('tree-sitter');
-            Parser = treeSitterModule.default;
-            Python = (await import('tree-sitter-python')).default;
-            Java = (await import('tree-sitter-java')).default;
-            Kotlin = (await import('tree-sitter-kotlin')).default;
-            C = (await import('tree-sitter-c')).default;
-            Rust = (await import('tree-sitter-rust')).default;
-            Go = (await import('tree-sitter-go')).default;
-        } catch (error) {
-            console.warn('Tree-sitter not available:', error.message);
-            return false;
-        }
+    if (Parser) return true; // Already loaded
+
+    try {
+        // We use dynamic imports and check for basic sanity to handle broken native builds (common on Windows)
+        const treeSitterModule = await import('tree-sitter').catch(() => null);
+        if (!treeSitterModule || !treeSitterModule.default) return false;
+
+        Parser = treeSitterModule.default;
+
+        // Load language packs with Promise.allSettled to handle individual failures
+        const langs = await Promise.allSettled([
+            import('tree-sitter-python'),
+            import('tree-sitter-java'),
+            import('tree-sitter-kotlin'),
+            import('tree-sitter-c'),
+            import('tree-sitter-rust'),
+            import('tree-sitter-go')
+        ]);
+
+        Python = langs[0].status === 'fulfilled' ? langs[0].value.default : null;
+        Java = langs[1].status === 'fulfilled' ? langs[1].value.default : null;
+        Kotlin = langs[2].status === 'fulfilled' ? langs[2].value.default : null;
+        C = langs[3].status === 'fulfilled' ? langs[3].value.default : null;
+        Rust = langs[4].status === 'fulfilled' ? langs[4].value.default : null;
+        Go = langs[5].status === 'fulfilled' ? langs[5].value.default : null;
+
+        return true;
+    } catch (error) {
+        // Silently fail, skeletonize will fallback to original content
+        return false;
     }
-    return true;
 }
 
 // Initialize parsers map (will be populated lazily)
@@ -64,10 +79,13 @@ export async function skeletonize(content, filePath) {
     if (languages[ext]) {
         // Lazy-load tree-sitter
         const available = await loadTreeSitter();
-        if (!available) {
-            return content; // Fallback: return original content if tree-sitter unavailable
+        const langModule = languages[ext]();
+
+        // Only attempt tree-sitter if both the parser and the specific language module are ready
+        if (available && Parser && langModule) {
+            return skeletonizeTreeSitter(content, langModule, ext);
         }
-        return skeletonizeTreeSitter(content, languages[ext](), ext);
+        return content; // Fallback: return original content if tree-sitter unavailable
     }
 
     // 3. Fallback (Return as is)
