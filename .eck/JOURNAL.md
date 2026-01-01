@@ -1,4 +1,15 @@
 ---
+type: refactor
+scope: cli
+summary: Switch standard mode to Eck-Protocol v2
+timestamp: 2026-01-01T15:55:00Z
+---
+
+- Removed legacy JSON command format from standard snapshots
+- Implemented Eck-Protocol v2 instructions (Markdown + XML + Metadata) in aiHeader.js
+- Ensures reliable code generation without JSON escaping issues
+
+---
 type: fix
 scope: cli
 summary: Hide Gemini agents in standard snapshots
