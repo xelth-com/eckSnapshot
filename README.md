@@ -32,29 +32,9 @@ npm install -g @xelth/eck-snapshot
 
 Once installed, you can run the tool using the `eck-snapshot` command from any directory.
 
-## Workflow Options
+## Getting Started: Full Snapshot Workflow
 
-### Option 1: Skeleton Workflow (Recommended for Large Projects)
-
-The skeleton workflow is optimized for web-based LLMs (Gemini, ChatGPT) with large context windows. It uses a three-step approach:
-
-1. **Initial Context (Maximum Compression):** Create a lightweight map of your entire project where function/method bodies are hidden, showing only signatures and structure.
-   ```bash
-   eck-snapshot --skeleton
-   ```
-   This generates `.eck/snapshots/<name>_sk.md` - a compressed overview that fits even large monoliths into the context window.
-
-2. **Lazy Loading (On-Demand Details):** When the AI needs implementation details, use the `show` command to display specific files:
-   ```bash
-   eck-snapshot show src/auth.js src/utils/hash.js
-   ```
-   Copy-paste the output back to your AI chat.
-
-3. **Incremental Updates:** See the dedicated section below for details on the `update` command.
-
-### Option 2: Full Snapshot Workflow
-
-Here's the traditional workflow for creating complete snapshots and focusing on specific features.
+This is the primary workflow for creating complete snapshots of your project.
 
 #### Step 1: Create a Full Project Snapshot
 
@@ -125,6 +105,34 @@ A faster, non-AI method to reduce snapshot size. This command keeps only the top
 > ```bash
 > eck-snapshot --max-lines-per-file 200
 > ```
+
+## Skeleton Workflow (Advanced for Large Projects)
+
+The skeleton workflow is optimized for web-based LLMs (Gemini, ChatGPT) with large context windows. It uses a three-step approach for maximum compression:
+
+### 1. Initial Context (Maximum Compression)
+
+Create a lightweight map of your entire project where function/method bodies are hidden, showing only signatures and structure.
+
+```bash
+eck-snapshot --skeleton
+```
+
+This generates `.eck/snapshots/<name>_sk.md` - a compressed overview that fits even large monoliths into the context window.
+
+### 2. Lazy Loading (On-Demand Details)
+
+When the AI needs implementation details, use the `show` command to display specific files:
+
+```bash
+eck-snapshot show src/auth.js src/utils/hash.js
+```
+
+Copy-paste the output back to your AI chat.
+
+### 3. Incremental Updates
+
+After making changes, use the `update` command (see section below) to send only what changed.
 
 ## Incremental Updates: The `update` Command
 
