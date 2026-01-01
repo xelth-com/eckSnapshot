@@ -418,7 +418,7 @@ Your role is **Architect**. You formulate technical plans and delegate code impl
 
 You MUST use the following JSON command format for Coders:
 
-**For Coders (\`local_dev\`, \`production_server\`, \`android_wsl_dev\`, \`gemini_windows\`):**
+**For Coders (\`local_dev\`, \`production_server\`, \`android_wsl_dev\`):**
 Use \`apply_code_changes\` for direct tasks where you provide all details.
 
 \`\`\`json
