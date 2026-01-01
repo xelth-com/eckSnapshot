@@ -1,36 +1,36 @@
 # MiniMax Standalone Setup
 
-**Для тех, кто хочет использовать MiniMax напрямую, без Claude Code**
+**For those who want to use MiniMax directly, without Claude Code**
 
-## Зачем это нужно?
+## Why Use This?
 
-Если у вас нет подписки Claude Pro, или вы хотите использовать только MiniMax для кодинга, этот гайд для вас.
+If you don't have a Claude Pro subscription, or you want to use only MiniMax for coding tasks, this guide is for you.
 
-## Установка
+## Installation
 
-### 1. Получите API ключ MiniMax
-1. Зарегистрируйтесь на [MiniMax Platform](https://platform.minimax.io/)
-2. Получите API ключ
-3. Добавьте в `.bashrc` или `.zshrc`:
+### 1. Get a MiniMax API Key
+1. Register at [MiniMax Platform](https://platform.minimax.io/)
+2. Obtain your API key
+3. Add to your `.bashrc` or `.zshrc`:
    ```bash
    export MINIMAX_API_KEY="sk-..."
    ```
-4. Перезагрузите терминал или выполните:
+4. Reload your terminal or run:
    ```bash
    source ~/.bashrc
    ```
 
-### 2. Установите Anthropic SDK
+### 2. Install the Anthropic SDK
 
-MiniMax совместим с Anthropic API, поэтому используем официальный SDK:
+MiniMax is compatible with the Anthropic API, so we use the official SDK:
 
 ```bash
 npm install -g @anthropic-ai/sdk
 ```
 
-### 3. Создайте скрипт `minimax-cli.js`
+### 3. Create the `minimax-cli.js` Script
 
-Создайте файл в удобном месте (например, `~/bin/minimax-cli.js`):
+Create a file in a convenient location (e.g., `~/bin/minimax-cli.js`):
 
 ```javascript
 #!/usr/bin/env node
@@ -65,43 +65,43 @@ async function chat() {
 chat().catch(console.error);
 ```
 
-### 4. Сделайте скрипт исполняемым
+### 4. Make the Script Executable
 
 ```bash
 chmod +x ~/bin/minimax-cli.js
 ```
 
-### 5. Добавьте алиас (опционально)
+### 5. Add an Alias (Optional)
 
-Добавьте в `.bashrc` или `.zshrc`:
+Add to your `.bashrc` or `.zshrc`:
 
 ```bash
 alias minimax="node ~/bin/minimax-cli.js"
 ```
 
-## Использование
+## Usage
 
-### Простой запрос
+### Simple Query
 ```bash
-minimax "Объясни что такое Promise в JavaScript"
+minimax "Explain what a Promise is in JavaScript"
 ```
 
-### Для кодинга
+### For Coding Tasks
 ```bash
-minimax "Напиши функцию для валидации email"
+minimax "Write a function for email validation"
 ```
 
-### С контекстом проекта (используя eck-snapshot)
+### With Project Context (using eck-snapshot)
 ```bash
-# 1. Создайте снапшот
+# 1. Create a snapshot
 eck-snapshot --skeleton > snapshot.md
 
-# 2. Отправьте снапшот в MiniMax (через веб-интерфейс или расширенный скрипт)
+# 2. Send the snapshot to MiniMax (via web interface or extended script)
 ```
 
-## Расширенная версия с файловым вводом
+## Advanced Version with File Input
 
-Создайте `minimax-with-file.js`:
+Create `minimax-with-file.js`:
 
 ```javascript
 #!/usr/bin/env node
@@ -147,30 +147,30 @@ async function chat() {
 chat().catch(console.error);
 ```
 
-### Использование с файлом:
+### Using with Files:
 ```bash
 eck-snapshot --skeleton -o snapshot.md
-minimax-with-file --file snapshot.md "Проанализируй архитектуру и предложи улучшения"
+minimax-with-file --file snapshot.md "Analyze the architecture and suggest improvements"
 ```
 
-## Ограничения
+## Limitations
 
-- Нет интерактивного режима (каждый запрос - отдельный вызов)
-- Нет истории сессий
-- Для сложных задач лучше использовать Supervisor-Worker режим с Claude Code
+- No interactive mode (each request is a separate call)
+- No session history
+- For complex tasks, the Supervisor-Worker mode with Claude Code is recommended
 
-## Преимущества
+## Advantages
 
-✅ Не требуется Claude Pro подписка
-✅ Дешевле чем Claude API
-✅ Большой контекст (200K tokens)
-✅ Быстрые ответы
+✅ No Claude Pro subscription required
+✅ Cheaper than Claude API
+✅ Large context window (200K tokens)
+✅ Fast responses
 
-## Сравнение стоимости
+## Cost Comparison
 
-| Модель | Цена (input) | Цена (output) |
-|--------|--------------|---------------|
+| Model | Price (input) | Price (output) |
+|-------|---------------|----------------|
 | MiniMax M2.1 | $0.15/1M tokens | $0.60/1M tokens |
 | Claude Sonnet 4 | $3.00/1M tokens | $15.00/1M tokens |
 
-**Экономия: до 20x дешевле!**
+**Savings: up to 20x cheaper!**
