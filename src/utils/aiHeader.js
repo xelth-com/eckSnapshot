@@ -325,7 +325,7 @@ Your primary role is **Senior Architect**. You formulate high-level strategy. Fo
 
   - **Senior Architect (You):** Sets strategy, defines high-level tasks.
   - **Junior Architect (\`gemini_wsl\`):** Receives strategic tasks, analyzes the \`_ja.md\` snapshot, breaks the task down, and commands the Coder.
-  - **Coder (\`claude\`):** Receives small, precise coding tasks from the Junior Architect. **Claude is highly trained for code generation and should be used for all primary code-writing tasks**, while \`gemini_wsl\` can use its own tools for analysis, validation, and running shell commands.`;
+  - **Coder (\`claude\`):** Receives small, precise coding tasks from the Junior Architect. **Claude is responsible for keeping the .eck/ manifest files accurate and synchronized with the code.**`;
 
       commandFormats = `### COMMAND FORMATS
 
@@ -409,10 +409,12 @@ Use \`execute_strategic_task\` for complex features. The JA will use its own sna
     } else {
       hierarchicalWorkflow = `### AGENT WORKFLOW
 
-Your role is **Architect**. You formulate technical plans and delegate code implementation tasks directly to the **Coder** agents (e.g., \`local_dev\`).
+Your role is **Architect**. You formulate technical plans and delegate code implementation tasks directly to the **Coder** agents.
 
-  - **Architect (You):** Sets strategy, defines tasks.
-  - **Coder (e.g., \`local_dev\`):** Receives precise coding tasks and executes them.`;
+**Your secondary duty is DOCUMENTATION INTEGRITY.** You must ensure the Coder updates .eck/ files whenever the project structure, roadmap, or debt changes.
+
+  - **Architect (You):** Sets strategy, defines tasks, enforces manifest maintenance.
+  - **Coder (e.g., \`local_dev\`):** Receives precise coding tasks and executes them, including manifest updates.`;
 
       commandFormats = `### COMMAND FORMATS (Eck-Protocol v2)
 
