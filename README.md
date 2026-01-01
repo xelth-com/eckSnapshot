@@ -1,11 +1,16 @@
 
-# eckSnapshot
+# eckSnapshot (v5.0.0)
 
 A lightweight, platform-independent CLI for creating focused, AI-ready project snapshots.
 
 `eckSnapshot` is a powerful command-line tool designed to solve a critical problem in AI-assisted development: providing clear, complete, and focused context to Large Language Models (LLMs). It allows you to package an entire project codebase—or just specific parts of it—into a single, clean text file.
 
 This tool is built for a modern workflow where you act as the architect, guiding the overall strategy, while AI agents handle the detailed implementation.
+
+## 🤖 Hybrid AI Support (MiniMax Integration)
+
+This project supports a **Supervisor-Worker** mode to save tokens and costs.
+👉 **[Read the Integration Guide](./MINIMAX_INTEGRATION.md)** to enable this feature.
 
 ## The Core Workflow
 

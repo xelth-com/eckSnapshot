@@ -42,7 +42,8 @@ Thumbs.db
 
 
 
-# Added by eck-snapshot to ignore metadata directory
+# --- ECK SNAPSHOT & AI CONTEXT ---
+# Ignore the .eck directory contents (logs, journals, temp files)
 .eck/
 
 # Test snapshot directory
@@ -55,5 +56,6 @@ CLAUDE.md
 # Third-party managed components
 /managed_components/
 
-# MiniMax Debugging
+# Root documentation is tracked normally
+# MiniMax Debugging logs
 minimax_debug.json

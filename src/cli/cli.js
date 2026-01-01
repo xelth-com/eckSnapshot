@@ -64,7 +64,7 @@ async function checkCodeBoundaries(filePath, agentId) {
 export function run() {
   const program = new Command();
 
-  const helpGuide = `eck-snapshot (v4.1.0) - AI-Native Repository Context Tool.
+  const helpGuide = `eck-snapshot (v5.0.0) - AI-Native Repository Context Tool.
 
 --- 🚀 Core Workflow: Optimized for Web LLMs (Gemini/ChatGPT) ---
 
@@ -118,7 +118,7 @@ Option C: Using Profiles
   program
     .name('eck-snapshot')
     .description('A lightweight, platform-independent CLI for creating project snapshots.')
-    .version('4.1.0')
+    .version('5.0.0')
     .addHelpText('before', helpGuide);
 
   // Main snapshot command
