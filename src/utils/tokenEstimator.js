@@ -8,7 +8,8 @@ import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const ESTIMATION_DATA_FILE = path.join(__dirname, '..', '..', '.eck-token-training.json');
+const ECK_DIR = path.join(__dirname, '..', '..', '.eck');
+const ESTIMATION_DATA_FILE = path.join(ECK_DIR, 'token-training.json');
 
 /**
  * Default coefficients for different project types (bytes to tokens ratio)
@@ -49,6 +50,8 @@ async function loadTrainingData() {
  * Save training data to file
  */
 async function saveTrainingData(data) {
+  // Ensure .eck directory exists
+  await fs.mkdir(ECK_DIR, { recursive: true });
   await fs.writeFile(ESTIMATION_DATA_FILE, JSON.stringify(data, null, 2));
 }
 
