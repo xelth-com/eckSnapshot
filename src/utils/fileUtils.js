@@ -846,164 +846,89 @@ export async function initializeEckManifest(projectPath) {
     const staticFactsJson = JSON.stringify(staticFacts, null, 2);
     // --- END NEW LOGIC ---
     
-    // Template files with their content
-    const templateFiles = [
-      {
-        name: 'ENVIRONMENT.md',
-        prompt: `Given these static project analysis facts:\n${staticFactsJson}\n\nGenerate the raw YAML key-value content for an .eck/ENVIRONMENT.md file. Only include detected facts. DO NOT add any keys that are not present in the facts. DO NOT add conversational text or markdown wrappers. Your response MUST start directly with a YAML key (e.g., 'project_type: ...').`,
-        content: `# This file is for environment overrides. Add agent-specific settings here.\nagent_id: local_dev\n` // Simple static fallback
+    // 3. Define smarter templates and prompts with "STUB NOTICES"
+    const templateConfigs = {
+      'ENVIRONMENT.md': {
+        prompt: `Generate raw YAML for .eck/ENVIRONMENT.md based on these project facts:\n${staticFactsJson}\nInclude project_type, runtime, and agent_id: local_dev. NO markdown fences.`,
+        fallback: `project_type: ${staticFacts.type || 'unknown'}
+# [STUB: ENVIRONMENT.MD]
+# ARCHITECT: Task Coder to verify environment variables.
+# CODER: Scan project for .env files or config files and fill this. Remove this stub notice.
+agent_id: local_dev
+`
       },
-      {
-        name: 'CONTEXT.md',
-        prompt: `Given these static project analysis facts:\n${staticFactsJson}\n\nGenerate the raw Markdown content ONLY for a .eck/CONTEXT.md file. Use the facts to write ## Description, ## Architecture, and ## Key Technologies. DO NOT add conversational text (like "Here is the file..."). Your response MUST start *directly* with the '# Project Overview' heading.`,
-        content: `# Project Overview
+      'CONTEXT.md': {
+        prompt: `Analyze these project files and dependencies:\n${staticFactsJson}\nGenerate a professional # Project Overview in Markdown. Describe the actual architecture and purpose of this specific project. Be technical and concise. Start with '# Project Overview'.`,
+        fallback: `# [STUB: CONTEXT.MD]
+
+## 🚨 ATTENTION ARCHITECT & CODER
+**ARCHITECT:** This file is EMPTY. You MUST prioritize a task for the Coder to analyze the source code and define the Project Overview, Architecture, and Key Technologies.
+**CODER:** Use your tools to read the code, write the real content, and DELETE this entire stub header.
 
 ## Description
-Brief description of what this project does and its main purpose.
+(Placeholder: A ${staticFacts.type || 'project'} project)
 
 ## Architecture
-High-level overview of the system architecture, key components, and how they interact.
-
-## Key Technologies
-- Technology 1
-- Technology 2
-- Technology 3
-
-## Important Notes
-Any crucial information that developers should know when working on this project.
-`
+(Placeholder: TBD)`
       },
-      {
-        name: 'OPERATIONS.md',
-        prompt: `Given these static project analysis facts (especially package.json scripts):
-${staticFactsJson}
+      'OPERATIONS.md': {
+        prompt: `Look at the dependencies and files:\n${staticFactsJson}\nGenerate a Markdown guide for common operations (Setup, Run, Test, Build) using the correct commands for this tech stack. Start with '# Common Operations'.`,
+        fallback: `# [STUB: OPERATIONS.MD]
 
-Generate the raw Markdown content ONLY for a .eck/OPERATIONS.md file. DO NOT add conversational text. Your response MUST start *directly* with the '# Common Operations' heading. List commands for ## Development Setup, ## Running the Project, and ## Testing.`,
-        content: `# Common Operations
+## 🚨 ATTENTION
+**CODER:** Run \`npm run\`, check Makefile, or build files to identify REAL commands for Setup, Running, and Testing. Replace this stub with actual commands. Remove this notice.
 
-## Development Setup
-\`\`\`bash
-# Setup commands
-npm install
-# or yarn install
-\`\`\`
-
-## Running the Project
-\`\`\`bash
-# Development mode
-npm run dev
-
-# Production build
-npm run build
-\`\`\`
-
-## Testing
-\`\`\`bash
-# Run tests
-npm test
-
-# Run tests in watch mode
-npm run test:watch
-\`\`\`
-
-## Deployment
-\`\`\`bash
-# Deployment commands
-npm run deploy
-\`\`\`
-
-## Troubleshooting
-Common issues and their solutions.
-`
+## Setup
+${staticFacts.type === 'nodejs' ? 'npm install' : 'TBD'}`
       },
-      {
-        name: 'JOURNAL.md',
-        content: `# Development Journal
+      'ROADMAP.md': {
+        prompt: `Based on the project type (${staticFacts.type}), propose a 3-step roadmap. Start with '# Project Roadmap'.`,
+        fallback: `# [STUB: ROADMAP.MD]
+
+**ARCHITECT:** Set a real roadmap based on user goals. **CODER:** Remove this stub marker once a real goal is added.`
+      },
+      'TECH_DEBT.md': {
+        prompt: `Given this is a ${staticFacts.type} project, list 2-3 common technical debt items. Start with '# Technical Debt'.`,
+        fallback: `# [STUB: TECH_DEBT.MD]
+
+**CODER:** Scan for TODOs/FIXMEs or structural issues and list them here. Remove this stub marker.`
+      },
+      'JOURNAL.md': {
+        fallback: `# Development Journal
 
 ## Recent Changes
-Track significant changes, decisions, and progress here.
-
 ---
-
-### YYYY-MM-DD - Project Started
-- Initial project setup
-- Added basic structure
-`
-      },
-      {
-        name: 'ROADMAP.md',
-        prompt: `Given these static project analysis facts:\n${staticFactsJson}\n\nGenerate the raw Markdown content ONLY for a .eck/ROADMAP.md file. DO NOT add conversational text. Start *directly* with '# Project Roadmap'. Propose 1-2 *plausible* placeholder items for ## Current Sprint/Phase and ## Next Phase based on the project type.`,
-        content: `# Project Roadmap
-
-## Current Sprint/Phase
-- [ ] Feature 1
-- [ ] Feature 2
-- [ ] Bug fix 1
-
-## Next Phase
-- [ ] Future feature 1
-- [ ] Future feature 2
-
-## Long-term Goals
-- [ ] Major milestone 1
-- [ ] Major milestone 2
-
-## Completed
-- [x] Project initialization
-`
-      },
-      {
-        name: 'TECH_DEBT.md',
-        prompt: `Generate the raw Markdown content ONLY for a .eck/TECH_DEBT.md file. DO NOT add conversational text. Start *directly* with '# Technical Debt'. Propose 1-2 *common* placeholder items for ## Code Quality Issues and ## Refactoring Opportunities.`,
-        content: `# Technical Debt
-
-## Current Technical Debt
-Track technical debt, refactoring needs, and code quality issues.
-
-### Code Quality Issues
-- Issue 1: Description and priority
-- Issue 2: Description and priority
-
-### Refactoring Opportunities
-- Opportunity 1: Description and impact
-- Opportunity 2: Description and impact
-
-### Performance Issues
-- Performance issue 1: Description and impact
-- Performance issue 2: Description and impact
-
-### Security Concerns
-- Security concern 1: Description and priority
-- Security concern 2: Description and priority
-
-## Resolved
-- [x] Resolved issue 1
-`
+type: feat
+scope: project
+summary: Initial manifest generated (PENDING REVIEW)
+date: ${new Date().toISOString().split('T')[0]}
+---
+- NOTICE: Some .eck files are STUBS. They need manual or AI-assisted verification.`
       }
-    ];
+    };
     
     // Create each template file (only if it doesn't exist)
-    for (const file of templateFiles) {
-      const filePath = path.join(eckDir, file.name);
-      
+    for (const [fileName, config] of Object.entries(templateConfigs)) {
+      const filePath = path.join(eckDir, fileName);
+
       // Skip if file already exists
       try {
         await fs.stat(filePath);
-        console.log(`   ✅ ${file.name} already exists, skipping`);
+        console.log(`   ✅ ${fileName} already exists, skipping`);
         continue;
       } catch (error) {
         // File doesn't exist, create it
       }
-      
-      let fileContent = file.content; // Start with fallback
+
+      let fileContent = config.fallback; // Start with stub fallback
       let generatedByAI = false;
 
       // For files with a prompt, try to dynamically generate (only if enabled)
-      if (file.prompt && aiGenerationEnabled) {
+      if (config.prompt && aiGenerationEnabled) {
         try {
-          console.log(`   🧠 Attempting to auto-generate ${file.name} via Claude...`);
-          const aiResponseObject = await askClaude(file.prompt); // Use the prompt
-          const rawText = aiResponseObject.result; // Handle Claude response
+          console.log(`   🧠 Attempting to auto-generate ${fileName} via Claude...`);
+          const aiResponseObject = await askClaude(config.prompt);
+          const rawText = aiResponseObject.result;
 
           if (!rawText || typeof rawText.replace !== 'function') {
              throw new Error(`AI returned invalid content type: ${typeof rawText}`);
@@ -1015,19 +940,19 @@ Track technical debt, refactoring needs, and code quality issues.
           if (cleanedResponse) {
             fileContent = cleanedResponse;
             generatedByAI = true;
-            console.log(`   ✨ AI successfully generated ${file.name}`);
+            console.log(`   ✨ AI successfully generated ${fileName}`);
           } else {
             throw new Error('AI returned empty content.');
           }
         } catch (error) {
-          console.warn(`   ⚠️ AI generation failed for ${file.name}: ${error.message}. Using static template.`);
-          // fileContent is already set to the fallback
+          console.warn(`   ⚠️ AI generation failed for ${fileName}: ${error.message}. Using stub template.`);
+          // fileContent is already set to the stub fallback
         }
       }
-      
+
       await fs.writeFile(filePath, fileContent);
       if (!generatedByAI) {
-          console.log(`   ✅ Created ${file.name} (static template)`);
+          console.log(`   ✅ Created ${fileName} (stub template)`);
       }
     }
     
