@@ -50,11 +50,7 @@ The skeleton workflow is optimized for web-based LLMs (Gemini, ChatGPT) with lar
    ```
    Copy-paste the output back to your AI chat.
 
-3. **Incremental Updates:** As you make changes, send only what changed since the last snapshot instead of the entire repo:
-   ```bash
-   eck-snapshot update
-   ```
-   This generates `.eck/snapshots/update_<timestamp>.md` containing only changed files and git diffs.
+3. **Incremental Updates:** See the dedicated section below for details on the `update` command.
 
 ### Option 2: Full Snapshot Workflow
 
@@ -129,6 +125,42 @@ A faster, non-AI method to reduce snapshot size. This command keeps only the top
 > ```bash
 > eck-snapshot --max-lines-per-file 200
 > ```
+
+## Incremental Updates: The `update` Command
+
+The `update` command is a powerful feature that creates **delta snapshots** containing only the files that changed since your last full snapshot. This is essential for maintaining AI context efficiently during active development.
+
+### How It Works
+
+1. **Anchor Point:** When you create a full snapshot (with `eck-snapshot` or `eck-snapshot --skeleton`), the current git commit hash is saved as an "anchor" in `.eck/.snapshot-anchor`.
+
+2. **Change Detection:** The `update` command compares your current working directory against this anchor to identify all modified, added, or deleted files.
+
+3. **Delta Generation:** It creates a new snapshot file containing:
+   - Only the changed files (with full content)
+   - A git diff showing all changes for context
+   - Clear instructions for the AI to merge these changes with the base snapshot
+
+### Usage
+
+```bash
+eck-snapshot update
+```
+
+This generates `.eck/snapshots/update_<timestamp>.md`.
+
+### When to Use
+
+- **During active development:** After making changes based on AI suggestions, send an update instead of the entire codebase
+- **Iterative workflows:** Keep the AI synchronized with your latest code without re-uploading everything
+- **Large projects:** Especially valuable when the full snapshot is large - updates are typically much smaller
+
+### Important Notes
+
+- You must create a full snapshot first before using `update`
+- Each update is self-contained - send only the latest update to the AI, not all previous updates
+- The AI is instructed to "merge" the update over the base snapshot mentally
+- Works with both regular and skeleton snapshots
 
 ## Auxiliary Commands
 
