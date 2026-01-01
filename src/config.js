@@ -33,18 +33,37 @@ export async function loadSetupConfig() {
 function validateConfigSchema(config) {
   const warnings = [];
 
+  // Validate fileFiltering section
+  if (!config.fileFiltering) {
+    warnings.push('Missing "fileFiltering" section');
+  } else {
+    if (!Array.isArray(config.fileFiltering.filesToIgnore)) {
+      warnings.push('"fileFiltering.filesToIgnore" must be an array');
+    }
+    if (!Array.isArray(config.fileFiltering.dirsToIgnore)) {
+      warnings.push('"fileFiltering.dirsToIgnore" must be an array');
+    }
+  }
+
+  // Validate aiInstructions section
+  if (!config.aiInstructions) {
+    warnings.push('Missing "aiInstructions" section');
+  }
+
+  // Legacy support
   if (!config.filesToIgnore || !Array.isArray(config.filesToIgnore)) {
     warnings.push('filesToIgnore missing or not an array - using defaults');
     config.filesToIgnore = DEFAULT_CONFIG.filesToIgnore;
   }
-
   if (!config.dirsToIgnore || !Array.isArray(config.dirsToIgnore)) {
     warnings.push('dirsToIgnore missing or not an array - using defaults');
     config.dirsToIgnore = DEFAULT_CONFIG.dirsToIgnore;
   }
 
   if (warnings.length > 0) {
-    console.warn('[Config Warning]', warnings.join('; '));
+    console.warn('\n⚠️ Config Validation Warnings:');
+    warnings.forEach(w => console.warn(`   - ${w}`));
+    console.warn('   (Falling back to defaults for missing values where possible)\n');
   }
 }
 

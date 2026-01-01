@@ -405,20 +405,11 @@ Use \`apply_code_changes\` for direct tasks where you provide all details.
 
     // --- This is the main/Senior Architect prompt logic ---
     let template;
-    if (context.mode === 'vector') {
-      template = await loadTemplate(promptTemplates.vectorMode);
-      // Inject context for vector mode
-      template = template.replace('{{multiAgentSection}}', `
-${projectOverview}
-${eckManifestSection}
-`);
-    } else {
-      template = await loadTemplate(promptTemplates.multiAgent);
-      // --- INJECT DYNAMIC CONTEXT ---
-      template = template.replace('{{projectOverview}}', projectOverview);
-      template = template.replace('{{eckManifestSection}}', eckManifestSection);
-      // --- END INJECT ---
-    }
+    template = await loadTemplate(promptTemplates.multiAgent);
+    // --- INJECT DYNAMIC CONTEXT ---
+    template = template.replace('{{projectOverview}}', projectOverview);
+    template = template.replace('{{eckManifestSection}}', eckManifestSection);
+    // --- END INJECT ---
 
     const agentDefinitions = buildAgentDefinitions(executionAgents);
 
