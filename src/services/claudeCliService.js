@@ -1,6 +1,7 @@
 import { execa } from 'execa';
 import { spawn } from 'child_process';
 import pRetry from 'p-retry';
+import { parseWithFallback } from '../utils/eckProtocolParser.js';
 
 /**
  * Executes a prompt using the claude-code CLI in non-interactive print mode.
@@ -145,8 +146,12 @@ async function attemptClaudeExecution(prompt, sessionId = null, options = {}) {
       throw new Error('No result JSON found in claude-code output.');
     }
 
+    // Parse the result using Eck-Protocol v2 parser
+    const parsed = parseWithFallback(resultJson.result || '');
+
     return {
       result: resultJson.result,
+      parsed: parsed,  // Structured data from Eck-Protocol v2
       cost: resultJson.total_cost_usd,
       usage: resultJson.usage,
       duration_ms: resultJson.duration_ms
