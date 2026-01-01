@@ -79,15 +79,22 @@ function skeletonizeJs(content) {
         traverse(ast, {
             Function(path) {
                 if (path.node.body && path.node.body.type === 'BlockStatement') {
+                    // Preserve leading comments (JSDoc) before emptying body
+                    const leadingComments = path.node.leadingComments || [];
                     path.node.body.body = [];
-                    // Minimal comment to save tokens
-                    path.node.body.innerComments = [{ type: 'CommentBlock', value: ' ... ' }];
+                    path.node.body.innerComments = leadingComments.length > 0
+                        ? leadingComments
+                        : [{ type: 'CommentBlock', value: ' ... ' }];
                 }
             },
             ClassMethod(path) {
                 if (path.node.body && path.node.body.type === 'BlockStatement') {
+                    // Preserve leading comments (JSDoc) before emptying body
+                    const leadingComments = path.node.leadingComments || [];
                     path.node.body.body = [];
-                    path.node.body.innerComments = [{ type: 'CommentBlock', value: ' ... ' }];
+                    path.node.body.innerComments = leadingComments.length > 0
+                        ? leadingComments
+                        : [{ type: 'CommentBlock', value: ' ... ' }];
                 }
             }
         });

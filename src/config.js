@@ -16,10 +16,35 @@ export async function loadSetupConfig() {
     const setupPath = path.join(__dirname, '..', 'setup.json');
     const setupContent = await fs.readFile(setupPath, 'utf-8');
     cachedConfig = JSON.parse(setupContent);
+
+    // Basic schema validation for critical fields
+    validateConfigSchema(cachedConfig);
+
     return cachedConfig;
   } catch (error) {
     console.error('Error loading setup.json:', error.message);
     throw new Error('Failed to load setup.json configuration file');
+  }
+}
+
+/**
+ * Validates critical config fields and warns if missing or invalid
+ */
+function validateConfigSchema(config) {
+  const warnings = [];
+
+  if (!config.filesToIgnore || !Array.isArray(config.filesToIgnore)) {
+    warnings.push('filesToIgnore missing or not an array - using defaults');
+    config.filesToIgnore = DEFAULT_CONFIG.filesToIgnore;
+  }
+
+  if (!config.dirsToIgnore || !Array.isArray(config.dirsToIgnore)) {
+    warnings.push('dirsToIgnore missing or not an array - using defaults');
+    config.dirsToIgnore = DEFAULT_CONFIG.dirsToIgnore;
+  }
+
+  if (warnings.length > 0) {
+    console.warn('[Config Warning]', warnings.join('; '));
   }
 }
 

@@ -231,16 +231,13 @@
   },
   "contextProfiles": {
     "backend": {
-      "description": "Backend API, database, business logic",
+      "description": "Backend API, services, business logic",
       "include": [
         "packages/backend/**",
-        "packages/core/**",
-        "knexfile.js",
-        "migrations/**"
+        "packages/core/**"
       ],
       "exclude": [
         "**/*.test.*",
-        "**/*.sqlite*",
         "node_modules/**"
       ]
     },
@@ -301,8 +298,7 @@
       "description": "Database schema and migrations only",
       "include": [
         "**/migrations/**",
-        "**/knexfile.js",
-        "**/schema.sql"
+        "**/schema/**"
       ]
     },
     "deployment": {
@@ -763,7 +759,6 @@
       "envScanRequest": "src/templates/envScanRequest.md",
       "gitWorkflow": "src/templates/gitWorkflow.md",
       "multiAgent": "src/templates/multiAgent.md",
-      "vectorMode": "src/templates/vectorMode.md",
       "agent": "src/templates/agent-prompt.template.md"
     }
   },
@@ -802,11 +797,11 @@
       },
       "database_expert": {
         "active": true,
-        "modelName": "GPT-4/Claude",
+        "modelName": "Claude",
         "role": "Database Specialist",
         "strengths": [
-          "PostgreSQL optimization",
-          "Knex migrations",
+          "Schema design",
+          "Query optimization",
           "data integrity"
         ]
       },

@@ -13,8 +13,6 @@ import { pruneSnapshot } from './commands/pruneSnapshot.js';
 import { generateConsilium } from './commands/consilium.js';
 import { detectProject, testFileParsing } from './commands/detectProject.js';
 import { trainTokens, showTokenStats } from './commands/trainTokens.js';
-import { askGpt } from './commands/askGpt.js';
-import { ask as askGptService } from '../services/gptService.js';
 import { executePrompt, executePromptWithSession } from '../services/claudeCliService.js';
 import { detectProfiles } from './commands/detectProfiles.js';
 import { generateProfileGuide } from './commands/generateProfileGuide.js';
@@ -112,7 +110,7 @@ Option C: Using Profiles
 
 - restore:            Restore files from a snapshot to disk.
 - prune:              Use AI to shrink a snapshot file by importance.
-- ask-gpt/claude:     Delegate tasks to agents directly (via API).
+- ask-claude:        Delegate tasks to Claude CLI agent.
 - setup-gemini:       Configure gemini-cli integration.
 `;
 
@@ -246,47 +244,6 @@ Creating Custom Profiles:
       console.log(JSON.stringify(result, null, 2));
     });
 
-  program
-    .command('ask-gpt')
-    .description('Delegate tasks to OpenAI Codex agent with automatic authentication')
-    .argument('<payload>', 'JSON payload string (e.g. \'{"objective": "Calculate 5+2"}\')')
-    .option('-v, --verbose', 'Enable verbose logging and detailed execution output')
-    .option('--model <name>', 'Model to use (default: gpt-5-codex)', 'gpt-5-codex')
-    .option('--reasoning <level>', 'Reasoning level: low, medium, high (default: high)', 'high')
-    .action((payloadArg, cmd) => askGpt(payloadArg, cmd))
-    .addHelpText('after', `
-Examples:
-  Ask a simple question:
-    eck-snapshot ask-gpt '{"objective": "What is 5+2?"}'
-
-  Request code changes with context:
-    eck-snapshot ask-gpt '{
-      "target_agent": "local_dev",
-      "task_id": "feature-123",
-      "payload": {
-        "objective": "Add error handling to login function",
-        "files_to_modify": [{"path": "src/auth.js", "action": "modify"}]
-      },
-      "post_execution_steps": {
-        "journal_entry": {
-          "type": "feat",
-          "scope": "auth",
-          "summary": "Add error handling"
-        }
-      }
-    }' --verbose
-
-Prerequisites:
-  1. Install Codex CLI: npm install -g @openai/codex
-  2. Login: codex login (requires ChatGPT Plus/Pro subscription)
-  3. The command automatically loads .eck project context
-
-Authentication:
-  - Uses your existing 'codex login' credentials
-  - Auto-retries on authentication errors
-  - Supports ChatGPT Plus/Pro subscriptions
-`);
-
   // Project detection command
   program
     .command('detect')
@@ -344,16 +301,8 @@ Authentication:
         const result = await executePrompt(prompt, options.continue);
         console.log(JSON.stringify(result, null, 2));
       } catch (error) {
-        console.warn(`⚠️ Claude failed: ${error.message}`);
-        console.log('🔄 Failing over to GPT for task...');
-        try {
-          const payload = (typeof prompt === 'string' && prompt.startsWith('{')) ? prompt : JSON.stringify({ objective: prompt });
-          const gptResult = await askGptService(payload, { verbose: false });
-          console.log(JSON.stringify(gptResult, null, 2));
-        } catch (gptError) {
-          console.error('Failed to execute prompt with both Claude and GPT:', gptError.message);
-          process.exit(1);
-        }
+        console.error(`Failed to execute prompt: ${error.message}`);
+        process.exit(1);
       }
     });
 
