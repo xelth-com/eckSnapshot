@@ -481,7 +481,18 @@ Use \`apply_code_changes\` for direct tasks where you provide all details.
     template = template.replace('{{eckManifestSection}}', eckManifestSection);
     // --- END INJECT ---
 
-    const agentDefinitions = buildAgentDefinitions(executionAgents);
+    // Filter out gemini agents if not in JA mode
+    const filteredExecutionAgents = {};
+    for (const [key, agent] of Object.entries(executionAgents)) {
+      const isGeminiAgent = key.includes('gemini') || (agent.name && agent.name.toLowerCase().includes('gemini'));
+      if (isGeminiAgent) {
+        if (withJa && agent.active) filteredExecutionAgents[key] = agent;
+      } else {
+        if (agent.active) filteredExecutionAgents[key] = agent;
+      }
+    }
+
+    const agentDefinitions = buildAgentDefinitions(filteredExecutionAgents);
 
     const data = {
       ...context,
