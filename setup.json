@@ -716,6 +716,25 @@
           "Runs only in native Windows",
           "Cannot access WSL-only tools like claude"
         ]
+      },
+      "minimax_worker": {
+        "active": true,
+        "name": "MiniMax M2.1 Worker (MCP)",
+        "description": "High-context, low-cost worker for heavy lifting. Accessed via 'delegate_coding_task' tool.",
+        "guiSupport": false,
+        "identification": {
+          "markers": ["minimax", "delegate_coding_task"]
+        },
+        "capabilities": [
+          "read large files internally",
+          "generate massive code blocks",
+          "refactor huge modules",
+          "analyze project structure"
+        ],
+        "restrictions": [
+          "Cannot execute system commands directly (delegates back to Sonnet)",
+          "Requires MINIMAX_API_KEY"
+        ]
       }
     },
     "browserAutomation": {
