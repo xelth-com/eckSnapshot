@@ -132,6 +132,18 @@ import { generateEnhancedAIHeader } from '../../utils/aiHeader.js';
 const gzip = promisify(zlib.gzip);
 
 /**
+ * Check if a path is a hidden directory/folder (starts with '.')
+ * This excludes all hidden folders like .git, .eck, .claude, .gemini from snapshots
+ * @param {string} filePath - File or directory path
+ * @returns {boolean} True if path is hidden
+ */
+function isHiddenPath(filePath) {
+  // Check if path or any parent directory starts with '.'
+  const parts = filePath.split('/');
+  return parts.some(part => part.startsWith('.'));
+}
+
+/**
  * Scans the .eck directory for confidential files
  * @param {string} projectPath - Path to the project
  * @param {object} config - Configuration object
@@ -187,9 +199,9 @@ async function getProjectFiles(projectPath, config) {
   if (isGitRepo) {
     const { stdout } = await execa('git', ['ls-files'], { cwd: projectPath });
     const gitFiles = stdout.split('\n').filter(Boolean);
-    // .eck files are NOT included in snapshot content - architect sees only the tree structure
-    // and a journal summary in the AI header. Full .eck files are for the coder (via CLAUDE.md)
-    return gitFiles;
+    // Filter out hidden directories/files (starting with '.')
+    const filteredFiles = gitFiles.filter(file => !isHiddenPath(file));
+    return filteredFiles;
   }
   return scanDirectoryRecursively(projectPath, config);
 }
@@ -331,6 +343,13 @@ async function processProjectFiles(repoPath, options, config, projectType = null
       progressBar.update(index + 1, { filename: normalizedPath.slice(0, 50) });
 
       try {
+        // Skip all hidden directories and files (starting with '.')
+        if (isHiddenPath(normalizedPath)) {
+          stats.ignoredFiles++;
+          trackSkippedFile(normalizedPath, 'Hidden directories/files');
+          return null;
+        }
+
         // Check if file should be ignored by directory patterns
         if (config.dirsToIgnore.some(dir => normalizedPath.startsWith(dir))) {
           stats.ignoredFiles++;
