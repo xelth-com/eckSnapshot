@@ -540,6 +540,10 @@
     "maxDepth": 10,
     "concurrency": 10
   },
+  "security": {
+    "scanForSecrets": true,
+    "_comment": "Automatically detects and redacts API keys, tokens, and credentials in snapshots to prevent accidental exposure"
+  },
   "output": {
     "defaultFormat": "md",
     "defaultPath": "./.eck/snapshots",

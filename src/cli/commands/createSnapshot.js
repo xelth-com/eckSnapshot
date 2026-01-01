@@ -8,12 +8,14 @@ import zlib from 'zlib';
 import { promisify } from 'util';
 import ora from 'ora';
 import micromatch from 'micromatch';
+import chalk from 'chalk';
 
 import {
   parseSize, formatSize, matchesPattern, checkGitRepository,
   scanDirectoryRecursively, loadGitignore, readFileWithSizeCheck,
   generateDirectoryTree, loadConfig, displayProjectInfo, loadProjectEckManifest,
-  ensureSnapshotsInGitignore, initializeEckManifest, generateTimestamp
+  ensureSnapshotsInGitignore, initializeEckManifest, generateTimestamp,
+  SecretScanner
 } from '../../utils/fileUtils.js';
 import { detectProjectType, getProjectSpecificFiltering } from '../../utils/projectDetector.js';
 import { estimateTokensWithPolynomial, generateTrainingCommand } from '../../utils/tokenEstimator.js';
@@ -297,6 +299,7 @@ async function processProjectFiles(repoPath, options, config, projectType = null
     ignoredFiles: 0,
     totalSize: 0,
     processedSize: 0,
+    secretsRedacted: 0,
     errors: [],
     skipReasons: new Map(),
     skippedFilesDetails: new Map()
@@ -403,6 +406,17 @@ async function processProjectFiles(repoPath, options, config, projectType = null
         }
 
         let content = await readFileWithSizeCheck(fullPath, maxFileSize);
+
+        // Security scan for secrets
+        if (config.security?.scanForSecrets !== false) {
+          const scanResult = SecretScanner.redact(content, normalizedPath);
+          if (scanResult.found.length > 0) {
+            stats.secretsRedacted += scanResult.found.length;
+            console.log(chalk.yellow(`\n  ⚠️  Security: Found ${scanResult.found.join(', ')} in ${normalizedPath}. Redacting...`));
+            content = scanResult.content;
+          }
+        }
+
         stats.includedFiles++;
         stats.processedSize += fileStats.size;
 
@@ -658,6 +672,13 @@ export async function createRepoSnapshot(repoPath, options) {
         for (const fileObj of largestFiles) {
           console.log(`   - ${String(formatSize(fileObj.size)).padEnd(15)} ${fileObj.path}`);
         }
+      }
+
+      // Security Report Section
+      if (stats.secretsRedacted > 0) {
+        console.log('\n🔐 Security:');
+        console.log('---------------------------------');
+        console.log(chalk.yellow(`   ⚠️  ${stats.secretsRedacted} secret(s) detected and redacted`));
       }
 
       // Excluded/Skipped Files Section

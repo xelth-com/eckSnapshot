@@ -8,6 +8,60 @@ import { getProfile, loadSetupConfig } from '../config.js';
 import micromatch from 'micromatch';
 import { minimatch } from 'minimatch';
 
+/**
+ * Scanner for detecting and redacting secrets (API keys, tokens)
+ */
+export const SecretScanner = {
+  patterns: [
+    // Service-specific patterns
+    { name: 'GitHub Token', regex: /gh[pous]_[a-zA-Z0-9]{36}/g },
+    { name: 'AWS Access Key', regex: /(?:AKIA|ASIA)[0-9A-Z]{16}/g },
+    { name: 'OpenAI API Key', regex: /sk-[a-zA-Z0-9]{32,}/g },
+    { name: 'Stripe Secret Key', regex: /sk_live_[0-9a-zA-Z]{24}/g },
+    { name: 'Google API Key', regex: /AIza[0-9A-Za-z\-_]{35}/g },
+    { name: 'Slack Token', regex: /xox[baprs]-[0-9a-zA-Z\-]{10,}/g },
+    { name: 'NPM Token', regex: /npm_[a-zA-Z0-9]{36}/g },
+    { name: 'Private Key', regex: /-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/g },
+    // Generic high-entropy patterns near sensitive keywords
+    {
+      name: 'Generic Secret',
+      regex: /(?:api[_-]?key|secret|password|token|auth|pwd|credential)\s*[:=]\s*["']([a-zA-Z0-9\-_.]{16,})["']/gi
+    }
+  ],
+
+  /**
+   * Scans content and replaces detected secrets with a placeholder
+   * @param {string} content - File content to scan
+   * @param {string} filePath - Path for logging context
+   * @returns {{content: string, found: string[]}} Redacted content and list of found secret types
+   */
+  redact(content, filePath) {
+    let redactedContent = content;
+    const foundSecrets = [];
+
+    for (const pattern of this.patterns) {
+      // Reset regex lastIndex for global patterns
+      pattern.regex.lastIndex = 0;
+
+      const matches = [...content.matchAll(pattern.regex)];
+      if (matches.length > 0) {
+        for (const match of matches) {
+          // For generic pattern, use captured group; for specific patterns, use full match
+          const secretValue = match[1] || match[0];
+          const placeholder = `[REDACTED_${pattern.name.replace(/\s+/g, '_').toUpperCase()}]`;
+          redactedContent = redactedContent.replace(secretValue, placeholder);
+          foundSecrets.push(pattern.name);
+        }
+      }
+    }
+
+    return {
+      content: redactedContent,
+      found: [...new Set(foundSecrets)]
+    };
+  }
+};
+
 export function parseSize(sizeStr) {
   const units = { B: 1, KB: 1024, MB: 1024 ** 2, GB: 1024 ** 3 };
   const match = sizeStr.match(/^(\d+(?:\.\d+)?)\s*(B|KB|MB|GB)?$/i);
