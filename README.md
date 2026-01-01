@@ -32,9 +32,33 @@ npm install -g @xelth/eck-snapshot
 
 Once installed, you can run the tool using the `eck-snapshot` command from any directory.
 
-## A Step-by-Step Guide to Using eckSnapshot
+## Workflow Options
 
-Here’s the most common workflow, from creating a full snapshot to focusing on specific features.
+### Option 1: Skeleton Workflow (Recommended for Large Projects)
+
+The skeleton workflow is optimized for web-based LLMs (Gemini, ChatGPT) with large context windows. It uses a three-step approach:
+
+1. **Initial Context (Maximum Compression):** Create a lightweight map of your entire project where function/method bodies are hidden, showing only signatures and structure.
+   ```bash
+   eck-snapshot --skeleton
+   ```
+   This generates `.eck/snapshots/<name>_sk.md` - a compressed overview that fits even large monoliths into the context window.
+
+2. **Lazy Loading (On-Demand Details):** When the AI needs implementation details, use the `show` command to display specific files:
+   ```bash
+   eck-snapshot show src/auth.js src/utils/hash.js
+   ```
+   Copy-paste the output back to your AI chat.
+
+3. **Incremental Updates:** As you make changes, send only what changed since the last snapshot instead of the entire repo:
+   ```bash
+   eck-snapshot update
+   ```
+   This generates `.eck/snapshots/update_<timestamp>.md` containing only changed files and git diffs.
+
+### Option 2: Full Snapshot Workflow
+
+Here's the traditional workflow for creating complete snapshots and focusing on specific features.
 
 #### Step 1: Create a Full Project Snapshot
 
@@ -111,10 +135,14 @@ A faster, non-AI method to reduce snapshot size. This command keeps only the top
 *   `restore <snapshot_file>`: Recreates a project's file structure from a snapshot.
 *   `generate-profile-guide`: Creates a guide for manual profile creation. Use this if `profile-detect` fails on very large projects, as it allows you to use an LLM with a larger context window (e.g., a web UI).
 *   `detect`: Shows how `eckSnapshot` has identified your project type and what default file filters are being applied.
-*   `ask-gpt` / `ask-claude`: Directly delegate a task to your configured AI coder agents from the command line.
+*   `ask-claude`: Directly delegate a task to your configured Claude Code CLI agent from the command line.
 *   `setup-gemini`: A utility to automatically configure integration with the `gemini-cli`.
 
 For a full list of commands and options, run `eck-snapshot --help`.
+
+## Experimental Features
+
+⚠️ **juniorArchitect**: This feature is currently under development and not yet functional. It's intended to provide automated architectural analysis and suggestions. Contributions to complete this feature are welcome!
 
 ## License
 
