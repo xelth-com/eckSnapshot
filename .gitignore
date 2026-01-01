@@ -48,11 +48,9 @@ Thumbs.db
 # Test snapshot directory
 create-snapshot/
 
-# Claude Code settings (exclude all except commands/eck)
+# Claude Code (auto-generated, local settings)
 .claude/
-!.claude/commands/
-!.claude/commands/eck/
-!.claude/commands/eck/**
+CLAUDE.md
 
 # Third-party managed components
 /managed_components/
