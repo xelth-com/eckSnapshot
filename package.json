@@ -19,8 +19,7 @@
     "test": "vitest",
     "test:ui": "vitest --ui",
     "test:run": "vitest run",
-    "docs:auto": "node index.js docs-auto",
-    "test:gpt": "vitest src/services/gptService.test.js"
+    "docs:auto": "node index.js docs-auto"
   },
   "author": "xelth-com",
   "license": "MIT",
@@ -41,15 +40,18 @@
     "inquirer": "^9.2.20",
     "is-binary-path": "^2.1.0",
     "micromatch": "^4.0.8",
+    "minimatch": "^9.0.3",
     "ora": "^8.1.0",
     "p-limit": "^5.0.0",
     "p-retry": "^6.2.1",
+    "which": "^4.0.0"
+  },
+  "optionalDependencies": {
     "tree-sitter": "^0.25.0",
     "tree-sitter-c": "^0.24.1",
     "tree-sitter-java": "^0.23.5",
     "tree-sitter-kotlin": "^0.3.8",
-    "tree-sitter-python": "^0.25.0",
-    "which": "^4.0.0"
+    "tree-sitter-python": "^0.25.0"
   },
   "devDependencies": {
     "jsdom": "^24.0.0",

@@ -131,11 +131,77 @@ import { generateEnhancedAIHeader } from '../../utils/aiHeader.js';
 
 const gzip = promisify(zlib.gzip);
 
+/**
+ * Scans the .eck directory for confidential files
+ * @param {string} projectPath - Path to the project
+ * @param {object} config - Configuration object
+ * @returns {Promise<string[]>} Array of confidential file paths
+ */
+async function scanEckForConfidentialFiles(projectPath, config) {
+  const eckPath = path.join(projectPath, '.eck');
+
+  try {
+    await fs.access(eckPath);
+  } catch {
+    return []; // .eck directory doesn't exist
+  }
+
+  const result = await scanDirectoryRecursively(eckPath, config, projectPath, null, true);
+  return result.confidentialFiles || [];
+}
+
+/**
+ * Generates CLAUDE.md content with references to confidential files
+ * @param {string[]} confidentialFiles - Array of confidential file paths
+ * @param {string} repoPath - Path to the repository
+ * @returns {string} CLAUDE.md content
+ */
+function generateClaudeMdContent(confidentialFiles, repoPath) {
+  const content = [`# Project Access & Credentials Reference`, ``];
+
+  if (confidentialFiles.length === 0) {
+    content.push('No confidential files found in .eck directory.');
+    return content.join('\n');
+  }
+
+  content.push('## Access & Credentials');
+  content.push('');
+  content.push('The following confidential files are available locally but not included in snapshots:');
+  content.push('');
+
+  for (const file of confidentialFiles) {
+    const absolutePath = path.join(repoPath, file);
+    const fileName = path.basename(file);
+    content.push(`- **${fileName}**: \`${absolutePath}\``);
+  }
+
+  content.push('');
+  content.push('> **Note**: These files contain sensitive information and should only be accessed when needed.');
+  content.push('> They are excluded from snapshots for security reasons but can be referenced on demand.');
+
+  return content.join('\n');
+}
+
 async function getProjectFiles(projectPath, config) {
   const isGitRepo = await checkGitRepository(projectPath);
   if (isGitRepo) {
     const { stdout } = await execa('git', ['ls-files'], { cwd: projectPath });
-    return stdout.split('\n').filter(Boolean);
+    const gitFiles = stdout.split('\n').filter(Boolean);
+
+    // Also scan .eck directory for documentation files (even if gitignored)
+    const eckPath = path.join(projectPath, '.eck');
+    try {
+      await fs.access(eckPath);
+      const eckResult = await scanDirectoryRecursively(eckPath, config, projectPath, null, true);
+      // Include only non-confidential .eck files
+      const eckFiles = eckResult.files || [];
+      // Combine and deduplicate
+      const allFiles = [...gitFiles, ...eckFiles];
+      return [...new Set(allFiles)]; // Remove duplicates
+    } catch {
+      // .eck directory doesn't exist, return only git files
+      return gitFiles;
+    }
   }
   return scanDirectoryRecursively(projectPath, config);
 }
@@ -284,8 +350,9 @@ async function processProjectFiles(repoPath, options, config, projectType = null
           return null;
         }
 
-        // Check gitignore patterns
-        if (gitignore.ignores(normalizedPath)) {
+        // Check gitignore patterns (but allow .eck documentation files through)
+        const isEckFile = normalizedPath.startsWith('.eck/');
+        if (gitignore.ignores(normalizedPath) && !isEckFile) {
           stats.ignoredFiles++;
           trackSkippedFile(normalizedPath, 'Gitignore rules');
           return null;
@@ -530,6 +597,17 @@ export async function createRepoSnapshot(repoPath, options) {
 
       // Save git anchor for future delta updates
       await saveGitAnchor(processedRepoPath);
+
+      // --- Generate CLAUDE.md with confidential file references ---
+      console.log('🔐 Scanning for confidential files in .eck directory...');
+      const confidentialFiles = await scanEckForConfidentialFiles(processedRepoPath, config);
+
+      if (confidentialFiles.length > 0) {
+        const claudeMdContent = generateClaudeMdContent(confidentialFiles, processedRepoPath);
+        const claudeMdPath = path.join(processedRepoPath, 'CLAUDE.md');
+        await fs.writeFile(claudeMdPath, claudeMdContent);
+        console.log(`📝 Generated CLAUDE.md with ${confidentialFiles.length} confidential file reference(s)`);
+      }
 
       // --- Combined Report --- 
       console.log('\n✅ Snapshot generation complete!');

@@ -6,6 +6,7 @@ import { detectProjectType, getProjectSpecificFiltering } from './projectDetecto
 import { executePrompt as askClaude } from '../services/claudeCliService.js';
 import { getProfile, loadSetupConfig } from '../config.js';
 import micromatch from 'micromatch';
+import { minimatch } from 'minimatch';
 
 export function parseSize(sizeStr) {
   const units = { B: 1, KB: 1024, MB: 1024 ** 2, GB: 1024 ** 3 };
@@ -41,31 +42,42 @@ export function matchesPattern(filePath, patterns) {
 }
 
 /**
+ * Checks if a file matches confidential patterns using minimatch
+ * @param {string} fileName - The file name to check
+ * @param {array} patterns - Array of glob patterns to match against
+ * @returns {boolean} True if the file matches any pattern
+ */
+function matchesConfidentialPattern(fileName, patterns) {
+  return patterns.some(pattern => minimatch(fileName, pattern, { nocase: true }));
+}
+
+/**
  * Applies smart filtering for files within the .eck directory.
  * Includes documentation files while excluding confidential files.
  * @param {string} fileName - The file name to check
  * @param {object} eckConfig - The eckDirectoryFiltering config object
- * @returns {boolean} True if the file should be included, false otherwise
+ * @returns {object} { include: boolean, isConfidential: boolean }
  */
 export function applyEckDirectoryFiltering(fileName, eckConfig) {
   if (!eckConfig || !eckConfig.enabled) {
-    return false; // .eck filtering disabled, exclude all
+    return { include: false, isConfidential: false }; // .eck filtering disabled, exclude all
   }
 
   const { confidentialPatterns = [], alwaysIncludePatterns = [] } = eckConfig;
 
-  // First check if file matches confidential patterns (always exclude)
-  if (matchesPattern(fileName, confidentialPatterns)) {
-    return false;
+  // First check if file matches confidential patterns
+  const isConfidential = matchesConfidentialPattern(fileName, confidentialPatterns);
+  if (isConfidential) {
+    return { include: false, isConfidential: true };
   }
 
   // Check if file matches always-include patterns
   if (matchesPattern(fileName, alwaysIncludePatterns)) {
-    return true;
+    return { include: true, isConfidential: false };
   }
 
   // Default: exclude files not in the include list
-  return false;
+  return { include: false, isConfidential: false };
 }
 
 export async function checkGitAvailability() {
@@ -85,17 +97,18 @@ export async function checkGitRepository(repoPath) {
   }
 }
 
-export async function scanDirectoryRecursively(dirPath, config, relativeTo = dirPath, projectType = null) {
+export async function scanDirectoryRecursively(dirPath, config, relativeTo = dirPath, projectType = null, trackConfidential = false) {
   const files = [];
-  
+  const confidentialFiles = [];
+
   // Get project-specific filtering if not provided
   if (!projectType) {
     const detection = await detectProjectType(relativeTo);
     projectType = detection.type;
   }
-  
+
   const projectSpecific = await getProjectSpecificFiltering(projectType);
-  
+
   // Merge project-specific filters with global config
   const effectiveConfig = {
     ...config,
@@ -103,38 +116,47 @@ export async function scanDirectoryRecursively(dirPath, config, relativeTo = dir
     filesToIgnore: [...(config.filesToIgnore || []), ...(projectSpecific.filesToIgnore || [])],
     extensionsToIgnore: [...(config.extensionsToIgnore || []), ...(projectSpecific.extensionsToIgnore || [])]
   };
-  
+
   try {
     const entries = await fs.readdir(dirPath, { withFileTypes: true });
-    
+
     for (const entry of entries) {
       const fullPath = path.join(dirPath, entry.name);
       const relativePath = path.relative(relativeTo, fullPath).replace(/\\/g, '/');
-      
-      if (effectiveConfig.dirsToIgnore.some(dir => 
-        entry.name === dir.replace('/', '') || 
-        relativePath.startsWith(dir)
-      )) {
-        continue;
-      }
-      
-      // Special handling for .eck directory - allow it even when hidden files are excluded
+
+      // Special handling for .eck directory - never ignore it when tracking confidential files
       const isEckDirectory = entry.name === '.eck' && entry.isDirectory();
       const isInsideEck = relativePath.startsWith('.eck/');
+
+      if (effectiveConfig.dirsToIgnore.some(dir =>
+        entry.name === dir.replace('/', '') ||
+        relativePath.startsWith(dir)
+      ) && !isEckDirectory && !isInsideEck) {
+        continue;
+      }
 
       if (!effectiveConfig.includeHidden && entry.name.startsWith('.') && !isEckDirectory && !isInsideEck) {
         continue;
       }
 
       if (entry.isDirectory()) {
-        const subFiles = await scanDirectoryRecursively(fullPath, effectiveConfig, relativeTo, projectType);
-        files.push(...subFiles);
+        const subResult = await scanDirectoryRecursively(fullPath, effectiveConfig, relativeTo, projectType, trackConfidential);
+        if (trackConfidential) {
+          files.push(...subResult.files);
+          confidentialFiles.push(...subResult.confidentialFiles);
+        } else {
+          files.push(...subResult);
+        }
       } else {
         // Apply smart filtering for files inside .eck directory
         if (isInsideEck) {
           const eckConfig = effectiveConfig.eckDirectoryFiltering;
-          if (!applyEckDirectoryFiltering(entry.name, eckConfig)) {
-            continue; // File doesn't pass .eck smart filtering
+          const filterResult = applyEckDirectoryFiltering(entry.name, eckConfig);
+
+          if (trackConfidential && filterResult.isConfidential) {
+            confidentialFiles.push(relativePath);
+          } else if (filterResult.include) {
+            files.push(relativePath);
           }
         } else {
           // Normal filtering for non-.eck files
@@ -142,16 +164,15 @@ export async function scanDirectoryRecursively(dirPath, config, relativeTo = dir
               matchesPattern(relativePath, effectiveConfig.filesToIgnore)) {
             continue;
           }
+          files.push(relativePath);
         }
-
-        files.push(relativePath);
       }
     }
   } catch (error) {
     console.warn(`⚠️ Warning: Could not read directory: ${dirPath} - ${error.message}`);
   }
-  
-  return files;
+
+  return trackConfidential ? { files, confidentialFiles } : files;
 }
 
 export async function loadGitignore(repoPath) {
