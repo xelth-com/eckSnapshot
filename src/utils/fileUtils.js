@@ -80,14 +80,6 @@ export function applyEckDirectoryFiltering(fileName, eckConfig) {
   return { include: false, isConfidential: false };
 }
 
-export async function checkGitAvailability() {
-  try {
-    await execa('git', ['--version']);
-  } catch (error) {
-    throw new Error('Git is not installed or not available in PATH');
-  }
-}
-
 export async function checkGitRepository(repoPath) {
   try {
     await execa('git', ['rev-parse', '--git-dir'], { cwd: repoPath });
@@ -367,14 +359,6 @@ export function generateTimestamp() {
   const mm = String(now.getMinutes()).padStart(2, '0');
   const ss = String(now.getSeconds()).padStart(2, '0');
   return `${YYYY}-${MM}-${DD}_${hh}-${mm}-${ss}`;
-}
-
-export function sanitizeForFilename(text) {
-  return text
-    .toLowerCase()
-    .replace(/\s+/g, '-') // Replace spaces with hyphens
-    .replace(/[^a-z0-9-]/g, '') // Remove invalid characters
-    .substring(0, 50); // Truncate to a reasonable length
 }
 
 /**

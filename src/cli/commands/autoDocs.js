@@ -19,38 +19,7 @@ export async function generateAutoDocs() {
       await fs.access(extensionsDir);
     } catch (error) {
       console.log(`Extensions directory not found at: ${extensionsDir}`);
-      console.log('Creating example structure...');
-
-      // Create the directory structure
-      await fs.mkdir(extensionsDir, { recursive: true });
-
-      // Create a sample gemini-extension.json file for demonstration
-      const sampleExtension = {
-        name: "sample-extension",
-        description: "Sample Gemini extension for demonstration",
-        commands: [
-          {
-            name: "sample-command",
-            description: "A sample command for testing auto-docs",
-            usage: "sample-command [options]",
-            examples: ["sample-command --help"]
-          }
-        ],
-        tools: [
-          {
-            name: "sample-tool",
-            description: "A sample tool for testing auto-docs",
-            usage: "Use this tool for sample operations"
-          }
-        ]
-      };
-
-      await fs.writeFile(
-        path.join(extensionsDir, 'sample-extension.json'),
-        JSON.stringify(sampleExtension, null, 2)
-      );
-
-      console.log('Created sample extension at:', path.join(extensionsDir, 'sample-extension.json'));
+      return;
     }
 
     // Read all JSON files in the extensions directory

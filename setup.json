@@ -667,25 +667,6 @@
           "no hardware debugging interfaces"
         ]
       },
-      "ci_cd": {
-        "active": false,
-        "name": "CI/CD Pipeline Agent (AGENT_CI_CD)",
-        "description": "Automated testing and deployment pipeline",
-        "guiSupport": false,
-        "capabilities": [
-          "npm ci",
-          "npm test",
-          "npm run build",
-          "docker build",
-          "artifact generation"
-        ],
-        "restrictions": [
-          "no interactive commands",
-          "no GUI applications",
-          "no watch modes",
-          "no development servers"
-        ]
-      },
       "gemini_wsl": {
         "active": true,
         "name": "Gemini WSL Agent (Junior Architect)",
