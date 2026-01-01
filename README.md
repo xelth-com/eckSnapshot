@@ -47,13 +47,17 @@ This is your primary command. It scans your project and packs all relevant code 
 
 *   **What it does:** Creates a file like `myProject_snapshot_... .md` in the `.eck/snapshots/` directory. This file contains your project's directory structure and the complete code. You can now pass this file to your Architect LLM for analysis.
 
-#### Step 2: Handle Large Projects with Auto-Profiling
+#### Step 2: Working with Profiles for Large Projects
 
-If your project is too large for an LLM's context window, `profile-detect` can automatically slice it into logical parts (profiles) using AI.
+When your project is too large for an LLM's context window, you can use **profiles** to slice it into logical parts. There are two methods:
+
+##### Option A: Auto-Detection (Quick but can be fragile on huge projects)
+
+Uses local AI (Claude CLI) to automatically analyze your project and suggest profiles.
 
 > **Usage:**
 > ```bash
-> dimi@xelth:/mnt/c/Users/xelth/myProject$ eck-snapshot profile-detect
+> eck-snapshot profile-detect
 > ```
 
 *   **Output Example:**
@@ -67,7 +71,60 @@ If your project is too large for an LLM's context window, `profile-detect` can a
       - docs
       - config
     ```
-*   **What it does:** Analyzes your project and saves these logical groupings into a `.eck/profiles.json` file, which you can use in the next step.
+*   **What it does:** Analyzes your project and saves these logical groupings into a `.eck/profiles.json` file.
+*   **Limitation:** Can fail on very large projects (thousands of files) because the directory tree becomes too large for the local Claude CLI.
+
+##### Option B: Manual Guide (Reliable for massive projects)
+
+Generates a guide file that you can use with any AI assistant that has a large context window (Gemini 1.5 Pro, GPT-4, etc.). This is the **recommended approach for large monorepos**.
+
+> **Usage:**
+> ```bash
+> eck-snapshot generate-profile-guide
+> ```
+
+**What happens:**
+1. Creates `.eck/profile_generation_guide.md` containing:
+   - A ready-to-use prompt for the AI
+   - Your complete project directory tree
+2. You open this file and copy its contents
+3. Paste into your preferred AI assistant (web UI with large context)
+4. The AI analyzes the structure and returns a JSON with suggested profiles
+5. Save the JSON to `.eck/profiles.json`
+
+**Example workflow:**
+```bash
+# 1. Generate the guide
+eck-snapshot generate-profile-guide
+
+# 2. Open the guide file
+cat .eck/profile_generation_guide.md
+
+# 3. Copy the prompt and directory tree, paste into Gemini/ChatGPT
+# 4. AI returns something like:
+# {
+#   "backend": {
+#     "include": ["src/api/**", "src/database/**"],
+#     "exclude": ["**/*.test.js"]
+#   },
+#   "frontend": {
+#     "include": ["src/components/**", "src/pages/**"],
+#     "exclude": ["**/*.spec.js"]
+#   }
+# }
+
+# 5. Save the JSON to .eck/profiles.json
+# (manually create/edit the file)
+
+# 6. Now you can use the profiles
+eck-snapshot --profile backend
+```
+
+**Why use this instead of auto-detect?**
+- Works with projects of any size (no local context limits)
+- Uses powerful web-based LLMs with large context windows
+- More reliable - doesn't crash on huge directory trees
+- You can review and edit the suggestions before saving
 
 #### Step 3: Use Profiles to Create Focused Snapshots
 
@@ -173,10 +230,10 @@ This generates `.eck/snapshots/update_<timestamp>.md`.
 ## Auxiliary Commands
 
 *   `restore <snapshot_file>`: Recreates a project's file structure from a snapshot.
-*   `generate-profile-guide`: Creates a guide for manual profile creation. Use this if `profile-detect` fails on very large projects, as it allows you to use an LLM with a larger context window (e.g., a web UI).
 *   `detect`: Shows how `eckSnapshot` has identified your project type and what default file filters are being applied.
 *   `ask-claude`: Directly delegate a task to your configured Claude Code CLI agent from the command line.
 *   `setup-gemini`: A utility to automatically configure integration with the `gemini-cli`.
+*   `show <file1> <file2> ...`: Display full content of specific files (used for lazy loading in skeleton workflow).
 
 For a full list of commands and options, run `eck-snapshot --help`.
 
