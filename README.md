@@ -17,9 +17,10 @@ This tool is built for a modern workflow where you act as the architect, guiding
 ## Requirements
 
 1.  **Node.js** (v18.x or higher).
-2.  **An AI Assistant CLI (at least one):**
-    *   **Claude:** An active **Claude Pro** subscription and the `claude-code` CLI installed.
-    *   **OpenAI:** An active **ChatGPT Plus/Pro** subscription and the `@openai/codex` CLI installed (`npm install -g @openai/codex`).
+2.  **An AI Assistant CLI (at least one of the following is required):**
+    *   **Claude Code:** An active **Claude Pro** subscription and the `claude-code` CLI installed.
+    *   **Minimax:** Minimax API access and CLI configured.
+3.  **Gemini (recommended):** For the Architect role with large context windows, Gemini API access is highly recommended.
 
 ## Installation
 
