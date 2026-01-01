@@ -56,3 +56,4 @@ create-snapshot/
 
 # Third-party managed components
 /managed_components/
+.eck-token-training.json
