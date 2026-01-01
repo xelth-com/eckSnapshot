@@ -308,6 +308,11 @@ async function processProjectFiles(repoPath, options, config, projectType = null
     console.log('🔍 Scanning repository...');
     let allFiles = await getProjectFiles(repoPath, config);
 
+    // Filter the raw file list immediately so ignored files don't show up in the Tree
+    if (config.filesToIgnore && config.filesToIgnore.length > 0) {
+      allFiles = allFiles.filter(file => !matchesPattern(file, config.filesToIgnore));
+    }
+
     if (options.profile) {
       console.log(`Applying profile filter: '${options.profile}'...`);
       allFiles = await applyProfileFilter(allFiles, options.profile, repoPath);
