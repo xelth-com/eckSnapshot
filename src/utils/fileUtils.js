@@ -218,9 +218,6 @@ export async function generateDirectoryTree(dir, prefix = '', allFiles, depth = 
       // Skip hidden directories and files (starting with '.')
       // EXCEPT: show .eck as a placeholder at the first level
       if (entry.name.startsWith('.')) {
-        if (entry.name === '.eck' && depth === 0) {
-          tree += `${prefix}${connector}.eck/\n`;
-        }
         continue;
       }
       if (config.dirsToIgnore.some(d => entry.name.includes(d.replace('/', '')))) continue;
@@ -234,10 +231,10 @@ export async function generateDirectoryTree(dir, prefix = '', allFiles, depth = 
     for (let i = 0; i < validEntries.length; i++) {
       const { entry, fullPath, relativePath } = validEntries[i];
       const isLast = i === validEntries.length - 1;
-      
+
       const connector = isLast ? '└── ' : '├── ';
       const nextPrefix = prefix + (isLast ? '    ' : '│   ');
-      
+
       if (entry.isDirectory()) {
         tree += `${prefix}${connector}${entry.name}/\n`;
         tree += await generateDirectoryTree(fullPath, nextPrefix, allFiles, depth + 1, maxDepth, config);
@@ -245,7 +242,14 @@ export async function generateDirectoryTree(dir, prefix = '', allFiles, depth = 
         tree += `${prefix}${connector}${entry.name}\n`;
       }
     }
-    
+
+    // Add .eck placeholder at root level
+    if (depth === 0) {
+      const isLast = validEntries.length === 0;
+      const connector = isLast ? '└── ' : '├── ';
+      tree += `${prefix}${connector}.eck/\n`;
+    }
+
     return tree;
   } catch (error) {
     console.warn(`⚠️ Warning: Could not read directory: ${dir}`);
