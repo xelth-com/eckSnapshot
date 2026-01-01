@@ -216,7 +216,13 @@ export async function generateDirectoryTree(dir, prefix = '', allFiles, depth = 
     
     for (const entry of sortedEntries) {
       // Skip hidden directories and files (starting with '.')
-      if (entry.name.startsWith('.')) continue;
+      // EXCEPT: show .eck as a placeholder at the first level
+      if (entry.name.startsWith('.')) {
+        if (entry.name === '.eck' && depth === 0) {
+          tree += `${prefix}${connector}.eck/\n`;
+        }
+        continue;
+      }
       if (config.dirsToIgnore.some(d => entry.name.includes(d.replace('/', '')))) continue;
       const fullPath = path.join(dir, entry.name);
       const relativePath = path.relative(process.cwd(), fullPath).replace(/\\/g, '/');
