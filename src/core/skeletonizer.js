@@ -10,6 +10,8 @@ let Python = null;
 let Java = null;
 let Kotlin = null;
 let C = null;
+let Rust = null;
+let Go = null;
 
 async function loadTreeSitter() {
     if (!Parser) {
@@ -20,6 +22,8 @@ async function loadTreeSitter() {
             Java = (await import('tree-sitter-java')).default;
             Kotlin = (await import('tree-sitter-kotlin')).default;
             C = (await import('tree-sitter-c')).default;
+            Rust = (await import('tree-sitter-rust')).default;
+            Go = (await import('tree-sitter-go')).default;
         } catch (error) {
             console.warn('Tree-sitter not available:', error.message);
             return false;
@@ -35,8 +39,10 @@ const languages = {
     '.kt': () => Kotlin,
     '.c': () => C,
     '.h': () => C,
-    '.cpp': () => C, // C parser often handles C++ basics well enough for skeletons
-    '.hpp': () => C
+    '.cpp': () => C,
+    '.hpp': () => C,
+    '.rs': () => Rust,
+    '.go': () => Go
 };
 
 /**
@@ -53,7 +59,7 @@ export async function skeletonize(content, filePath) {
         return skeletonizeJs(content);
     }
 
-    // 2. Tree-sitter Strategy (Python, Java, Kotlin, C)
+    // 2. Tree-sitter Strategy (Python, Java, Kotlin, C, Rust, Go)
     const ext = filePath.substring(filePath.lastIndexOf('.'));
     if (languages[ext]) {
         // Lazy-load tree-sitter
@@ -61,7 +67,7 @@ export async function skeletonize(content, filePath) {
         if (!available) {
             return content; // Fallback: return original content if tree-sitter unavailable
         }
-        return skeletonizeTreeSitter(content, languages[ext]());
+        return skeletonizeTreeSitter(content, languages[ext](), ext);
     }
 
     // 3. Fallback (Return as is)
@@ -106,28 +112,38 @@ function skeletonizeJs(content) {
     }
 }
 
-function skeletonizeTreeSitter(content, language) {
+function skeletonizeTreeSitter(content, language, ext) {
     try {
         const parser = new Parser();
         parser.setLanguage(language);
         const tree = parser.parse(content);
 
-        // Define node types that represent function bodies for different languages
+        // Define node types that represent function bodies
         const bodyTypes = ['block', 'function_body', 'compound_statement'];
-
         const replacements = [];
 
         const visit = (node) => {
-            // Check for function definitions
-            const isFunction = [
-                'function_definition', // Python, C
-                'method_declaration',  // Java
-                'function_declaration', // Kotlin
-                'class_declaration',   // Kotlin/Java/Python (to clean init blocks if needed, but risky)
-            ].includes(node.type);
+            const type = node.type;
+            let isFunction = false;
+            let replacementText = '{ /* ... */ }';
+
+            // Language specific detection
+            if (ext === '.rs') {
+                isFunction = ['function_item', 'method_declaration'].includes(type);
+            } else if (ext === '.go') {
+                isFunction = ['function_declaration', 'method_declaration'].includes(type);
+            } else if (ext === '.py') {
+                isFunction = type === 'function_definition';
+                replacementText = '...';
+            } else {
+                isFunction = [
+                    'function_definition',
+                    'method_declaration',
+                    'function_declaration'
+                ].includes(type);
+            }
 
             if (isFunction) {
-                // Find the body node
                 let bodyNode = null;
                 for (let i = 0; i < node.childCount; i++) {
                     const child = node.child(i);
@@ -138,23 +154,10 @@ function skeletonizeTreeSitter(content, language) {
                 }
 
                 if (bodyNode) {
-                    const start = bodyNode.startIndex;
-                    const end = bodyNode.endIndex;
-                    // Use minimal replacement to save tokens
-                    replacements.push({ start, end, text: '{ /* ... */ }' });
-                    return; // Don't traverse inside the body we just stripped
-                }
-            }
-
-            // Python uses colons and indentation, distinct from {} blocks
-            // Use Python's Ellipsis literal for maximum brevity
-            if (node.type === 'function_definition' && language === Python) {
-                const body = node.lastChild;
-                if (body && body.type === 'block') {
                     replacements.push({
-                        start: body.startIndex,
-                        end: body.endIndex,
-                        text: '...'  // Python Ellipsis literal - minimal tokens
+                        start: bodyNode.startIndex,
+                        end: bodyNode.endIndex,
+                        text: replacementText
                     });
                     return;
                 }
@@ -166,8 +169,6 @@ function skeletonizeTreeSitter(content, language) {
         };
 
         visit(tree.rootNode);
-
-        // Sort replacements reversed to apply without messing up indices
         replacements.sort((a, b) => b.start - a.start);
 
         let currentContent = content;
@@ -176,7 +177,6 @@ function skeletonizeTreeSitter(content, language) {
         }
 
         return currentContent;
-
     } catch (e) {
         return content + `\n// [Skeleton error: ${e.message}]`;
     }

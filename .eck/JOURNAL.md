@@ -1,4 +1,17 @@
 ---
+task_id: task-20260101181645-9ecdd64c
+date: 2026-01-01
+type: feat
+scope: core
+---
+
+# Add Rust and Go support to Skeletonizer
+
+- Added tree-sitter-rust and tree-sitter-go dependencies
+- Implemented Rust/Go function body stripping in skeletonizer.js
+- Updated file extension mapping for .rs and .go files
+
+---
 type: fix
 scope: cli
 summary: Fix timezone mismatch in snapshots
