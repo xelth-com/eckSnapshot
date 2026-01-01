@@ -54,3 +54,6 @@ CLAUDE.md
 
 # Third-party managed components
 /managed_components/
+
+# MiniMax Debugging
+minimax_debug.json

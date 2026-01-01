@@ -1,8 +1,7 @@
 #!/usr/bin/env node
 /**
- * MCP Server: MiniMax Heavy Lifter
- * Acts as a bridge between Claude Code (Supervisor) and MiniMax M2.1 (Worker).
- * Handles file reading internally to save Supervisor tokens.
+ * MCP Server: MiniMax Heavy Lifter (Fixed for M2.1 Thinking Blocks)
+ * Handles file reading internally and correctly parses MiniMax reasoning responses.
  */
 
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
@@ -12,14 +11,14 @@ import Anthropic from "@anthropic-ai/sdk";
 import fs from "fs/promises";
 import path from "path";
 
-// Initialize MiniMax client using Anthropic SDK (Compatible API)
+// Initialize MiniMax client using Anthropic SDK
 const minimaxClient = new Anthropic({
   apiKey: process.env.MINIMAX_API_KEY,
-  baseURL: "https://api.minimax.io/anthropic",
+  baseURL: "https://api.minimax.io/anthropic", // Standard endpoint
 });
 
 const server = new Server(
-  { name: "minimax-worker", version: "1.0.0" },
+  { name: "minimax-worker", version: "1.0.2" },
   { capabilities: { tools: {} } }
 );
 
@@ -58,7 +57,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     const { instruction, file_paths, context_summary } = request.params.arguments;
 
     try {
-      // 1. Internal File Reading (Saves Sonnet Tokens)
+      // 1. Internal File Reading
       let heavyContext = "";
       const missingFiles = [];
 
@@ -84,11 +83,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 Your task is to implement code changes based on the provided context.
 
 GUIDELINES:
-- You have a huge context window, so read the files carefully.
 - Return ONLY the necessary code or diffs.
-- Do not be chatty. Focus on the solution.
-- If writing a full file, format it inside markdown code blocks.
-`;
+- Do not be chatty.
+- If writing a full file, format it inside markdown code blocks.`;
 
       const userMessage = `
 PROJECT CONTEXT SUMMARY:
@@ -103,13 +100,29 @@ ${heavyContext}
 
       // 3. Call MiniMax via Anthropic SDK
       const response = await minimaxClient.messages.create({
-        model: "MiniMax-M2.1", // Uses the compatible model name
+        model: "MiniMax-M2.1",
         max_tokens: 8192,
         system: systemPrompt,
         messages: [{ role: "user", content: userMessage }],
       });
 
-      const resultText = response.content[0].text;
+      // 4. Robust Response Parsing (Fix for Thinking Blocks)
+      let resultText = "";
+
+      // MiniMax M2.1 returns [{ type: 'thinking', thinking: '...' }, { type: 'text', text: '...' }]
+      if (response.content && Array.isArray(response.content)) {
+        // Filter for text blocks specifically
+        const textBlocks = response.content.filter(block => block.type === 'text');
+        if (textBlocks.length > 0) {
+          resultText = textBlocks.map(b => b.text).join('\n\n');
+        } else {
+          // Fallback: try to grab content from the first block if it's a string (unlikely but possible)
+          // or dump JSON if we can't find text
+          resultText = JSON.stringify(response.content, null, 2);
+        }
+      } else {
+        resultText = "No content returned from MiniMax.";
+      }
 
       return {
         content: [
@@ -125,7 +138,7 @@ ${heavyContext}
         content: [
           {
             type: "text",
-            text: `MiniMax API Error: ${error.message}\n\nHint: Check if MINIMAX_API_KEY is set correctly.`,
+            text: `MiniMax API Error: ${error.message}\n\nHint: Check API Key and endpoint.`,
           },
         ],
         isError: true,
