@@ -13,7 +13,7 @@ import {
   parseSize, formatSize, matchesPattern, checkGitRepository,
   scanDirectoryRecursively, loadGitignore, readFileWithSizeCheck,
   generateDirectoryTree, loadConfig, displayProjectInfo, loadProjectEckManifest,
-  ensureSnapshotsInGitignore, initializeEckManifest
+  ensureSnapshotsInGitignore, initializeEckManifest, generateTimestamp
 } from '../../utils/fileUtils.js';
 import { detectProjectType, getProjectSpecificFiltering } from '../../utils/projectDetector.js';
 import { estimateTokensWithPolynomial, generateTrainingCommand } from '../../utils/tokenEstimator.js';
@@ -472,8 +472,8 @@ export async function createRepoSnapshot(repoPath, options) {
         if (status) {
           spinner.text = 'Unstaged changes detected. Auto-committing...';
           await execa('git', ['add', '.'], { cwd: repoPath });
-          const timestamp = new Date().toISOString().slice(0, 19).replace('T', '_').replace(/:/g, '-');
-          await execa('git', ['commit', '-m', `chore(snapshot): Auto-commit before snapshot [${timestamp}]`], { cwd: repoPath });
+          const commitTimestamp = generateTimestamp();
+          await execa('git', ['commit', '-m', `chore(snapshot): Auto-commit before snapshot [${commitTimestamp}]`], { cwd: repoPath });
           spinner.info('Auto-commit complete.');
         } else {
           // No changes, do nothing. Logging this would be too verbose.
@@ -506,6 +506,15 @@ export async function createRepoSnapshot(repoPath, options) {
       aiHeaderEnabled: setupConfig.aiInstructions?.header?.defaultEnabled ?? true,
       ...options // Command-line options have the final say
     };
+
+    // If NOT in Junior Architect mode, hide JA-specific documentation to prevent context pollution
+    if (!options.withJa) {
+      if (!config.filesToIgnore) config.filesToIgnore = [];
+      config.filesToIgnore.push(
+        'COMMANDS_REFERENCE.md',
+        'codex_delegation_snapshot.md'
+      );
+    }
 
     // Apply defaults for options that may not be provided via command line
     if (!config.output) {
@@ -541,8 +550,8 @@ export async function createRepoSnapshot(repoPath, options) {
     process.chdir(processedRepoPath); // Go back to repo path for git hash and tree
 
     try {
-      // --- Common Data --- 
-      const timestamp = new Date().toISOString().slice(0, 19).replace('T', '_').replace(/:/g, '-');
+      // --- Common Data ---
+      const timestamp = generateTimestamp();
       const repoName = path.basename(processedRepoPath);
       const gitHash = await getGitCommitHash(processedRepoPath);
       const fileExtension = options.format || config.defaultFormat || 'md';

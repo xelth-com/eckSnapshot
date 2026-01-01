@@ -3,7 +3,7 @@ import path from 'path';
 import ora from 'ora';
 import { getGitAnchor, getChangedFiles, getGitDiffOutput } from '../../utils/gitUtils.js';
 import { loadSetupConfig } from '../../config.js';
-import { readFileWithSizeCheck, parseSize, formatSize, matchesPattern, loadGitignore } from '../../utils/fileUtils.js';
+import { readFileWithSizeCheck, parseSize, formatSize, matchesPattern, loadGitignore, generateTimestamp } from '../../utils/fileUtils.js';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -53,14 +53,14 @@ export async function updateSnapshot(repoPath, options) {
     const templatePath = path.join(__dirname, '../../templates/update-prompt.template.md');
     let header = await fs.readFile(templatePath, 'utf-8');
     header = header.replace('{{anchor}}', anchor.substring(0, 7))
-      .replace('{{timestamp}}', new Date().toISOString())
+      .replace('{{timestamp}}', new Date().toLocaleString())
       .replace('{{fileList}}', fileList.join('\n'));
 
     // Add Git Diff at the end for context
     const diffOutput = await getGitDiffOutput(repoPath, anchor);
     const diffSection = `\n--- GIT DIFF (For Context) ---\n\n\`\`\`diff\n${diffOutput}\n\`\`\``;
 
-    const outputFilename = `update_${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.md`;
+    const outputFilename = `update_${generateTimestamp()}.md`;
     const outputPath = path.join(repoPath, '.eck', 'snapshots', outputFilename);
 
     await fs.mkdir(path.dirname(outputPath), { recursive: true });

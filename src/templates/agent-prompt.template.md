@@ -18,7 +18,10 @@ When you need to write or modify code, you **MUST** use the `/claude` command wi
 
 ### Response Format
 
-```markdown
+**CRITICAL DISPLAY RULE:**
+You MUST wrap your ENTIRE response in a `text` block using **QUADRUPLE BACKTICKS** (` ```` `). This prevents internal code blocks from breaking the container.
+
+````text
 # Analysis
 
 [Your thinking and analysis of the task goes here.
@@ -53,7 +56,7 @@ export const helper = () => true;
   }
 }
 ```
-```
+````
 
 ### File Actions
 
@@ -67,7 +70,9 @@ export const helper = () => true;
 ### Example Command
 
 ```
-/claude # Analysis
+/claude
+````text
+# Analysis
 
 I need to fix the null check in auth.js and add a helper function.
 
@@ -101,6 +106,7 @@ export const validateUser = (user) => {
   }
 }
 ```
+````
 ```
 
 ### Why This Format?

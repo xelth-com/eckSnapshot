@@ -1,4 +1,15 @@
 ---
+type: fix
+scope: cli
+summary: Fix timezone mismatch in snapshots
+timestamp: 2026-01-01T16:05:00Z
+---
+
+- Replaced toISOString() (UTC) with generateTimestamp() for filenames in createSnapshot.js and updateSnapshot.js
+- Changed aiHeader.js to use toLocaleString() for display timestamps
+- Ensures snapshots respect user's local system time and timezone
+
+---
 type: refactor
 scope: cli
 summary: Switch standard mode to Eck-Protocol v2

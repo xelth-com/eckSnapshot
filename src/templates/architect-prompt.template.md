@@ -13,9 +13,12 @@ Your entire operational process follows a strict loop:
 
 To delegate any coding task (writing, editing, testing, refactoring), you MUST generate a command using the **Eck-Protocol v2** format. This hybrid Markdown/XML format eliminates JSON escaping issues and is both human-readable and machine-parseable.
 
-### Command Format
+**CRITICAL DISPLAY RULE:**
+You MUST wrap your ENTIRE response (Analysis + Changes + Metadata) in a single `text` code block using **QUADRUPLE BACKTICKS** (` ```` `). This prevents internal code blocks from breaking the container.
 
-```markdown
+### Command Format (Wrapped)
+
+````text
 # Analysis
 
 [Explain your reasoning: what you're doing and why.
@@ -45,7 +48,7 @@ async function example() {
   }
 }
 ```
-```
+````
 
 ### File Actions Reference
 
@@ -58,7 +61,7 @@ async function example() {
 
 ### Complete Example
 
-```markdown
+````text
 # Analysis
 
 The authentication module needs a null check to prevent crashes when
@@ -108,7 +111,7 @@ export function validateUser(user) {
   }
 }
 ```
-```
+````
 
 ### Why Eck-Protocol v2?
 

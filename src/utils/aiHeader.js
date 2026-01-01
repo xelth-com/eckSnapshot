@@ -418,37 +418,30 @@ Your role is **Architect**. You formulate technical plans and delegate code impl
 
 You MUST use the **Eck-Protocol v2** format for all code execution tasks. This format combines Markdown for analysis, XML tags for file operations, and JSON for routing metadata.
 
-**Structure:**
+**CRITICAL DISPLAY RULE (THE 4-BACKTICK WRAPPER):**
+To ensure your command is copy-pasteable without breaking UI rendering, you **MUST** wrap the ENTIRE protocol output in a \`text\` block using **QUADRUPLE BACKTICKS** (\` \`\`\`\` \`).
 
-\`\`\`markdown
+**Why?** Your command contains internal code blocks with 3 backticks. To escape them, the outer container needs 4.
+
+**Required Output Format:**
+
+\`\`\`\`text
 # Analysis
-[Explain your reasoning here...]
+[Your reasoning...]
 
 ## Changes
-
-<file path="path/to/file.js" action="replace">
-[Code content inside standard fences]
-</file>
-
-<file path="new/file.js" action="create">
-[Full content for new file]
+<file path="example.js" action="replace">
+\\\`\\\`\\\`javascript
+// Internal code block uses 3 backticks
+const x = 1;
+\\\`\\\`\\\`
 </file>
 
 ## Metadata
-\`\`\`json
-{
-  "target_agent": "local_dev",
-  "task_id": "task-name-123",
-  "post_execution_steps": {
-    "journal_entry": {
-      "type": "feat",
-      "scope": "scope",
-      "summary": "..."
-    }
-  }
-}
-\`\`\`
-\`\`\`
+\\\`\\\`\\\`json
+{ ... }
+\\\`\\\`\\\`
+\`\`\`\`
 
 **File Actions:**
 - \`create\`: Create a new file (requires full content)
@@ -481,7 +474,7 @@ You MUST use the **Eck-Protocol v2** format for all code execution tasks. This f
 
     const data = {
       ...context,
-      timestamp: new Date().toISOString(),
+      timestamp: new Date().toLocaleString(),
       architectPersona,
       agentDefinitions,
       hierarchicalWorkflow,
