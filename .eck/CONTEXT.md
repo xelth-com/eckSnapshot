@@ -18,13 +18,20 @@ A specialized CLI tool designed to create and restore single-file text snapshots
 - **Execa**: For robust shell command execution.
 - **Vitest**: For the testing suite.
 
-## Hybrid AI Architecture (Supervisor-Worker)
+## AI Infrastructure
 
-The project utilizes a cost-efficient hybrid model:
-1.  **Claude Sonnet (Supervisor):** Acts as the project lead. It maintains the session context, makes decisions, and manages the file system. It avoids reading large file contents directly to save tokens.
-2.  **MiniMax M2.1 (Worker):** Accessed via MCP. It performs the "heavy lifting" — reading full file contents and generating code implementations.
+- **Supervisor:** Claude Sonnet 4.5 (High Reasoning, Team Lead)
+- **Worker:** MiniMax M2.1 (High Context / Low Cost, via MCP)
+- **Consultant:** Claude Opus 4.5 (Available via Consilium for critical decisions)
 
-**Protocol:** The Supervisor delegates reading/writing tasks to the Worker via `delegate_coding_task`.
+**Delegation Policy:** Controlled via `setup.json` -> `delegationStrategy`. Current mode determines how aggressively tasks are offloaded to MiniMax.
+
+### Modes
+| Mode | Threshold | Use Case |
+|------|-----------|----------|
+| `aggressive` | 50 lines | Maximum token savings |
+| `balanced` | 200 lines | Default, good balance |
+| `precise` | 1000 lines | Maximum quality, minimal delegation |
 
 ## Important Notes
 Any crucial information that developers should know when working on this project.

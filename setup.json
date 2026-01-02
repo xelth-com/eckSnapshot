@@ -569,8 +569,8 @@
     "executionAgents": {
       "local_dev": {
         "active": true,
-        "name": "Local Development Agent (AGENT_LOCAL_DEV)",
-        "description": "Cross-platform local development with SQLite",
+        "name": "Local Development Agent (Sonnet 4.5)",
+        "description": "Primary interactive agent running on Claude Sonnet 4.5. Acts as the Team Lead.",
         "guiSupport": true,
         "identification": {
           "markers": [
@@ -720,7 +720,7 @@
       "minimax_worker": {
         "active": true,
         "name": "MiniMax M2.1 Worker (MCP)",
-        "description": "High-context, low-cost worker for heavy lifting. Accessed via 'delegate_coding_task' tool.",
+        "description": "Heavy lifter for bulk coding. Behavior controlled by delegationStrategy.",
         "guiSupport": false,
         "identification": {
           "markers": ["minimax", "delegate_coding_task"]
@@ -754,6 +754,23 @@
         "No sensitive credentials interaction",
         "MUST NOT use 'eck-snapshot ask-claude' wrapper for these tasks"
       ]
+    },
+    "delegationStrategy": {
+      "currentMode": "balanced",
+      "modes": {
+        "aggressive": {
+          "description": "Maximize token savings. Delegate ALL file reading and coding > 50 lines.",
+          "threshold_lines": 50
+        },
+        "balanced": {
+          "description": "Default. Delegate full file refactoring and massive generation. Read small files directly.",
+          "threshold_lines": 200
+        },
+        "precise": {
+          "description": "Maximize quality. Use Sonnet 4.5 for logic, MiniMax only for boilerplate/docs.",
+          "threshold_lines": 1000
+        }
+      }
     },
     "header": {
       "defaultEnabled": true,
@@ -791,12 +808,12 @@
     "defaultMembers": {
       "architect": {
         "active": true,
-        "modelName": "Claude/Gemini",
+        "modelName": "Opus 4.5",
         "role": "System Architecture",
         "strengths": [
-          "monorepo structure",
-          "workspace dependencies",
-          "API design"
+          "Complex Reasoning",
+          "System Design",
+          "Critical Decisions"
         ]
       },
       "database_expert": {
