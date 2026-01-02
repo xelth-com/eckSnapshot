@@ -1,29 +1,11 @@
 
-# eckSnapshot (v5.0.0)
+# eckSnapshot (v5.0.2)
 
 A lightweight, platform-independent CLI for creating focused, AI-ready project snapshots.
 
 `eckSnapshot` is a powerful command-line tool designed to solve a critical problem in AI-assisted development: providing clear, complete, and focused context to Large Language Models (LLMs). It allows you to package an entire project codebase—or just specific parts of it—into a single, clean text file.
 
 This tool is built for a modern workflow where you act as the architect, guiding the overall strategy, while AI agents handle the detailed implementation.
-
-## 🤖 MiniMax M2.1 Integration
-
-eckSnapshot supports **two ways** to integrate with MiniMax M2.1, a cost-effective AI model with a huge context window:
-
-### Method 1: Supervisor-Worker Mode (Hybrid)
-Claude Code acts as the Supervisor, delegating heavy tasks to MiniMax via MCP. Best for interactive development.
-- **Setup:** [Hybrid Mode Guide](./MINIMAX_INTEGRATION.md#method-1-supervisor-worker-mode-hybrid-architecture)
-- **Cost:** Moderate (Claude + MiniMax)
-- **Complexity:** Requires MCP setup
-
-### Method 2: Standalone Mode
-Use MiniMax directly as your primary AI assistant. Best for batch processing and bulk refactoring.
-- **Setup:** [Standalone Guide](./MINIMAX_INTEGRATION.md#method-2-standalone-mode-direct-minimax-usage)
-- **Cost:** Low (MiniMax only)
-- **Complexity:** Simple shell alias
-
-👉 **[Read the Full Integration Guide](./MINIMAX_INTEGRATION.md)** for detailed setup instructions and comparison.
 
 ## The Core Workflow
 
@@ -254,6 +236,24 @@ This generates `.eck/snapshots/update_<timestamp>.md`.
 *   `show <file1> <file2> ...`: Display full content of specific files (used for lazy loading in skeleton workflow).
 
 For a full list of commands and options, run `eck-snapshot --help`.
+
+## 🤖 MiniMax M2.1 Integration
+
+eckSnapshot supports **two ways** to integrate with MiniMax M2.1, a cost-effective AI model with a huge context window:
+
+### Method 1: Supervisor-Worker Mode (Hybrid)
+Claude Code acts as the Supervisor, delegating heavy tasks to MiniMax via MCP. Best for interactive development.
+- **Setup:** [Hybrid Mode Guide](./MINIMAX_INTEGRATION.md#method-1-supervisor-worker-mode-hybrid-architecture)
+- **Cost:** Moderate (Claude + MiniMax)
+- **Complexity:** Requires MCP setup
+
+### Method 2: Standalone Mode
+Use MiniMax directly as your primary AI assistant. Best for batch processing and bulk refactoring.
+- **Setup:** [Standalone Guide](./MINIMAX_INTEGRATION.md#method-2-standalone-mode-direct-minimax-usage)
+- **Cost:** Low (MiniMax only)
+- **Complexity:** Simple shell alias
+
+👉 **[Read the Full Integration Guide](./MINIMAX_INTEGRATION.md)** for detailed setup instructions and comparison.
 
 ## Experimental Features
 
