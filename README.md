@@ -7,10 +7,23 @@ A lightweight, platform-independent CLI for creating focused, AI-ready project s
 
 This tool is built for a modern workflow where you act as the architect, guiding the overall strategy, while AI agents handle the detailed implementation.
 
-## 🤖 Hybrid AI Support (MiniMax Integration)
+## 🤖 MiniMax M2.1 Integration
 
-This project supports a **Supervisor-Worker** mode to save tokens and costs.
-👉 **[Read the Integration Guide](./MINIMAX_INTEGRATION.md)** to enable this feature.
+eckSnapshot supports **two ways** to integrate with MiniMax M2.1, a cost-effective AI model with a huge context window:
+
+### Method 1: Supervisor-Worker Mode (Hybrid)
+Claude Code acts as the Supervisor, delegating heavy tasks to MiniMax via MCP. Best for interactive development.
+- **Setup:** [Hybrid Mode Guide](./MINIMAX_INTEGRATION.md#method-1-supervisor-worker-mode-hybrid-architecture)
+- **Cost:** Moderate (Claude + MiniMax)
+- **Complexity:** Requires MCP setup
+
+### Method 2: Standalone Mode
+Use MiniMax directly as your primary AI assistant. Best for batch processing and bulk refactoring.
+- **Setup:** [Standalone Guide](./MINIMAX_INTEGRATION.md#method-2-standalone-mode-direct-minimax-usage)
+- **Cost:** Low (MiniMax only)
+- **Complexity:** Simple shell alias
+
+👉 **[Read the Full Integration Guide](./MINIMAX_INTEGRATION.md)** for detailed setup instructions and comparison.
 
 ## The Core Workflow
 
