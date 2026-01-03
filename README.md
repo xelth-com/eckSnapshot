@@ -239,21 +239,23 @@ For a full list of commands and options, run `eck-snapshot --help`.
 
 ## 🤖 MiniMax M2.1 Integration
 
-eckSnapshot supports **two ways** to integrate with MiniMax M2.1, a cost-effective AI model with a huge context window:
+eckSnapshot supports **two ways** to integrate with MiniMax M2.1, a cost-effective AI model with a 1M token context window:
 
 ### Method 1: Supervisor-Worker Mode (Hybrid)
 Claude Code acts as the Supervisor, delegating heavy tasks to MiniMax via MCP. Best for interactive development.
-- **Setup:** [Hybrid Mode Guide](./MINIMAX_INTEGRATION.md#method-1-supervisor-worker-mode-hybrid-architecture)
+- **Platforms:** Linux, macOS, Windows (CMD & PowerShell)
 - **Cost:** Moderate (Claude + MiniMax)
 - **Complexity:** Requires MCP setup
+- **Setup:** [Hybrid Mode Guide](./MINIMAX_INTEGRATION.md#method-1-supervisor-worker-mode-hybrid-architecture)
 
 ### Method 2: Standalone Mode
 Use MiniMax directly as your primary AI assistant. Best for batch processing and bulk refactoring.
-- **Setup:** [Standalone Guide](./MINIMAX_INTEGRATION.md#method-2-standalone-mode-direct-minimax-usage)
+- **Platforms:** Linux, macOS, Windows (Batch & PowerShell)
 - **Cost:** Low (MiniMax only)
-- **Complexity:** Simple shell alias
+- **Complexity:** Simple alias/script
+- **Setup:** [Standalone Guide](./MINIMAX_INTEGRATION.md#method-2-standalone-mode-direct-minimax-usage)
 
-👉 **[Read the Full Integration Guide](./MINIMAX_INTEGRATION.md)** for detailed setup instructions and comparison.
+👉 **[Full Integration Guide](./MINIMAX_INTEGRATION.md)** (v5.1.0) - Now with complete Windows support!
 
 ## Experimental Features
 
