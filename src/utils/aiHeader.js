@@ -290,18 +290,36 @@ export async function generateEnhancedAIHeader(context, isGitRepo = false) {
     // --- End context building ---
 
 
-    // Check if agent mode is enabled (including JAG mode)
+    // Check if agent mode is enabled (including JAG/JAS/JAO modes)
     const isJag = context.options && context.options.jag;
-    if (context.options && (context.options.agent || isJag)) {
+    const isJas = context.options && context.options.jas;
+    const isJao = context.options && context.options.jao;
+
+    if (context.options && (context.options.agent || isJag || isJas || isJao)) {
       let agentPromptTemplate = await loadTemplate(promptTemplates.agent);
 
-      // Customize for JAG mode
+      // Customize identity based on mode
       if (isJag) {
-        // Replace template variables for JAG-specific identity
         agentPromptTemplate = agentPromptTemplate
           .replace(/\{\{agentName\}\}/g, 'Junior Architect (Gemini 3 Pro)')
-          .replace(/\{\{agentDescription\}\}/g, 'Massive Context Handler. Use when changes span >50 files or require full repo understanding.')
+          .replace(/\{\{agentDescription\}\}/g, 'Massive Context Handler. Use when changes span >50 files.')
           .replace(/\{\{modelName\}\}/g, 'Gemini 3 Pro');
+      } else if (isJas) {
+        agentPromptTemplate = agentPromptTemplate
+          .replace(/\{\{agentName\}\}/g, 'Junior Architect (Sonnet 4.5)')
+          .replace(/\{\{agentDescription\}\}/g, 'Fast Manager & Implementer. Uses MiniMax for bulk work.')
+          .replace(/\{\{modelName\}\}/g, 'Claude 3.5 Sonnet');
+      } else if (isJao) {
+        agentPromptTemplate = agentPromptTemplate
+          .replace(/\{\{agentName\}\}/g, 'Junior Architect (Opus 4.5)')
+          .replace(/\{\{agentDescription\}\}/g, 'Deep Thinker & Planner. Use for critical architecture.')
+          .replace(/\{\{modelName\}\}/g, 'Claude 3.5 Opus');
+      } else {
+        // Fallback default
+        agentPromptTemplate = agentPromptTemplate
+          .replace(/\{\{agentName\}\}/g, 'Junior Architect')
+          .replace(/\{\{agentDescription\}\}/g, 'Standard Execution Agent')
+          .replace(/\{\{modelName\}\}/g, 'Claude');
       }
 
       const agentHeader = `${agentPromptTemplate}

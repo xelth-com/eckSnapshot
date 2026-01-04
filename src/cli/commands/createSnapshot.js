@@ -561,49 +561,18 @@ export async function createRepoSnapshot(repoPath, options) {
 
     spinner.succeed('Creating snapshots...');
 
-    // Determine if we need to generate a full snapshot content body
-    // We only need the full body (file contents) if we are in Default mode or JAG mode.
-    // JAS/JAO only need the tree for CLAUDE.md.
-    const needsContentBody = isJag || (!isJas && !isJao);
+    // --- LOGIC UPDATE: Always include content ---
+    // The Architect needs full visibility of the code to make decisions.
+    // We strictly use processProjectFiles for all modes.
 
-    // Step 1: Process all files ONCE (only if we need content body)
     let stats, contentArray, successfulFileObjects, allFiles, processedRepoPath;
 
-    if (needsContentBody) {
-      const result = await processProjectFiles(repoPath, options, config, projectDetection.type);
-      stats = result.stats;
-      contentArray = result.contentArray;
-      successfulFileObjects = result.successfulFileObjects;
-      allFiles = result.allFiles;
-      processedRepoPath = result.repoPath;
-    } else {
-      // For JAS/JAO, we still need to scan files to get the tree, but we don't need content
-      // We can use a lightweight scan
-      processedRepoPath = path.resolve(repoPath);
-      // getProjectFiles returns array of strings in some versions, or object in others.
-      // Based on earlier imports, getProjectFiles returns array (if git) or array (if scan).
-      // Let's ensure we handle it safely.
-      let filesResult = await getProjectFiles(processedRepoPath, config);
-      allFiles = Array.isArray(filesResult) ? filesResult : (filesResult.files || []);
-
-      // Initialize FULL stats object to prevent "undefined reading length" errors later
-      stats = {
-        totalFiles: allFiles.length,
-        includedFiles: 0,
-        processedSize: 0,
-        totalSize: 0,
-        errors: [],
-        skippedFilesDetails: new Map(),
-        skipReasons: new Map(),
-        excludedFiles: 0,
-        binaryFiles: 0,
-        oversizedFiles: 0,
-        ignoredFiles: 0,
-        secretsRedacted: 0
-      };
-      contentArray = [];
-      successfulFileObjects = [];
-    }
+    const result = await processProjectFiles(repoPath, options, config, projectDetection.type);
+    stats = result.stats;
+    contentArray = result.contentArray;
+    successfulFileObjects = result.successfulFileObjects;
+    allFiles = result.allFiles;
+    processedRepoPath = result.repoPath;
 
     const originalCwd = process.cwd(); // Get CWD *before* chdir
     process.chdir(processedRepoPath); // Go back to repo path for git hash and tree
@@ -646,15 +615,8 @@ export async function createRepoSnapshot(repoPath, options) {
       let architectFilePath = null;
       let jaFilePath = null;
 
-      // Determine file body based on mode
-      let fileBody;
-      if (needsContentBody) {
-        // Full content mode (Default / JAG)
-        fileBody = (directoryTree ? `\n## Directory Structure\n\n\`\`\`\n${directoryTree}\`\`\`\n\n` : '') + contentArray.join('');
-      } else {
-        // Structural mode (JAS / JAO) - Only tree + context, no file content
-        fileBody = `\n## 🛑 STRUCTURAL SNAPSHOT ONLY (JAS/JAO Mode)\n\n> **Architect Note:** Code content is omitted to save context.\n> The Agent (Claude) has access to the full file system.\n> This document serves as your map.\n\n## Directory Structure\n\n\`\`\`\n${directoryTree}\`\`\`\n\n`;
-      }
+      // File body always includes full content
+      let fileBody = (directoryTree ? `\n## Directory Structure\n\n\`\`\`\n${directoryTree}\`\`\`\n\n` : '') + contentArray.join('');
 
       // Helper to write snapshot file
       const writeSnapshot = async (suffix, isAgentMode) => {
@@ -732,17 +694,12 @@ export async function createRepoSnapshot(repoPath, options) {
       if (jaFilePath) {
         console.log(`📄 Junior Arch File: ${jaFilePath}`);
       }
-      if (!needsContentBody) {
-        console.log(`📝 Mode: **${claudeMode.toUpperCase()}** (Context Only + CLAUDE.md configured)`);
-      }
 
       console.log(`📊 Files scanned: ${stats.totalFiles}`);
-      if (needsContentBody) {
-        console.log(`📊 Files processed: ${stats.includedFiles}/${stats.totalFiles}`);
-        console.log(`📏 Total size: ${formatSize(stats.totalSize)}`);
-        console.log(`📦 Processed size: ${formatSize(stats.processedSize)}`);
-        console.log(`📋 Format: ${fileExtension.toUpperCase()}`);
-      }
+      console.log(`📊 Files processed: ${stats.includedFiles}/${stats.totalFiles}`);
+      console.log(`📏 Total size: ${formatSize(stats.totalSize)}`);
+      console.log(`📦 Processed size: ${formatSize(stats.processedSize)}`);
+      console.log(`📋 Format: ${fileExtension.toUpperCase()}`);
 
       if (sortedIncludedStats.length > 0) {
         console.log('\n📦 Included File Types:');

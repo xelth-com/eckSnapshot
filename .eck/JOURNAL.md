@@ -1,4 +1,34 @@
 ---
+task_id: fix-jas-jao-content-and-headers
+date: 2026-01-04T00:00:00Z
+type: fix
+scope: core
+---
+
+# Restore full content for JAS/JAO snapshots and fix header interpolation
+
+**Critical Fixes:**
+
+1. **Reverted "Structural Only" Logic**:
+   - JAS/JAO snapshots now include FULL code content
+   - Senior Architect needs complete visibility to make informed decisions
+   - Removed lightweight scanning path that excluded file content
+   - All modes now use `processProjectFiles` for consistent full content
+
+2. **Fixed Header Interpolation**:
+   - `aiHeader.js` now correctly handles JAS and JAO modes
+   - Added template variable replacement for:
+     - JAS: "Junior Architect (Sonnet 4.5)" - Fast Manager & Implementer
+     - JAO: "Junior Architect (Opus 4.5)" - Deep Thinker & Planner
+   - Previously only JAG mode had proper header customization
+
+**Modified Files**:
+- `src/cli/commands/createSnapshot.js`: Removed conditional content logic
+- `src/utils/aiHeader.js`: Added JAS/JAO header interpolation
+
+**Testing**: All 18 tests pass ✅
+
+---
 task_id: compact-protocol-refactor
 date: 2026-01-04T00:00:00Z
 type: refactor
