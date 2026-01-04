@@ -580,9 +580,27 @@ export async function createRepoSnapshot(repoPath, options) {
       // For JAS/JAO, we still need to scan files to get the tree, but we don't need content
       // We can use a lightweight scan
       processedRepoPath = path.resolve(repoPath);
-      const result = await getProjectFiles(processedRepoPath, config);
-      allFiles = result.files;
-      stats = { totalFiles: allFiles.length, includedFiles: 0, processedSize: 0, totalSize: 0 };
+      // getProjectFiles returns array of strings in some versions, or object in others.
+      // Based on earlier imports, getProjectFiles returns array (if git) or array (if scan).
+      // Let's ensure we handle it safely.
+      let filesResult = await getProjectFiles(processedRepoPath, config);
+      allFiles = Array.isArray(filesResult) ? filesResult : (filesResult.files || []);
+
+      // Initialize FULL stats object to prevent "undefined reading length" errors later
+      stats = {
+        totalFiles: allFiles.length,
+        includedFiles: 0,
+        processedSize: 0,
+        totalSize: 0,
+        errors: [],
+        skippedFilesDetails: new Map(),
+        skipReasons: new Map(),
+        excludedFiles: 0,
+        binaryFiles: 0,
+        oversizedFiles: 0,
+        ignoredFiles: 0,
+        secretsRedacted: 0
+      };
       contentArray = [];
       successfulFileObjects = [];
     }

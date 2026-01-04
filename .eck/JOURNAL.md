@@ -1,4 +1,20 @@
 ---
+task_id: battle-test-royal-court-docs
+date: 2026-01-04T00:00:00Z
+type: docs
+scope: eck
+---
+
+# Document Royal Court autonomous protocols
+
+- Added "Advanced Autonomous Protocols" section to `.eck/OPERATIONS.md`
+- Documented Token Economy (Smart Delegation Protocol)
+- Documented Ralph Wiggum Protocol (Deterministic Persistence)
+- Documented Feedback Loop (Reporting Protocol with `.eck/AnswerToSA.md`)
+- Created first `.eck/AnswerToSA.md` feedback report implementing the new protocol
+- All documentation aligned with implementation in `src/utils/claudeMdGenerator.js`
+
+---
 task_id: task-20260104-royal-court-architecture
 date: 2026-01-04
 type: feat
