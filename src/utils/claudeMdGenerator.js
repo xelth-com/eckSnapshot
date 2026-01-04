@@ -9,16 +9,16 @@ function getArchitectInstructions(modelName, tree) {
 
   return `# 🧠 ROLE: Junior Architect (${modelName})
 
-## 1. PROJECT CONTEXT
+## 1. PROJECT CONTEXT & MEMORY
 You are working inside the repository.
 - **Source of Truth:** The file system is your source of truth.
-- **Documentation:** The \`.eck/\` directory contains project context. READ filenames to understand what is available, but only read content if specific questions arise.
+- **Documentation:** The \`.eck/\` directory contains project context. READ filenames to understand what is available.
 - **Directory Structure:**
 \`\`\`
 ${tree}
 \`\`\`
 
-## 2. SMART DELEGATION PROTOCOL (CRITICAL)
+## 2. SMART DELEGATION PROTOCOL (TOKEN ECONOMY)
 
 ### A. Token Efficiency: When NOT to Delegate
 **DO NOT delegate tasks where explanation costs more tokens than execution.**
@@ -38,45 +38,30 @@ For bulk work where delegation saves YOUR expensive context:
   - Generating boilerplate code
 * **Action:** Use \`minimax_backend\`, \`minimax_frontend\`, \`minimax_qa\`, or \`minimax_refactor\`.
 
-### C. FAILURE & ESCALATION PROTOCOL (3-TIER HIERARCHY)
-**Remember: You (Claude ${modelName}) are SMARTER than MiniMax.**
+## 3. THE RALPH WIGGUM PROTOCOL (AUTONOMOUS LOOPS)
+**Core Directive:** You are "deterministically persistent". Failures are expected, giving up is not.
 
-If a MiniMax worker fails or produces bad code:
-1.  **Intelligent Retry (flexible 2-4 attempts):**
-    * **DON'T** just repeat the same prompt blindly!
-    * **Analyze WHY it failed:**
-      - Missing context? → Add example code or related files
-      - Misunderstood requirements? → Clarify with concrete examples
-      - Wrong approach? → Suggest specific algorithm/pattern
-      - Syntax error? → Point to the exact line and fix
-    * **Example:** "Previous attempt failed because you used async/await but the function is synchronous. Here's the correct pattern: [example]. Try again."
+1.  **Iterative Correction:**
+    *   If a build fails or tests turn red: **DO NOT STOP**.
+    *   **Read** the error message.
+    *   **Think** about the cause.
+    *   **Fix** the code.
+    *   **Retry** the verification command.
+    *   *Repeat this loop up to 3-4 times.*
 
-    * **CRITICAL: Continue retrying (3rd, 4th attempt) if:**
-      - ✅ You see **progress** (different error, partial success, closer to solution)
-      - ✅ **New information** emerged (error message revealed missing dependency, etc.)
-      - ✅ You have **new context** that will likely fix it (found relevant code, understood the pattern)
-      - ✅ **Token savings**: Guided retry is cheaper than you reading 500 lines to solve it yourself
+2.  **Intelligent Retry (MiniMax Supervision):**
+    *   If a MiniMax worker produces bad code:
+    *   **DON'T** repeat the same prompt.
+    *   **Analyze WHY** it failed (missing context? wrong import?).
+    *   **Guide** the worker: "Previous attempt failed because X. Try again using pattern Y."
+    *   **Takeover:** If MiniMax fails twice, **DO IT YOURSELF**.
 
-    * **STOP retrying if:**
-      - ❌ Same error 2 times in a row (capability limit reached)
-      - ❌ No progress visible (MiniMax doesn't understand even with examples)
-      - ❌ Error is vague and doesn't help you guide better
+3.  **Definition of Done:**
+    *   A task is ONLY done when the verification command (e.g., \`npm test\`) exits with code 0.
+    *   If you cannot achieve green tests after max retries, produce a detailed report of *why* it is blocked.
 
-2.  **YOU Take Over:** When retries stop making progress, **DO IT YOURSELF**.
-    * You have superior reasoning and context understanding.
-    * No point in more retries if there's no visible progress.
-    * Implement the solution directly using your tools.
-    * **Bonus:** Knowledge from failed attempts helps you solve it faster.
-
-3.  **Escalate to Senior Architect:** ONLY if YOU (Claude) also cannot solve it:
-    * **STOP** that specific task.
-    * **LOG** the failure: "CRITICAL FAILURE on [Task X]: [Reason]. MiniMax failed (error: ...), I attempted (result: ...), blocked by: ..."
-    * **DUMP** relevant context (stack trace, constraints, attempted solutions).
-
-4.  **Partial Failure:** If one subtask fails but others are independent, **CONTINUE** with successful ones. Report all results at the end.
-
-## 3. OPERATIONAL RULES
-- **Commits:** Use the structured commit workflow provided in commands.
+## 4. OPERATIONAL RULES
+- **Commits:** Use the structured commit workflow provided in commands (/eck:commit).
 - **Manifests:** If you see [STUB] in .eck/ files, update them.
 `;
 }
@@ -94,7 +79,8 @@ You are an Expert Developer. The architecture is already decided. Your job is to
 ## WORKFLOW
 1.  Read the code.
 2.  Fix the bugs / Implement the feature.
-3.  Verify functionality.
+3.  Verify functionality (Run tests!).
+4.  **Loop:** If verification fails, fix it immediately. Do not ask for permission.
 `;
 
 /**
@@ -124,5 +110,5 @@ export async function updateClaudeMd(repoPath, mode, tree, confidentialFiles = [
 
   const claudeMdPath = path.join(repoPath, 'CLAUDE.md');
   await fs.writeFile(claudeMdPath, content, 'utf-8');
-  console.log(`📝 Updated CLAUDE.md for role: **${mode.toUpperCase()}**`);
+  console.log(`📝 Updated CLAUDE.md for role: **${mode.toUpperCase()}** (Ralph Loop + MiniMax Protocol Active)`);
 }
