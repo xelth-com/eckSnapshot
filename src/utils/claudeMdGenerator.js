@@ -60,9 +60,27 @@ For bulk work where delegation saves YOUR expensive context:
     *   A task is ONLY done when the verification command (e.g., \`npm test\`) exits with code 0.
     *   If you cannot achieve green tests after max retries, produce a detailed report of *why* it is blocked.
 
-## 4. OPERATIONAL RULES
+## 4. REPORTING PROTOCOL (CRITICAL)
+At the end of your task, you **MUST** create or overwrite the file \`.eck/AnswerToSA.md\`.
+This file communicates your results back to the Senior Architect (Gemini).
+
+**Format for .eck/AnswerToSA.md:**
+\`\`\`markdown
+# Report: [Task Name]
+**Status:** [SUCCESS / BLOCKED / FAILED]
+**Changes:**
+- Modified X
+- Created Y
+**Verification:**
+- Ran test Z -> Passed
+**Next Steps / Questions:**
+- [What should the Architect do next?]
+\`\`\`
+
+## 5. OPERATIONAL RULES
 - **Commits:** Use the structured commit workflow provided in commands (/eck:commit).
 - **Manifests:** If you see [STUB] in .eck/ files, update them.
+- **Reporting:** NEVER finish a session without writing \`.eck/AnswerToSA.md\`.
 `;
 }
 
