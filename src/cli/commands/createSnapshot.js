@@ -642,47 +642,74 @@ export async function createRepoSnapshot(repoPath, options) {
       const eckManifest = await loadProjectEckManifest(processedRepoPath);
       const isGitRepo = await checkGitRepository(processedRepoPath);
 
-      // --- BRANCH 1: Generate Snapshot File (Default or JAG) ---
+      // --- BRANCH 1: Generate Snapshot File (ALWAYS) ---
       let architectFilePath = null;
       let jaFilePath = null;
 
+      // Determine file body based on mode
+      let fileBody;
       if (needsContentBody) {
-        const fileBody = (directoryTree ? `\n## Directory Structure\n\n\`\`\`\n${directoryTree}\`\`\`\n\n` : '') + contentArray.join('');
+        // Full content mode (Default / JAG)
+        fileBody = (directoryTree ? `\n## Directory Structure\n\n\`\`\`\n${directoryTree}\`\`\`\n\n` : '') + contentArray.join('');
+      } else {
+        // Structural mode (JAS / JAO) - Only tree + context, no file content
+        fileBody = `\n## 🛑 STRUCTURAL SNAPSHOT ONLY (JAS/JAO Mode)\n\n> **Architect Note:** Code content is omitted to save context.\n> The Agent (Claude) has access to the full file system.\n> This document serves as your map.\n\n## Directory Structure\n\n\`\`\`\n${directoryTree}\`\`\`\n\n`;
+      }
 
-        // Helper to write snapshot file
-        const writeSnapshot = async (suffix, isAgentMode) => {
-          const opts = { ...options, agent: isAgentMode, jag: isJag };
-          const header = await generateEnhancedAIHeader({ stats, repoName, mode: 'file', eckManifest, options: opts, repoPath: processedRepoPath }, isGitRepo);
-          let baseFilename = `${repoName}_snapshot_${timestamp}${gitHash ? `_${gitHash}` : ''}`;
+      // Helper to write snapshot file
+      const writeSnapshot = async (suffix, isAgentMode) => {
+        const opts = { ...options, agent: isAgentMode, jag: isJag, jas: isJas, jao: isJao };
+        const header = await generateEnhancedAIHeader({ stats, repoName, mode: 'file', eckManifest, options: opts, repoPath: processedRepoPath }, isGitRepo);
 
-          // Add '_sk' suffix for skeleton mode snapshots
-          if (options.skeleton) {
-            baseFilename += '_sk';
-          }
+        // Compact filename format: eck{timestamp}_{hash}_{suffix}.md
+        const shortHash = gitHash ? gitHash.substring(0, 7) : '';
+        let fname = `eck${timestamp}`;
+        if (shortHash) fname += `_${shortHash}`;
 
-          const fname = `${baseFilename}${suffix}.${fileExtension}`;
-          const fpath = path.join(outputPath, fname);
-          await fs.writeFile(fpath, header + fileBody);
-          console.log(`📄 Generated Snapshot: ${fname}`);
-          return fpath;
-        };
-
-        // If JAG mode, create special _jag snapshot
-        if (isJag) {
-          architectFilePath = await writeSnapshot('_jag', true);
-        } else {
-          // Standard snapshot behavior
-          architectFilePath = await writeSnapshot('', false);
-
-          // --- File 2: Junior Architect Snapshot (legacy --with-ja support) ---
-          if (options.withJa && fileExtension === 'md') {
-            console.log('🖋️ Generating Junior Architect (_ja) snapshot...');
-            jaFilePath = await writeSnapshot('_ja', true);
-          }
+        // Add mode suffix
+        if (options.skeleton) {
+          fname += '_sk';
+        } else if (suffix) {
+          fname += suffix;
         }
 
-        // Save git anchor for future delta updates
-        await saveGitAnchor(processedRepoPath);
+        fname += `.${fileExtension}`;
+        const fpath = path.join(outputPath, fname);
+        await fs.writeFile(fpath, header + fileBody);
+        console.log(`📄 Generated Snapshot: ${fname}`);
+        return fpath;
+      };
+
+      // Generate snapshot file for ALL modes
+      if (isJag) {
+        architectFilePath = await writeSnapshot('_jag', true);
+      } else if (isJas) {
+        architectFilePath = await writeSnapshot('_jas', true);
+      } else if (isJao) {
+        architectFilePath = await writeSnapshot('_jao', true);
+      } else {
+        // Standard snapshot behavior
+        architectFilePath = await writeSnapshot('', false);
+
+        // --- File 2: Junior Architect Snapshot (legacy --with-ja support) ---
+        if (options.withJa && fileExtension === 'md') {
+          console.log('🖋️ Generating Junior Architect (_ja) snapshot...');
+          jaFilePath = await writeSnapshot('_ja', true);
+        }
+      }
+
+      // Save git anchor for future delta updates
+      await saveGitAnchor(processedRepoPath);
+
+      // Reset update counter for sequential tracking
+      try {
+        const counterPath = path.join(processedRepoPath, '.eck', 'update_seq');
+        await fs.mkdir(path.dirname(counterPath), { recursive: true });
+        // Format: HASH:COUNT
+        const shortHash = gitHash ? gitHash.substring(0, 7) : 'nohash';
+        await fs.writeFile(counterPath, `${shortHash}:0`);
+      } catch (e) {
+        // Non-critical, continue
       }
 
       // --- BRANCH 2: Update CLAUDE.md (JAS / JAO / Default) ---
@@ -706,7 +733,7 @@ export async function createRepoSnapshot(repoPath, options) {
         console.log(`📄 Junior Arch File: ${jaFilePath}`);
       }
       if (!needsContentBody) {
-        console.log(`📝 Mode: CLAUDE.md only (${claudeMode.toUpperCase()})`);
+        console.log(`📝 Mode: **${claudeMode.toUpperCase()}** (Context Only + CLAUDE.md configured)`);
       }
 
       console.log(`📊 Files scanned: ${stats.totalFiles}`);

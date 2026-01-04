@@ -1,4 +1,28 @@
 ---
+task_id: compact-protocol-refactor
+date: 2026-01-04T00:00:00Z
+type: refactor
+scope: cli
+---
+
+# Implement Compact Protocol: Short Naming, JAS Snapshots, and Update Sequencing
+
+- **Timestamp Format**: Changed from `YYYY-MM-DD_HH-mm-ss` to `YY-MM-DD_HH-mm` (2-digit year, no seconds)
+- **Snapshot Naming**: Updated to compact format `eck{timestamp}_{hash}_{suffix}.md`
+- **JAS/JAO Snapshots**: Now generate structural snapshot files (tree + manifests, no code)
+  - Provides Senior Architect with project context map
+  - Claude agent has full file system access via CLAUDE.md
+- **Update Sequencing**: Implemented sequential numbering (`_up1`, `_up2`, etc.)
+  - Tracked in `.eck/update_seq` file
+  - Counter resets when base snapshot changes
+  - Format: `eck{timestamp}_{hash}_upN.md`
+
+**Modified Files**:
+- `src/utils/fileUtils.js`: Compact timestamp generation
+- `src/cli/commands/createSnapshot.js`: Always generate snapshot, structural mode for JAS/JAO
+- `src/cli/commands/updateSnapshot.js`: Sequential update numbering
+
+---
 task_id: battle-test-royal-court-docs
 date: 2026-01-04T00:00:00Z
 type: docs

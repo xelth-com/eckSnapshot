@@ -93,7 +93,33 @@ ${agentReport}
     const diffOutput = await getGitDiffOutput(repoPath, anchor);
     const diffSection = `\n--- GIT DIFF (For Context) ---\n\n\`\`\`diff\n${diffOutput}\n\`\`\``;
 
-    const outputFilename = `update_${generateTimestamp()}.md`;
+    // Determine sequence number
+    let seqNum = 1;
+    const counterPath = path.join(repoPath, '.eck', 'update_seq');
+    try {
+      const seqData = await fs.readFile(counterPath, 'utf-8');
+      const [savedHash, savedCount] = seqData.split(':');
+      const shortAnchor = anchor.substring(0, 7);
+      // If anchor matches, increment. Otherwise reset to 1.
+      if (savedHash && savedHash.trim() === shortAnchor.trim()) {
+        seqNum = parseInt(savedCount || '0') + 1;
+      }
+    } catch (e) {
+      // File doesn't exist or is unreadable, start at 1
+    }
+
+    // Save new sequence
+    try {
+      const shortAnchor = anchor.substring(0, 7);
+      await fs.writeFile(counterPath, `${shortAnchor}:${seqNum}`);
+    } catch (e) {
+      // Non-critical, continue
+    }
+
+    // Compact filename: eck{timestamp}_{hash}_upN.md
+    const timestamp = generateTimestamp();
+    const shortAnchor = anchor.substring(0, 7);
+    const outputFilename = `eck${timestamp}_${shortAnchor}_up${seqNum}.md`;
     const outputPath = path.join(repoPath, '.eck', 'snapshots', outputFilename);
 
     await fs.mkdir(path.dirname(outputPath), { recursive: true });
@@ -101,7 +127,7 @@ ${agentReport}
 
     spinner.succeed(`Update snapshot created: .eck/snapshots/${outputFilename}`);
     if (agentReport) {
-        console.log(chalk.green('📨 Included Agent Report (.eck/AnswerToSA.md)'));
+      console.log(chalk.green('📨 Included Agent Report (.eck/AnswerToSA.md)'));
     }
     console.log(`📦 Included ${includedCount} changed files.`);
 
