@@ -22,19 +22,57 @@ function render(template, data) {
   return output;
 }
 
-function buildAgentDefinitions(executionAgents) {
+/**
+ * Filters execution agents based on the current mode.
+ * Senior Architect should only see relevant agents, not internal workers.
+ */
+function getVisibleAgents(executionAgents, options) {
+  const visible = {};
+
+  // 1. Define Standard Coders (Always available as fallback)
+  // These keys must match IDs in setup.json
+  const standardCoders = ['local_dev', 'production_server', 'android_wsl_dev'];
+
+  // 2. Determine Priority Agent (The Junior Architect)
+  let priorityAgentKey = null;
+  if (options.jas) priorityAgentKey = 'jas';
+  if (options.jao) priorityAgentKey = 'jao';
+  if (options.jag) priorityAgentKey = 'jag';
+
+  // 3. Build the list
+  // If a JA is selected, add them FIRST with a note
+  if (priorityAgentKey && executionAgents[priorityAgentKey]) {
+    const ja = executionAgents[priorityAgentKey];
+    visible[priorityAgentKey] = {
+      ...ja,
+      description: `⭐ **PRIMARY AGENT** ⭐ ${ja.description} (Delegates to MiniMax)`
+    };
+  }
+
+  // Add standard coders
+  for (const key of standardCoders) {
+    if (executionAgents[key] && executionAgents[key].active) {
+      visible[key] = executionAgents[key];
+    }
+  }
+
+  // NOTE: We deliberately EXCLUDE 'minimax_worker' here.
+  // The Senior Architect does not call MiniMax directly; the JA does.
+
+  return visible;
+}
+
+function buildAgentDefinitions(filteredAgents) {
   let definitions = '';
-  for (const key in executionAgents) {
-    const agent = executionAgents[key];
-    if (agent.active) {
-      definitions += `
+  for (const key in filteredAgents) {
+    const agent = filteredAgents[key];
+    definitions += `
 ### ${agent.name} (ID: "${key}")
 - **Description:** ${agent.description}
 - **GUI Support:** ${agent.guiSupport ? 'Yes' : 'No (Headless)'}
 - **Capabilities:** ${agent.capabilities.join(', ')}
 - **Restrictions:** ${agent.restrictions.join(', ')}
 `;
-    }
   }
   return definitions;
 }
@@ -290,63 +328,67 @@ export async function generateEnhancedAIHeader(context, isGitRepo = false) {
     // --- End context building ---
 
 
-    // Check if agent mode is enabled (including JAG/JAS/JAO modes)
+    // --- LOGIC CHANGE: Snapshot is ALWAYS for Senior Architect ---
+    // The `agent` prompt template is used ONLY in CLAUDE.md (via claudeMdGenerator.js)
+    // NOT in the snapshot itself.
+
     const isJag = context.options && context.options.jag;
     const isJas = context.options && context.options.jas;
     const isJao = context.options && context.options.jao;
-
-    if (context.options && (context.options.agent || isJag || isJas || isJao)) {
-      let agentPromptTemplate = await loadTemplate(promptTemplates.agent);
-
-      // Customize identity based on mode
-      if (isJag) {
-        agentPromptTemplate = agentPromptTemplate
-          .replace(/\{\{agentName\}\}/g, 'Junior Architect (Gemini 3 Pro)')
-          .replace(/\{\{agentDescription\}\}/g, 'Massive Context Handler. Use when changes span >50 files.')
-          .replace(/\{\{modelName\}\}/g, 'Gemini 3 Pro');
-      } else if (isJas) {
-        agentPromptTemplate = agentPromptTemplate
-          .replace(/\{\{agentName\}\}/g, 'Junior Architect (Sonnet 4.5)')
-          .replace(/\{\{agentDescription\}\}/g, 'Fast Manager & Implementer. Uses MiniMax for bulk work.')
-          .replace(/\{\{modelName\}\}/g, 'Claude 3.5 Sonnet');
-      } else if (isJao) {
-        agentPromptTemplate = agentPromptTemplate
-          .replace(/\{\{agentName\}\}/g, 'Junior Architect (Opus 4.5)')
-          .replace(/\{\{agentDescription\}\}/g, 'Deep Thinker & Planner. Use for critical architecture.')
-          .replace(/\{\{modelName\}\}/g, 'Claude 3.5 Opus');
-      } else {
-        // Fallback default
-        agentPromptTemplate = agentPromptTemplate
-          .replace(/\{\{agentName\}\}/g, 'Junior Architect')
-          .replace(/\{\{agentDescription\}\}/g, 'Standard Execution Agent')
-          .replace(/\{\{modelName\}\}/g, 'Claude');
-      }
-
-      const agentHeader = `${agentPromptTemplate}
-
-${projectOverview}
-${eckManifestSection}
----
-
-## Project Snapshot Information
-
-- **Project**: ${context.repoName || 'Unknown'}
-- **Timestamp**: ${new Date().toISOString()}
-- **Files Included**: ${context.stats ? context.stats.includedFiles : 'Unknown'}
-- **Total Files in Repo**: ${context.stats ? context.stats.totalFiles : 'Unknown'}
-
----
-
-`;
-      return agentHeader;
-    }
+    const isJaMode = isJag || isJas || isJao;
 
     // --- Determine Workflow Content based on JA Flag ---
-    const withJa = context.options && context.options.withJa;
     let hierarchicalWorkflow = '';
     let commandFormats = '';
 
-    if (withJa) {
+    if (isJaMode) {
+      // Instructions strictly for the Senior Architect on how to use the JA
+      hierarchicalWorkflow = `### 👑 ROYAL COURT ARCHITECTURE (Active)
+
+You are the **Senior Architect**. You have a **Junior Architect** available to handle implementation.
+
+**PROTOCOL:**
+1.  **Prefer Delegation:** Unless the task is trivial (1-2 file edits), assign it to the **Junior Architect** (ID: \`jas\`, \`jao\`, or \`jag\` - see agents list above).
+2.  **Direct Execution:** Only use \`local_dev\` or \`production_server\` directly if the Junior Architect fails or for simple "hotfixes".
+3.  **No Micro-Management:** Do not tell the Junior Architect *how* to use MiniMax or internal tools. Just give them the strategic objective.
+`;
+
+      commandFormats = `### COMMAND FORMATS (Eck-Protocol v2)
+
+You MUST use the **Eck-Protocol v2** format for all code execution tasks. This format combines Markdown for analysis, XML tags for file operations, and JSON for routing metadata.
+
+**CRITICAL DISPLAY RULE (THE 4-BACKTICK WRAPPER):**
+To ensure your command is copy-pasteable without breaking UI rendering, you **MUST** wrap the ENTIRE protocol output in a \`text\` block using **QUADRUPLE BACKTICKS** (\` \`\`\`\` \`).
+
+**Why?** Your command contains internal code blocks with 3 backticks. To escape them, the outer container needs 4.
+
+**Required Output Format:**
+
+\`\`\`\`text
+# Analysis
+[Your reasoning...]
+
+## Changes
+<file path="example.js" action="replace">
+\\\`\\\`\\\`javascript
+// Internal code block uses 3 backticks
+const x = 1;
+\\\`\\\`\\\`
+</file>
+
+## Metadata
+\\\`\\\`\\\`json
+{ "target_agent": "jas", "task_id": "unique-id" }
+\\\`\\\`\\\`
+\`\`\`\`
+
+**File Actions:**
+- \`create\`: Create a new file (requires full content)
+- \`replace\`: Overwrite existing file (requires full content)
+- \`modify\`: Replace specific sections (provide context)
+- \`delete\`: Delete the file
+`;
+    } else if (context.options && context.options.withJa) {
       hierarchicalWorkflow = `### HIERARCHICAL AGENT WORKFLOW
 
 Your primary role is **Senior Architect**. You formulate high-level strategy. For complex code implementation, you will delegate to a **Junior Architect** agent (\`gemini_wsl\`), who has a detailed (\`_ja.md\`) snapshot and the ability to command a **Coder** agent (\`claude\`).
@@ -489,16 +531,8 @@ const x = 1;
     template = template.replace('{{eckManifestSection}}', eckManifestSection);
     // --- END INJECT ---
 
-    // Filter out gemini agents if not in JA mode
-    const filteredExecutionAgents = {};
-    for (const [key, agent] of Object.entries(executionAgents)) {
-      const isGeminiAgent = key.includes('gemini') || (agent.name && agent.name.toLowerCase().includes('gemini'));
-      if (isGeminiAgent) {
-        if (withJa && agent.active) filteredExecutionAgents[key] = agent;
-      } else {
-        if (agent.active) filteredExecutionAgents[key] = agent;
-      }
-    }
+    // Use the new filtering function to get visible agents
+    const filteredExecutionAgents = getVisibleAgents(executionAgents, context.options || {});
 
     const agentDefinitions = buildAgentDefinitions(filteredExecutionAgents);
 

@@ -620,7 +620,10 @@ export async function createRepoSnapshot(repoPath, options) {
 
       // Helper to write snapshot file
       const writeSnapshot = async (suffix, isAgentMode) => {
-        const opts = { ...options, agent: isAgentMode, jag: isJag, jas: isJas, jao: isJao };
+        // CHANGE: Force agent to FALSE for the main snapshot header.
+        // The snapshot is read by the Human/Senior Arch, not the Agent itself.
+        // The Agent reads CLAUDE.md.
+        const opts = { ...options, agent: false, jag: isJag, jas: isJas, jao: isJao };
         const header = await generateEnhancedAIHeader({ stats, repoName, mode: 'file', eckManifest, options: opts, repoPath: processedRepoPath }, isGitRepo);
 
         // Compact filename format: eck{timestamp}_{hash}_{suffix}.md
@@ -681,6 +684,7 @@ export async function createRepoSnapshot(repoPath, options) {
       let claudeMode = 'coder';
       if (isJas) claudeMode = 'jas';
       if (isJao) claudeMode = 'jao';
+      if (isJag) claudeMode = 'jag';
 
       await updateClaudeMd(processedRepoPath, claudeMode, directoryTree, confidentialFiles);
 

@@ -111,6 +111,8 @@ export async function updateClaudeMd(repoPath, mode, tree, confidentialFiles = [
     content = getArchitectInstructions('Sonnet 4.5', tree);
   } else if (mode === 'jao') {
     content = getArchitectInstructions('Opus 4.5', tree);
+  } else if (mode === 'jag') {
+    content = getArchitectInstructions('Gemini 3 Pro', tree);
   } else {
     // Default coder mode (or if flags are missing)
     content = CODER_INSTRUCTIONS;
