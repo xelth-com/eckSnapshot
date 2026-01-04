@@ -290,9 +290,19 @@ export async function generateEnhancedAIHeader(context, isGitRepo = false) {
     // --- End context building ---
 
 
-    // Check if agent mode is enabled
-    if (context.options && context.options.agent) {
-      const agentPromptTemplate = await loadTemplate(promptTemplates.agent);
+    // Check if agent mode is enabled (including JAG mode)
+    const isJag = context.options && context.options.jag;
+    if (context.options && (context.options.agent || isJag)) {
+      let agentPromptTemplate = await loadTemplate(promptTemplates.agent);
+
+      // Customize for JAG mode
+      if (isJag) {
+        // Replace template variables for JAG-specific identity
+        agentPromptTemplate = agentPromptTemplate
+          .replace(/\{\{agentName\}\}/g, 'Junior Architect (Gemini 3 Pro)')
+          .replace(/\{\{agentDescription\}\}/g, 'Massive Context Handler. Use when changes span >50 files or require full repo understanding.')
+          .replace(/\{\{modelName\}\}/g, 'Gemini 3 Pro');
+      }
 
       const agentHeader = `${agentPromptTemplate}
 

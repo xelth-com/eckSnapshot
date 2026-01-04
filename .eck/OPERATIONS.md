@@ -17,6 +17,23 @@ node index.js --skeleton
 node index.js update
 ```
 
+## Royal Court Architecture Snapshots
+```bash
+# JAG: Full snapshot for Junior Architect Gemini (Gemini 3 Pro)
+# Use for: Massive context tasks (>50 files changes)
+node index.js --jag
+
+# JAS: Configure for Junior Architect Sonnet (Sonnet 4.5)
+# Use for: Standard features, refactoring
+# Output: Updates CLAUDE.md with Smart Delegation Protocol + Directory Tree
+node index.js --jas
+
+# JAO: Configure for Junior Architect Opus (Opus 4.5)
+# Use for: Critical architecture, security, complex logic
+# Output: Updates CLAUDE.md with Enhanced verification rules + Directory Tree
+node index.js --jao
+```
+
 ## Testing
 ```bash
 # Run tests
