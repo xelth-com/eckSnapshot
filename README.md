@@ -9,7 +9,7 @@ A lightweight, platform-independent CLI for creating focused, AI-ready project s
 
 **EN:** We've stopped publishing to npm due to their excessive security requirements (10-second tokens, 10-factor authentication, and constant token revocations). If you're interested in this project, **all updates will be released exclusively on GitHub**. Install directly from the repository.
 
-**RU:** Мы прекратили публикацию в npm из-за их избыточных требований безопасности (10-секундные токены, 10-факторная аутентификация и постоянная ревокация токенов). Если вам интересна эта программа, **все обновления будут выходить только в Git**. Устанавливайте напрямую из репозитория.
+**RU:** npm может идти лесом. Кому интересно - смотрите на гите.
 
 **GitHub Repository:** https://github.com/xelth-com/eckSnapshot
 
