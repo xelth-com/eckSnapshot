@@ -142,8 +142,9 @@ const gzip = promisify(zlib.gzip);
  */
 function isHiddenPath(filePath) {
   // Check if path or any parent directory starts with '.'
+  // Allow .eck directory to be visible, hide others (like .git, .vscode)
   const parts = filePath.split('/');
-  return parts.some(part => part.startsWith('.'));
+  return parts.some(part => part.startsWith('.') && part !== '.eck');
 }
 
 /**

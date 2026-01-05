@@ -262,8 +262,8 @@ export async function generateDirectoryTree(dir, prefix = '', allFiles, depth = 
     
     for (const entry of sortedEntries) {
       // Skip hidden directories and files (starting with '.')
-      // EXCEPT: show .eck as a placeholder at the first level
-      if (entry.name.startsWith('.')) {
+      // EXCEPT: Allow .eck to be visible
+      if (entry.name.startsWith('.') && entry.name !== '.eck') {
         continue;
       }
       if (config.dirsToIgnore.some(d => entry.name.includes(d.replace('/', '')))) continue;
@@ -283,17 +283,18 @@ export async function generateDirectoryTree(dir, prefix = '', allFiles, depth = 
 
       if (entry.isDirectory()) {
         tree += `${prefix}${connector}${entry.name}/\n`;
-        tree += await generateDirectoryTree(fullPath, nextPrefix, allFiles, depth + 1, maxDepth, config);
+
+        // RECURSION CONTROL:
+        // If we are currently inside .eck, do NOT recurse deeper into subdirectories (like snapshots, logs).
+        // We want to see that 'snapshots/' exists, but not list its contents.
+        const isInsideEckRoot = path.basename(dir) === '.eck';
+
+        if (!isInsideEckRoot) {
+          tree += await generateDirectoryTree(fullPath, nextPrefix, allFiles, depth + 1, maxDepth, config);
+        }
       } else {
         tree += `${prefix}${connector}${entry.name}\n`;
       }
-    }
-
-    // Add .eck placeholder at root level
-    if (depth === 0) {
-      const isLast = validEntries.length === 0;
-      const connector = isLast ? '└── ' : '├── ';
-      tree += `${prefix}${connector}.eck/\n`;
     }
 
     return tree;
