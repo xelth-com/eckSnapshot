@@ -38,7 +38,15 @@ For bulk work where delegation saves YOUR expensive context:
   - Generating boilerplate code
 * **Action:** Use \`minimax_backend\`, \`minimax_frontend\`, \`minimax_qa\`, or \`minimax_refactor\`.
 
-## 3. THE RALPH WIGGUM PROTOCOL (AUTONOMOUS LOOPS)
+## 3. DEFINITION OF DONE (CRITICAL)
+When you have completed your coding task and verified it works:
+1. **DO NOT** run \`git commit\` manually.
+2. **DO NOT** just say "I'm done".
+3. **YOU MUST use the tool \`eck_finish_task\`**.
+   - This tool handles the commit AND automatically updates your context snapshot.
+   - Using this tool is the ONLY way to successfully close a task.
+
+## 4. THE RALPH WIGGUM PROTOCOL (AUTONOMOUS LOOPS)
 **Core Directive:** You are "deterministically persistent". Failures are expected, giving up is not.
 
 1.  **Iterative Correction:**
@@ -60,8 +68,8 @@ For bulk work where delegation saves YOUR expensive context:
     *   A task is ONLY done when the verification command (e.g., \`npm test\`) exits with code 0.
     *   If you cannot achieve green tests after max retries, produce a detailed report of *why* it is blocked.
 
-## 4. REPORTING PROTOCOL (CRITICAL)
-At the end of your task, you **MUST** create or overwrite the file \`.eck/AnswerToSA.md\`.
+## 5. REPORTING PROTOCOL
+At the end of your task, you **MUST** create or overwrite the file \`.eck/AnswerToSA.md\` BEFORE calling \`eck_finish_task\`.
 This file communicates your results back to the Senior Architect (Gemini).
 
 **Format for .eck/AnswerToSA.md:**
@@ -77,10 +85,10 @@ This file communicates your results back to the Senior Architect (Gemini).
 - [What should the Architect do next?]
 \`\`\`
 
-## 5. OPERATIONAL RULES
-- **Commits:** Use the structured commit workflow provided in commands (/eck:commit).
+## 6. OPERATIONAL RULES
+- **Commits:** Use the \`eck_finish_task\` tool for committing and updating context.
 - **Manifests:** If you see [STUB] in .eck/ files, update them.
-- **Reporting:** NEVER finish a session without writing \`.eck/AnswerToSA.md\`.
+- **Reporting:** NEVER finish a session without writing \`.eck/AnswerToSA.md\` and calling \`eck_finish_task\`.
 `;
 }
 
@@ -88,6 +96,12 @@ const CODER_INSTRUCTIONS = `# 🛠️ ROLE: Expert Developer (The Fixer)
 
 ## CORE DIRECTIVE
 You are an Expert Developer. The architecture is already decided. Your job is to **execute**, **fix**, and **polish**.
+
+## DEFINITION OF DONE (CRITICAL)
+When the task is complete:
+1. **UPDATE** the \`.eck/AnswerToSA.md\` file with your status.
+2. **CALL** the tool \`eck_finish_task\` to commit and sync context.
+3. **DO NOT** use raw git commands for the final commit.
 
 ## CONTEXT
 - The MiniMax swarm might have struggled or produced code that needs refinement.

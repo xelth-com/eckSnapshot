@@ -7,7 +7,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 import { createRepoSnapshot } from './commands/createSnapshot.js';
-import { updateSnapshot } from './commands/updateSnapshot.js';
+import { updateSnapshot, updateSnapshotJson } from './commands/updateSnapshot.js';
 import { restoreSnapshot } from './commands/restoreSnapshot.js';
 import { pruneSnapshot } from './commands/pruneSnapshot.js';
 import { generateConsilium } from './commands/consilium.js';
@@ -199,6 +199,13 @@ Creating Custom Profiles:
     .argument('[repoPath]', 'Path to the repository', process.cwd())
     .option('--config <path>', 'Configuration file path')
     .action(updateSnapshot);
+
+  // Auto/Silent Update command for Agents
+  program
+    .command('update-auto')
+    .description('Silent update for AI agents (JSON output)')
+    .argument('[repoPath]', 'Path to the repository', process.cwd())
+    .action(updateSnapshotJson);
 
   // Restore command
   program
