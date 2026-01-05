@@ -159,6 +159,7 @@ minimax
 
 ## Additional Resources
 
+- [How to Change API Key](docs/minimax-change-api-key.md) - Step-by-step guide for updating your MiniMax API key
 - [MiniMax Official Documentation](https://platform.minimax.io/docs)
 - [Claude Code MCP Documentation](https://docs.anthropic.com/claude/docs/mcp)
 - [eckSnapshot GitHub Repository](https://github.com/xelth-com/eckSnapshot)
