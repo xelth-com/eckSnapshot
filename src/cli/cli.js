@@ -7,7 +7,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 import { createRepoSnapshot } from './commands/createSnapshot.js';
-import { updateSnapshot } from './commands/updateSnapshot.js';
+import { updateSnapshot, updateSnapshotJson } from './commands/updateSnapshot.js';
 import { restoreSnapshot } from './commands/restoreSnapshot.js';
 import { pruneSnapshot } from './commands/pruneSnapshot.js';
 import { generateConsilium } from './commands/consilium.js';
@@ -140,7 +140,9 @@ Option C: Using Profiles
     .option('--enhanced', 'Use enhanced multi-agent headers (default: true)', true)
     .option('--profile <name>', 'Filter files using profiles and/or ad-hoc glob patterns.')
     .option('--agent', 'Generate a snapshot optimized for a command-line agent')
-    .option('--with-ja', 'Generate a detailed snapshot for the Junior Architect agent')
+    .option('--jag', 'Generate snapshot for Junior Architect Gemini (Gemini 3 Pro)')
+    .option('--jas', 'Configure project for Junior Architect Sonnet (Sonnet 4.5)')
+    .option('--jao', 'Configure project for Junior Architect Opus (Opus 4.5)')
     .option('--skeleton', 'Enable skeleton mode: strip function bodies to save context window tokens')
     .option('--max-lines-per-file <number>', 'Truncate files to max N lines (e.g., 200 for compact snapshots)', (val) => parseInt(val))
     .action(createRepoSnapshot)
@@ -197,6 +199,13 @@ Creating Custom Profiles:
     .argument('[repoPath]', 'Path to the repository', process.cwd())
     .option('--config <path>', 'Configuration file path')
     .action(updateSnapshot);
+
+  // Auto/Silent Update command for Agents
+  program
+    .command('update-auto')
+    .description('Silent update for AI agents (JSON output)')
+    .argument('[repoPath]', 'Path to the repository', process.cwd())
+    .action(updateSnapshotJson);
 
   // Restore command
   program

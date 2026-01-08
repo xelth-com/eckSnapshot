@@ -262,8 +262,8 @@ export async function generateDirectoryTree(dir, prefix = '', allFiles, depth = 
     
     for (const entry of sortedEntries) {
       // Skip hidden directories and files (starting with '.')
-      // EXCEPT: show .eck as a placeholder at the first level
-      if (entry.name.startsWith('.')) {
+      // EXCEPT: Allow .eck to be visible
+      if (entry.name.startsWith('.') && entry.name !== '.eck') {
         continue;
       }
       if (config.dirsToIgnore.some(d => entry.name.includes(d.replace('/', '')))) continue;
@@ -283,17 +283,18 @@ export async function generateDirectoryTree(dir, prefix = '', allFiles, depth = 
 
       if (entry.isDirectory()) {
         tree += `${prefix}${connector}${entry.name}/\n`;
-        tree += await generateDirectoryTree(fullPath, nextPrefix, allFiles, depth + 1, maxDepth, config);
+
+        // RECURSION CONTROL:
+        // If we are currently inside .eck, do NOT recurse deeper into subdirectories (like snapshots, logs).
+        // We want to see that 'snapshots/' exists, but not list its contents.
+        const isInsideEckRoot = path.basename(dir) === '.eck';
+
+        if (!isInsideEckRoot) {
+          tree += await generateDirectoryTree(fullPath, nextPrefix, allFiles, depth + 1, maxDepth, config);
+        }
       } else {
         tree += `${prefix}${connector}${entry.name}\n`;
       }
-    }
-
-    // Add .eck placeholder at root level
-    if (depth === 0) {
-      const isLast = validEntries.length === 0;
-      const connector = isLast ? '└── ' : '├── ';
-      tree += `${prefix}${connector}.eck/\n`;
     }
 
     return tree;
@@ -406,13 +407,13 @@ export async function loadConfig(configPath) {
 
 export function generateTimestamp() {
   const now = new Date();
-  const YYYY = now.getFullYear();
+  const YY = String(now.getFullYear()).slice(-2);
   const MM = String(now.getMonth() + 1).padStart(2, '0');
   const DD = String(now.getDate()).padStart(2, '0');
   const hh = String(now.getHours()).padStart(2, '0');
   const mm = String(now.getMinutes()).padStart(2, '0');
-  const ss = String(now.getSeconds()).padStart(2, '0');
-  return `${YYYY}-${MM}-${DD}_${hh}-${mm}-${ss}`;
+  // Compact format: YY-MM-DD_HH-mm (no seconds)
+  return `${YY}-${MM}-${DD}_${hh}-${mm}`;
 }
 
 /**

@@ -1,4 +1,121 @@
 ---
+task_id: fix-jas-jao-content-and-headers
+date: 2026-01-04T00:00:00Z
+type: fix
+scope: core
+---
+
+# Restore full content for JAS/JAO snapshots and fix header interpolation
+
+**Critical Fixes:**
+
+1. **Reverted "Structural Only" Logic**:
+   - JAS/JAO snapshots now include FULL code content
+   - Senior Architect needs complete visibility to make informed decisions
+   - Removed lightweight scanning path that excluded file content
+   - All modes now use `processProjectFiles` for consistent full content
+
+2. **Fixed Header Interpolation**:
+   - `aiHeader.js` now correctly handles JAS and JAO modes
+   - Added template variable replacement for:
+     - JAS: "Junior Architect (Sonnet 4.5)" - Fast Manager & Implementer
+     - JAO: "Junior Architect (Opus 4.5)" - Deep Thinker & Planner
+   - Previously only JAG mode had proper header customization
+
+**Modified Files**:
+- `src/cli/commands/createSnapshot.js`: Removed conditional content logic
+- `src/utils/aiHeader.js`: Added JAS/JAO header interpolation
+
+**Testing**: All 18 tests pass ✅
+
+---
+task_id: compact-protocol-refactor
+date: 2026-01-04T00:00:00Z
+type: refactor
+scope: cli
+---
+
+# Implement Compact Protocol: Short Naming, JAS Snapshots, and Update Sequencing
+
+- **Timestamp Format**: Changed from `YYYY-MM-DD_HH-mm-ss` to `YY-MM-DD_HH-mm` (2-digit year, no seconds)
+- **Snapshot Naming**: Updated to compact format `eck{timestamp}_{hash}_{suffix}.md`
+- **JAS/JAO Snapshots**: Now generate structural snapshot files (tree + manifests, no code)
+  - Provides Senior Architect with project context map
+  - Claude agent has full file system access via CLAUDE.md
+- **Update Sequencing**: Implemented sequential numbering (`_up1`, `_up2`, etc.)
+  - Tracked in `.eck/update_seq` file
+  - Counter resets when base snapshot changes
+  - Format: `eck{timestamp}_{hash}_upN.md`
+
+**Modified Files**:
+- `src/utils/fileUtils.js`: Compact timestamp generation
+- `src/cli/commands/createSnapshot.js`: Always generate snapshot, structural mode for JAS/JAO
+- `src/cli/commands/updateSnapshot.js`: Sequential update numbering
+
+---
+task_id: battle-test-royal-court-docs
+date: 2026-01-04T00:00:00Z
+type: docs
+scope: eck
+---
+
+# Document Royal Court autonomous protocols
+
+- Added "Advanced Autonomous Protocols" section to `.eck/OPERATIONS.md`
+- Documented Token Economy (Smart Delegation Protocol)
+- Documented Ralph Wiggum Protocol (Deterministic Persistence)
+- Documented Feedback Loop (Reporting Protocol with `.eck/AnswerToSA.md`)
+- Created first `.eck/AnswerToSA.md` feedback report implementing the new protocol
+- All documentation aligned with implementation in `src/utils/claudeMdGenerator.js`
+
+---
+task_id: task-20260104-royal-court-architecture
+date: 2026-01-04
+type: feat
+scope: core,cli
+summary: Implement Royal Court Architecture with Smart Delegation Protocol
+---
+
+# Royal Court Architecture: Gemini 3 Pro → Claude 4.5 → MiniMax Swarm
+
+## Changes
+- **Architecture Upgrade**: Implemented hierarchical AI system
+  - Senior Architect: Gemini 3 Pro (orchestrator)
+  - Junior Architects: JAS (Sonnet 4.5), JAO (Opus 4.5), JAG (Gemini 3 Pro)
+  - Workers: MiniMax M2.1 Swarm via MCP
+
+- **CLI Flags**:
+  - Removed: `--with-ja`
+  - Added: `--jag` (full snapshot for Gemini 3 Pro)
+  - Added: `--jas` (CLAUDE.md mode for Sonnet 4.5)
+  - Added: `--jao` (CLAUDE.md mode for Opus 4.5)
+
+- **Smart Delegation Protocol** (`src/utils/claudeMdGenerator.js`):
+  - Token Efficiency: Don't delegate tasks solvable in 1-2 tool calls
+  - Intelligent Retry: 2-4 attempts based on progress, not blind repeats
+  - Failure Hierarchy: MiniMax → Junior Architect → Senior Architect
+  - Critical: Claude is smarter than MiniMax, should take over after failed retries
+
+- **MiniMax Worker Swarm** (`scripts/mcp-minimax-worker.js`):
+  - Dynamic tool registration: `minimax_frontend`, `minimax_backend`, `minimax_qa`, `minimax_refactor`
+  - Specialized personas for each domain
+  - Internal file reading to save Junior Architect's context
+
+- **Updated Files**:
+  - `src/cli/cli.js`: New flags
+  - `src/cli/commands/createSnapshot.js`: Workflow fork logic
+  - `src/utils/aiHeader.js`: JAG mode support
+  - `src/utils/claudeMdGenerator.js`: Smart Delegation Protocol
+  - `setup.json`: New agent definitions (JAS, JAO, JAG)
+  - `src/templates/agent-prompt.template.md`: Generic Junior Architect template
+
+## Impact
+- **Token Savings**: Intelligent delegation prevents wasteful MCP calls
+- **Quality**: Claude takes over when MiniMax struggles
+- **Flexibility**: Progress-based retry (not fixed limit)
+- **Scalability**: Parallel MiniMax workers for bulk tasks
+
+---
 task_id: task-20260101181645-9ecdd64c
 date: 2026-01-01
 type: feat

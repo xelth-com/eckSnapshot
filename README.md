@@ -1,7 +1,19 @@
 
-# eckSnapshot (v5.0.2)
+# eckSnapshot (v5.0.3)
 
 A lightweight, platform-independent CLI for creating focused, AI-ready project snapshots.
+
+---
+
+## ⚠️ NPM Publishing Discontinued | Публикация в NPM прекращена
+
+**EN:** We've stopped publishing to npm due to their excessive security requirements (10-second tokens, 10-factor authentication, and constant token revocations). If you're interested in this project, **all updates will be released exclusively on GitHub**. Install directly from the repository.
+
+**RU:** npm может идти лесом. Кому интересно - смотрите на гите.
+
+**GitHub Repository:** https://github.com/xelth-com/eckSnapshot
+
+---
 
 `eckSnapshot` is a powerful command-line tool designed to solve a critical problem in AI-assisted development: providing clear, complete, and focused context to Large Language Models (LLMs). It allows you to package an entire project codebase—or just specific parts of it—into a single, clean text file.
 
@@ -24,10 +36,19 @@ This tool is built for a modern workflow where you act as the architect, guiding
 
 ## Installation
 
-Install `eckSnapshot` globally on your system using npm:
+Install `eckSnapshot` globally directly from GitHub:
 
 ```bash
-npm install -g @xelth/eck-snapshot
+npm install -g github:xelth-com/eckSnapshot
+```
+
+Or clone and link locally:
+
+```bash
+git clone https://github.com/xelth-com/eckSnapshot.git
+cd eckSnapshot
+npm install
+npm link
 ```
 
 Once installed, you can run the tool using the `eck-snapshot` command from any directory.

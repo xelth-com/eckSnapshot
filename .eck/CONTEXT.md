@@ -18,20 +18,41 @@ A specialized CLI tool designed to create and restore single-file text snapshots
 - **Execa**: For robust shell command execution.
 - **Vitest**: For the testing suite.
 
-## AI Infrastructure
+## AI Infrastructure: "Royal Court" Architecture
 
-- **Supervisor:** Claude Sonnet 4.5 (High Reasoning, Team Lead)
-- **Worker:** MiniMax M2.1 (High Context / Low Cost, via MCP)
-- **Consultant:** Claude Opus 4.5 (Available via Consilium for critical decisions)
+### Hierarchy
+```
+Senior Architect (Gemini 3 Pro)
+    ↓ delegates strategic tasks
+Junior Architects (Managers)
+    ├─ JAS (Sonnet 4.5): Fast manager for standard features
+    ├─ JAO (Opus 4.5): Deep thinker for critical architecture
+    └─ JAG (Gemini 3 Pro): Massive context handler (>50 files)
+        ↓ delegate heavy lifting
+MiniMax Worker Swarm (MCP)
+    ├─ minimax_frontend: React/Vue/Tailwind specialist
+    ├─ minimax_backend: Node.js/API/Auth specialist
+    ├─ minimax_qa: Test automation engineer
+    └─ minimax_refactor: Code quality specialist
+```
 
-**Delegation Policy:** Controlled via `setup.json` -> `delegationStrategy`. Current mode determines how aggressively tasks are offloaded to MiniMax.
+### Smart Delegation Protocol
+Junior Architects follow intelligent delegation:
+1. **Token Efficiency**: Tasks solvable in 1-2 tool calls → Do it yourself
+2. **Bulk Work**: Complex logic (>100 lines) → Delegate to MiniMax
+3. **Failure Handling**:
+   - MiniMax fails → Intelligent retry (2-4 attempts with analysis)
+   - Progress visible → Continue retrying
+   - No progress → Junior Architect takes over
+   - Junior Architect fails → Escalate to Senior Architect
 
-### Modes
-| Mode | Threshold | Use Case |
-|------|-----------|----------|
-| `aggressive` | 50 lines | Maximum token savings |
-| `balanced` | 200 lines | Default, good balance |
-| `precise` | 1000 lines | Maximum quality, minimal delegation |
+### Snapshot Modes
+| Flag | Purpose | Output |
+|------|---------|--------|
+| `--jag` | Full snapshot for JAG (Gemini 3 Pro) | `_jag.md` snapshot + CLAUDE.md |
+| `--jas` | Configure for JAS (Sonnet 4.5) | CLAUDE.md with tree + Smart Delegation Protocol |
+| `--jao` | Configure for JAO (Opus 4.5) | CLAUDE.md with tree + Enhanced verification rules |
+| (none) | Standard snapshot | Standard snapshot for any LLM |
 
 ## Important Notes
 Any crucial information that developers should know when working on this project.

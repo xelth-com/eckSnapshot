@@ -23,6 +23,7 @@ import { loadSetupConfig, getProfile } from '../../config.js';
 import { applyProfileFilter } from '../../utils/fileUtils.js';
 import { saveGitAnchor } from '../../utils/gitUtils.js';
 import { skeletonize } from '../../core/skeletonizer.js';
+import { updateClaudeMd } from '../../utils/claudeMdGenerator.js';
 
 /**
  * Creates dynamic project context based on detection results
@@ -141,8 +142,9 @@ const gzip = promisify(zlib.gzip);
  */
 function isHiddenPath(filePath) {
   // Check if path or any parent directory starts with '.'
+  // Allow .eck directory to be visible, hide others (like .git, .vscode)
   const parts = filePath.split('/');
-  return parts.some(part => part.startsWith('.'));
+  return parts.some(part => part.startsWith('.') && part !== '.eck');
 }
 
 /**
@@ -526,8 +528,13 @@ export async function createRepoSnapshot(repoPath, options) {
       ...options // Command-line options have the final say
     };
 
+    // Detect architect modes
+    const isJag = options.jag;
+    const isJas = options.jas;
+    const isJao = options.jao;
+
     // If NOT in Junior Architect mode, hide JA-specific documentation to prevent context pollution
-    if (!options.withJa) {
+    if (!options.withJa && !isJag && !isJas && !isJao) {
       if (!config.filesToIgnore) config.filesToIgnore = [];
       config.filesToIgnore.push(
         'COMMANDS_REFERENCE.md',
@@ -555,15 +562,18 @@ export async function createRepoSnapshot(repoPath, options) {
 
     spinner.succeed('Creating snapshots...');
 
-    // Step 1: Process all files ONCE
-    const {
-      stats,
-      contentArray,
-      successfulFileObjects,
-      allFiles,
-      originalCwd: processingOriginalCwd, // We get originalCwd from the processing function
-      repoPath: processedRepoPath
-    } = await processProjectFiles(repoPath, options, config, projectDetection.type);
+    // --- LOGIC UPDATE: Always include content ---
+    // The Architect needs full visibility of the code to make decisions.
+    // We strictly use processProjectFiles for all modes.
+
+    let stats, contentArray, successfulFileObjects, allFiles, processedRepoPath;
+
+    const result = await processProjectFiles(repoPath, options, config, projectDetection.type);
+    stats = result.stats;
+    contentArray = result.contentArray;
+    successfulFileObjects = result.successfulFileObjects;
+    allFiles = result.allFiles;
+    processedRepoPath = result.repoPath;
 
     const originalCwd = process.cwd(); // Get CWD *before* chdir
     process.chdir(processedRepoPath); // Go back to repo path for git hash and tree
@@ -598,58 +608,99 @@ export async function createRepoSnapshot(repoPath, options) {
       // Calculate Top 10 Largest Files
       const largestFiles = [...successfulFileObjects].sort((a, b) => b.size - a.size).slice(0, 10);
 
-      const fileBody = (directoryTree ? `\n## Directory Structure\n\n\`\`\`\n${directoryTree}\`\`\`\n\n` : '') + contentArray.join('');
-
-      // --- File 1: Architect Snapshot --- 
-      const architectOptions = { ...options, agent: false };
       // Load manifest for headers
       const eckManifest = await loadProjectEckManifest(processedRepoPath);
       const isGitRepo = await checkGitRepository(processedRepoPath);
 
-      const architectHeader = await generateEnhancedAIHeader({ stats, repoName, mode: 'file', eckManifest, options: architectOptions, repoPath: processedRepoPath }, isGitRepo);
-      let architectBaseFilename = `${repoName}_snapshot_${timestamp}${gitHash ? `_${gitHash}` : ''}`;
-
-      // Add '_sk' suffix for skeleton mode snapshots
-      if (options.skeleton) {
-        architectBaseFilename += '_sk';
-      }
-
-      const architectFilename = `${architectBaseFilename}.${fileExtension}`;
-      const architectFilePath = path.join(outputPath, architectFilename);
-      await fs.writeFile(architectFilePath, architectHeader + fileBody);
-
-      // --- File 2: Junior Architect Snapshot ---
+      // --- BRANCH 1: Generate Snapshot File (ALWAYS) ---
+      let architectFilePath = null;
       let jaFilePath = null;
-      if (options.withJa && fileExtension === 'md') { // Only create JA snapshot if requested and main is MD
-        console.log('🖋️ Generating Junior Architect (_ja) snapshot...');
-        const jaOptions = { ...options, agent: true, noTree: false, noAiHeader: false };
-        const jaHeader = await generateEnhancedAIHeader({ stats, repoName, mode: 'file', eckManifest, options: jaOptions, repoPath: processedRepoPath }, isGitRepo);
-        const jaFilename = `${architectBaseFilename}_ja.${fileExtension}`;
-        jaFilePath = path.join(outputPath, jaFilename);
-        await fs.writeFile(jaFilePath, jaHeader + fileBody);
+
+      // File body always includes full content
+      let fileBody = (directoryTree ? `\n## Directory Structure\n\n\`\`\`\n${directoryTree}\`\`\`\n\n` : '') + contentArray.join('');
+
+      // Helper to write snapshot file
+      const writeSnapshot = async (suffix, isAgentMode) => {
+        // CHANGE: Force agent to FALSE for the main snapshot header.
+        // The snapshot is read by the Human/Senior Arch, not the Agent itself.
+        // The Agent reads CLAUDE.md.
+        const opts = { ...options, agent: false, jag: isJag, jas: isJas, jao: isJao };
+        const header = await generateEnhancedAIHeader({ stats, repoName, mode: 'file', eckManifest, options: opts, repoPath: processedRepoPath }, isGitRepo);
+
+        // Compact filename format: eck{timestamp}_{hash}_{suffix}.md
+        const shortHash = gitHash ? gitHash.substring(0, 7) : '';
+        let fname = `eck${timestamp}`;
+        if (shortHash) fname += `_${shortHash}`;
+
+        // Add mode suffix
+        if (options.skeleton) {
+          fname += '_sk';
+        } else if (suffix) {
+          fname += suffix;
+        }
+
+        fname += `.${fileExtension}`;
+        const fpath = path.join(outputPath, fname);
+        await fs.writeFile(fpath, header + fileBody);
+        console.log(`📄 Generated Snapshot: ${fname}`);
+        return fpath;
+      };
+
+      // Generate snapshot file for ALL modes
+      if (isJag) {
+        architectFilePath = await writeSnapshot('_jag', true);
+      } else if (isJas) {
+        architectFilePath = await writeSnapshot('_jas', true);
+      } else if (isJao) {
+        architectFilePath = await writeSnapshot('_jao', true);
+      } else {
+        // Standard snapshot behavior
+        architectFilePath = await writeSnapshot('', false);
+
+        // --- File 2: Junior Architect Snapshot (legacy --with-ja support) ---
+        if (options.withJa && fileExtension === 'md') {
+          console.log('🖋️ Generating Junior Architect (_ja) snapshot...');
+          jaFilePath = await writeSnapshot('_ja', true);
+        }
       }
 
       // Save git anchor for future delta updates
       await saveGitAnchor(processedRepoPath);
 
-      // --- Generate CLAUDE.md with confidential file references ---
-      console.log('🔐 Scanning for confidential files in .eck directory...');
-      const confidentialFiles = await scanEckForConfidentialFiles(processedRepoPath, config);
-
-      if (confidentialFiles.length > 0) {
-        const claudeMdContent = generateClaudeMdContent(confidentialFiles, processedRepoPath);
-        const claudeMdPath = path.join(processedRepoPath, 'CLAUDE.md');
-        await fs.writeFile(claudeMdPath, claudeMdContent);
-        console.log(`📝 Generated CLAUDE.md with ${confidentialFiles.length} confidential file reference(s)`);
+      // Reset update counter for sequential tracking
+      try {
+        const counterPath = path.join(processedRepoPath, '.eck', 'update_seq');
+        await fs.mkdir(path.dirname(counterPath), { recursive: true });
+        // Format: HASH:COUNT
+        const shortHash = gitHash ? gitHash.substring(0, 7) : 'nohash';
+        await fs.writeFile(counterPath, `${shortHash}:0`);
+      } catch (e) {
+        // Non-critical, continue
       }
 
-      // --- Combined Report --- 
+      // --- BRANCH 2: Update CLAUDE.md (JAS / JAO / Default) ---
+      console.log('🔐 Scanning for confidential files...');
+      const confidentialFiles = await scanEckForConfidentialFiles(processedRepoPath, config);
+
+      let claudeMode = 'coder';
+      if (isJas) claudeMode = 'jas';
+      if (isJao) claudeMode = 'jao';
+      if (isJag) claudeMode = 'jag';
+
+      await updateClaudeMd(processedRepoPath, claudeMode, directoryTree, confidentialFiles);
+
+      // --- Combined Report ---
       console.log('\n✅ Snapshot generation complete!');
       console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      console.log(`📄 Architect File: ${architectFilePath}`);
+
+      if (architectFilePath) {
+        console.log(`📄 Snapshot File: ${architectFilePath}`);
+      }
       if (jaFilePath) {
         console.log(`📄 Junior Arch File: ${jaFilePath}`);
       }
+
+      console.log(`📊 Files scanned: ${stats.totalFiles}`);
       console.log(`📊 Files processed: ${stats.includedFiles}/${stats.totalFiles}`);
       console.log(`📏 Total size: ${formatSize(stats.totalSize)}`);
       console.log(`📦 Processed size: ${formatSize(stats.processedSize)}`);
