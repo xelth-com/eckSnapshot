@@ -14,10 +14,34 @@ Use the project directory tree provided separately to identify logical groupings
 
 Instructions:
 1. Propose profile names that reflect the responsibilities or layers of the codebase.
-2. For each profile, produce an object with "include" and "exclude" arrays of glob patterns (minimize overlap, prefer directory-level globs).
-3. Always include a sensible catch-all profile (for example, "default") if one is not obvious.
-4. Call out generated assets, tests, or vendor files in "exclude" arrays when appropriate.
-5. Return **only** valid JSON. Do not wrap the response in markdown fences or add commentary.
+2. For each profile, add a "description" field explaining what the profile covers.
+3. For each profile, produce "include" and "exclude" arrays of glob patterns using proper micromatch syntax:
+
+   CORRECT glob patterns:
+   ✓ "src/**/*"           - all files recursively in src/
+   ✓ "src/**/*.js"        - all JS files recursively in src/
+   ✓ "**/node_modules/**" - node_modules anywhere
+   ✓ "**/*.test.js"       - test files anywhere
+   ✓ "packages/**/package.json" - all package.json in packages subdirs
+
+   INCORRECT patterns (DO NOT USE):
+   ✗ "src//"              - double slash is invalid
+   ✗ "src/**/"            - trailing slash is incorrect
+   ✗ "/node_modules/"     - leading/trailing slashes don't work as expected
+   ✗ "src/.js"            - missing ** means only root level
+
+4. Always include a sensible catch-all profile (for example, "default") if one is not obvious.
+5. Call out generated assets, tests, or vendor files in "exclude" arrays when appropriate.
+6. Return **only** valid JSON. Do not wrap the response in markdown fences or add commentary.
+
+Example profile structure:
+{
+  "backend": {
+    "description": "Backend API and services",
+    "include": ["src/api/**/*", "src/services/**/*"],
+    "exclude": ["**/*.test.js", "**/node_modules/**"]
+  }
+}
 `;
 }
 
