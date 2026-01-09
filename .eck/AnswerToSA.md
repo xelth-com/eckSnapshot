@@ -1,35 +1,47 @@
-# Report: Fix JAS/JAO Content and Header Interpolation
+# Report: Improved UX for generate-profile-guide Command
 
-**Status:** SUCCESS
+**Status:** SUCCESS ✅
 
-**Changes:**
-- Modified `src/cli/commands/createSnapshot.js`:
-  - **Reverted structural-only logic** - JAS/JAO now include FULL code content
-  - Removed `needsContentBody` conditional that was excluding content for JAS/JAO
-  - All modes now use `processProjectFiles` consistently
-  - Removed misleading "Context Only" reporting messages
+## Task Summary
+Improved the user experience of the `generate-profile-guide` command to reduce cognitive load by automating file creation and providing clear step-by-step instructions.
 
-- Modified `src/utils/aiHeader.js`:
-  - **Fixed header interpolation** for JAS and JAO modes
-  - Added proper template variable replacement:
-    - JAS: `{{agentName}}` → "Junior Architect (Sonnet 4.5)"
-    - JAO: `{{agentName}}` → "Junior Architect (Opus 4.5)"
-  - Each mode now has correct identity and description in snapshot headers
+## Changes Made
 
-- Updated `.eck/JOURNAL.md` with fix details
+**Modified:** `src/cli/commands/generateProfileGuide.js`
 
-**Verification:**
-- All 18 tests pass ✅
-- Git commit created: `bf467a7`
+### Key Improvements:
 
-**Critical Issue Fixed:**
-The previous implementation was fundamentally flawed. JAS/JAO snapshots were generating "structural only" content (tree without code), which would have prevented the Senior Architect from making informed decisions. The architect MUST see the actual code to provide meaningful guidance.
+1. **Auto-creation of profiles.json stub**
+   - Command now checks if `.eck/profiles.json` exists
+   - If missing, creates a template file with:
+     - Clear instruction placeholder: `"_instruction": "PASTE THE JSON RESPONSE FROM THE AI HERE"`
+     - Example profile structure to guide users
+   - Tracks whether file was created to inform user
 
-**Header Interpolation Fix:**
-Previously, only JAG mode had proper template variable replacement. JAS and JAO snapshots would have contained unreplaced `{{agentName}}` placeholders, breaking the snapshot format. This is now fixed with proper identity customization for each architect mode.
+2. **Enhanced visual feedback with chalk**
+   - Added `chalk` import for colored terminal output
+   - File paths are now **bold** for easy identification
+   - Success message uses **green** color
+   - Workflow instructions use **cyan** header
 
-**Next Steps / Questions:**
-- Ready for production use with all architect modes
-- JAS/JAO snapshots now provide complete code visibility
-- All template variables properly interpolated in headers
-- System is fully operational for Royal Court Architecture
+3. **Clear step-by-step workflow instructions**
+   - Console output now provides numbered steps:
+     1. Open the guide file
+     2. Copy prompt + tree to AI
+     3. Copy JSON response
+     4. Paste into profiles.json (with status: "I created this file for you" or "File exists")
+     5. Run the snapshot command with profile
+
+## Benefits
+
+- **Reduced cognitive load**: User no longer needs to remember to create `profiles.json`
+- **Clear guidance**: Step-by-step instructions prevent confusion
+- **Better UX**: Visual highlighting makes paths easy to spot
+- **Prevents errors**: Template file shows correct JSON structure
+
+## Technical Details
+
+- Uses `fs.access()` to check file existence (async pattern)
+- Stub content includes helpful example with `include/exclude` arrays
+- Conditional message based on whether file was created or existed
+- No breaking changes to existing functionality
