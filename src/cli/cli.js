@@ -138,7 +138,7 @@ Option C: Using Profiles
     .option('--no-ai-header', 'Skip AI instructions')
     .option('-d, --dir', 'Directory mode')
     .option('--enhanced', 'Use enhanced multi-agent headers (default: true)', true)
-    .option('--profile <name>', 'Filter files using profiles and/or ad-hoc glob patterns.')
+    .option('--profile [name]', 'Filter files using profiles and/or ad-hoc glob patterns. Run without argument to list available profiles.')
     .option('--agent', 'Generate a snapshot optimized for a command-line agent')
     .option('--jag', 'Generate snapshot for Junior Architect Gemini (Gemini 3 Pro)')
     .option('--jas', 'Configure project for Junior Architect Sonnet (Sonnet 4.5)')

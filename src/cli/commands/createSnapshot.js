@@ -198,13 +198,36 @@ function generateClaudeMdContent(confidentialFiles, repoPath) {
   return content.join('\n');
 }
 
+// Global hard-ignore patterns (must match exactly in scanDirectoryRecursively)
+const GLOBAL_HARD_IGNORE_DIRS = ['node_modules', '.git', '.idea', '.vscode'];
+const GLOBAL_HARD_IGNORE_FILES = ['package-lock.json', 'yarn.lock', 'pnpm-lock.yaml', 'go.sum'];
+
+function shouldHardIgnore(entryName, isDirectory) {
+  if (isDirectory) {
+    return GLOBAL_HARD_IGNORE_DIRS.includes(entryName);
+  }
+  return GLOBAL_HARD_IGNORE_FILES.includes(entryName);
+}
+
 async function getProjectFiles(projectPath, config) {
   const isGitRepo = await checkGitRepository(projectPath);
   if (isGitRepo) {
     const { stdout } = await execa('git', ['ls-files'], { cwd: projectPath });
     const gitFiles = stdout.split('\n').filter(Boolean);
     // Filter out hidden directories/files (starting with '.')
-    const filteredFiles = gitFiles.filter(file => !isHiddenPath(file));
+    // AND apply global hard-ignores for node_modules, lockfiles, etc.
+    const filteredFiles = gitFiles.filter(file => {
+      if (isHiddenPath(file)) return false;
+      const fileName = file.split('/').pop();
+      // Check if any parent directory should be ignored (e.g., node_modules/subdir)
+      const pathParts = file.split('/');
+      for (let i = 0; i < pathParts.length - 1; i++) {
+        if (GLOBAL_HARD_IGNORE_DIRS.includes(pathParts[i])) return false;
+      }
+      // Check if file itself is a lockfile
+      if (GLOBAL_HARD_IGNORE_FILES.includes(fileName)) return false;
+      return true;
+    });
     return filteredFiles;
   }
   return scanDirectoryRecursively(projectPath, config);
@@ -484,6 +507,51 @@ export async function createRepoSnapshot(repoPath, options) {
     // Initialize .eck manifest directory if it doesn't exist
     await initializeEckManifest(repoPath);
 
+    // Handle --profile with no argument: list available profiles
+    if (options.profile === true) {
+      spinner.stop();
+      const profilesPath = path.join(repoPath, '.eck', 'profiles.json');
+      try {
+        const profilesContent = await fs.readFile(profilesPath, 'utf-8');
+        const profiles = JSON.parse(profilesContent);
+        const profileNames = Object.keys(profiles).filter(name => !name.startsWith('_'));
+
+        if (profileNames.length === 0) {
+          console.log(chalk.yellow('\n⚠️  No profiles found in .eck/profiles.json'));
+          console.log(`\nTo create profiles, run: ${chalk.green('eck-snapshot generate-profile-guide')}`);
+          process.exit(0);
+        }
+
+        console.log(chalk.cyan('\n📋 Available Profiles:\n'));
+        profileNames.forEach((name, index) => {
+          const profile = profiles[name];
+          const description = profile.description || 'No description';
+          console.log(`${chalk.bold((index + 1) + '.')} ${chalk.green(name)}`);
+          console.log(`   ${chalk.gray(description)}`);
+          if (profile.include && profile.include.length > 0) {
+            console.log(`   ${chalk.gray('Include:')} ${profile.include.slice(0, 3).join(', ')}${profile.include.length > 3 ? '...' : ''}`);
+          }
+          console.log('');
+        });
+
+        // Generate ready-to-copy command with all profiles
+        const allProfilesString = profileNames.join(',');
+        console.log(chalk.cyan('📝 Ready-to-Copy Command (all profiles):'));
+        console.log(chalk.bold(`\neck-snapshot --profile ${allProfilesString}\n`));
+        console.log(chalk.gray('💡 Tip: Copy the command above and remove profiles you don\'t need'));
+        process.exit(0);
+      } catch (error) {
+        spinner.stop();
+        if (error.code === 'ENOENT') {
+          console.log(chalk.yellow('\n⚠️  profiles.json not found'));
+          console.log(`\nTo create profiles, run: ${chalk.green('eck-snapshot generate-profile-guide')}`);
+        } else {
+          console.log(chalk.red(`\n❌ Error reading profiles: ${error.message}`));
+        }
+        process.exit(1);
+      }
+    }
+
     // Auto-commit unstaged changes if in a git repo
     const isGitRepo = await checkGitRepository(repoPath);
     if (isGitRepo) {
@@ -641,8 +709,25 @@ export async function createRepoSnapshot(repoPath, options) {
 
         fname += `.${fileExtension}`;
         const fpath = path.join(outputPath, fname);
-        await fs.writeFile(fpath, header + fileBody);
+        const fullContent = header + fileBody;
+        await fs.writeFile(fpath, fullContent);
         console.log(`📄 Generated Snapshot: ${fname}`);
+
+        // --- FEATURE: Static Copy for Easy Access ---
+        // Only create .eck/snap/answer.md for the main snapshot (not agent-specific modes)
+        if (!isAgentMode) {
+          try {
+            const snapDir = path.join(originalCwd, '.eck', 'snap');
+            await fs.mkdir(snapDir, { recursive: true });
+            const staticPath = path.join(snapDir, 'answer.md');
+            await fs.writeFile(staticPath, fullContent);
+            console.log(chalk.cyan(`📋 Static copy updated: .eck/snap/answer.md`));
+          } catch (e) {
+            // Non-critical failure
+          }
+        }
+        // --------------------------------------------
+
         return fpath;
       };
 
