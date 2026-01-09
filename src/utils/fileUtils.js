@@ -170,6 +170,25 @@ export async function scanDirectoryRecursively(dirPath, config, relativeTo = dir
       const fullPath = path.join(dirPath, entry.name);
       const relativePath = path.relative(relativeTo, fullPath).replace(/\\/g, '/');
 
+      // --- GLOBAL HARD IGNORES (Zero-Config Safety) ---
+      // Explicitly skip heavy/system directories and lockfiles everywhere
+      if (entry.isDirectory()) {
+        if (entry.name === 'node_modules' ||
+            entry.name === '.git' ||
+            entry.name === '.idea' ||
+            entry.name === '.vscode') {
+          continue;
+        }
+      } else {
+        if (entry.name === 'package-lock.json' ||
+            entry.name === 'yarn.lock' ||
+            entry.name === 'pnpm-lock.yaml' ||
+            entry.name === 'go.sum') {
+          continue;
+        }
+      }
+      // -----------------------------------------------
+
       // Special handling for .eck directory - never ignore it when tracking confidential files
       const isEckDirectory = entry.name === '.eck' && entry.isDirectory();
       const isInsideEck = relativePath.startsWith('.eck/');
@@ -708,7 +727,7 @@ function isGlob(str) {
  */
 export async function applyProfileFilter(allFiles, profileString, repoPath) {
   const profileParts = profileString.split(',').map(p => p.trim()).filter(Boolean);
-  
+
   const includeGlobs = [];
   const excludeGlobs = [];
   const includeNames = [];
@@ -741,6 +760,8 @@ export async function applyProfileFilter(allFiles, profileString, repoPath) {
   // Step 2: Load patterns from specified profile names
   const allProfileNames = [...new Set([...includeNames, ...excludeNames])];
   const profiles = new Map();
+  const notFoundProfiles = [];
+
   for (const name of allProfileNames) {
     const profile = await getProfile(name, repoPath);
     if (profile) {
@@ -748,6 +769,7 @@ export async function applyProfileFilter(allFiles, profileString, repoPath) {
     } else {
       // This is an ad-hoc glob, not a profile, so no warning is needed.
       if (!isGlob(name)) {
+        notFoundProfiles.push(name);
         console.warn(`⚠️ Warning: Profile '${name}' not found and will be skipped.`);
       }
     }
@@ -764,7 +786,7 @@ export async function applyProfileFilter(allFiles, profileString, repoPath) {
       finalExcludes.push(...(profiles.get(name).include || []));
     }
   }
-  
+
   // Step 3: Apply the filtering logic
   if (finalIncludes.length > 0) {
     workingFiles = micromatch(allFiles, finalIncludes);
@@ -778,7 +800,11 @@ export async function applyProfileFilter(allFiles, profileString, repoPath) {
     workingFiles = micromatch.not(workingFiles, finalExcludes);
   }
 
-  return workingFiles;
+  return {
+    files: workingFiles,
+    notFoundProfiles,
+    foundProfiles: Array.from(profiles.keys())
+  };
 }
 
 /**

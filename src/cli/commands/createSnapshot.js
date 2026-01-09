@@ -343,10 +343,24 @@ async function processProjectFiles(repoPath, options, config, projectType = null
 
     if (options.profile) {
       console.log(`Applying profile filter: '${options.profile}'...`);
-      allFiles = await applyProfileFilter(allFiles, options.profile, repoPath);
+      const filterResult = await applyProfileFilter(allFiles, options.profile, repoPath);
+      allFiles = filterResult.files;
       console.log(`Filtered down to ${allFiles.length} files based on profile rules.`);
       if (allFiles.length === 0) {
-        throw new Error(`Profile filter '${options.profile}' resulted in 0 files. Aborting.`);
+        // Build helpful error message
+        let errorMsg = `Profile filter '${options.profile}' resulted in 0 files.`;
+
+        if (filterResult.notFoundProfiles.length > 0) {
+          errorMsg += `\n\n❌ Profile(s) not found: ${filterResult.notFoundProfiles.join(', ')}`;
+          errorMsg += `\n\n💡 Run 'eck-snapshot --profile' to see available profiles.`;
+          errorMsg += `\n   Or run 'eck-snapshot generate-profile-guide' to create profiles.`;
+        } else if (filterResult.foundProfiles.length > 0) {
+          errorMsg += `\n\n✓ Profile(s) found: ${filterResult.foundProfiles.join(', ')}`;
+          errorMsg += `\n❌ But their include patterns matched 0 files in your project.`;
+          errorMsg += `\n\n💡 Check your profile's include/exclude patterns in .eck/profiles.json`;
+        }
+
+        throw new Error(errorMsg);
       }
     }
     const gitignore = await loadGitignore(repoPath);
