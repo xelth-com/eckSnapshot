@@ -537,7 +537,7 @@ export async function createRepoSnapshot(repoPath, options) {
         // Generate ready-to-copy command with all profiles
         const allProfilesString = profileNames.join(',');
         console.log(chalk.cyan('📝 Ready-to-Copy Command (all profiles):'));
-        console.log(chalk.bold(`\neck-snapshot --profile ${allProfilesString}\n`));
+        console.log(chalk.bold(`\neck-snapshot --profile "${allProfilesString}"\n`));
         console.log(chalk.gray('💡 Tip: Copy the command above and remove profiles you don\'t need'));
         process.exit(0);
       } catch (error) {
