@@ -645,15 +645,19 @@ export async function loadProjectEckManifest(repoPath) {
       environment: {},
       context: '',
       operations: '',
-      journal: ''
+      journal: '',
+      roadmap: '',
+      techDebt: ''
     };
-    
+
     // Define the files to check
     const files = [
       { name: 'ENVIRONMENT.md', key: 'environment', parser: parseEnvironmentYaml },
       { name: 'CONTEXT.md', key: 'context', parser: content => content },
       { name: 'OPERATIONS.md', key: 'operations', parser: content => content },
-      { name: 'JOURNAL.md', key: 'journal', parser: content => content }
+      { name: 'JOURNAL.md', key: 'journal', parser: content => content },
+      { name: 'ROADMAP.md', key: 'roadmap', parser: content => content },
+      { name: 'TECH_DEBT.md', key: 'techDebt', parser: content => content }
     ];
     
     // Process each file

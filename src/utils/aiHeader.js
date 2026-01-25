@@ -6,6 +6,45 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// Helper to extract specific markdown sections by header keywords
+function extractSections(content, keywords) {
+  if (!content) return '';
+  const lines = content.split('\n');
+  let extracted = [];
+  let capturing = false;
+  let currentHeaderLevel = 0;
+
+  for (const line of lines) {
+    const headerMatch = line.match(/^(#{2,})\s+(.+)/);
+
+    if (headerMatch) {
+      const level = headerMatch[1].length;
+      const title = headerMatch[2].toLowerCase();
+
+      // Check if we hit a start keyword
+      const isStart = keywords.some(k => title.includes(k.toLowerCase()));
+
+      if (isStart) {
+        capturing = true;
+        currentHeaderLevel = level;
+        extracted.push(line); // Include the header
+        continue;
+      }
+
+      // Stop capturing if we hit a header of same or higher level
+      if (capturing && level <= currentHeaderLevel) {
+        capturing = false;
+      }
+    }
+
+    if (capturing) {
+      extracted.push(line);
+    }
+  }
+
+  return extracted.join('\n');
+}
+
 // Simple template renderer for basic variable substitution
 function render(template, data) {
   let output = template;
@@ -312,12 +351,60 @@ export async function generateEnhancedAIHeader(context, isGitRepo = false) {
       return out;
     }
 
-    // --- Build common context sections --- 
-    const projectDescription = await resolveProjectDescription(context);
+    // --- Build common context sections ---
+
+    // 1. Project Context (Architecture & Overview)
+    let projectContextBody = '';
+    if (context.eckManifest?.context) {
+      // Clean up [STUB] markers if present, but prefer full content
+      projectContextBody = context.eckManifest.context
+        .replace(/# \[STUB:.*?\]/g, '')
+        .replace(/## 🚨 ATTENTION[\s\S]*?(?=##)/, '') // Remove alert blocks
+        .trim();
+    } else {
+      projectContextBody = await resolveProjectDescription(context);
+    }
+
+    // 2. Strategic Context (Roadmap & Tech Debt)
+    let strategicSection = '';
+
+    // Extract active roadmap items (Current Sprint, Next Phase)
+    if (context.eckManifest?.roadmap) {
+      const activeRoadmap = extractSections(context.eckManifest.roadmap, ['Current Sprint', 'Next Phase']);
+      if (activeRoadmap) {
+        strategicSection += `\n### 🚩 ACTIVE ROADMAP\n${activeRoadmap}\n`;
+      }
+    }
+
+    // Extract critical tech debt
+    if (context.eckManifest?.techDebt) {
+      const activeDebt = extractSections(context.eckManifest.techDebt, ['Current', 'Critical', 'High Priority']);
+      if (activeDebt) {
+        strategicSection += `\n### 🔧 TECHNICAL DEBT FOCUS\n${activeDebt}\n`;
+      }
+    }
+
+    // 3. Operational Protocols (Royal Court / Advanced)
+    let operationsSection = '';
+    if (context.eckManifest?.operations) {
+      // Look for autonomous protocols
+      const protocols = extractSections(context.eckManifest.operations, ['Protocol', 'Autonomous', 'Rules']);
+      if (protocols) {
+        operationsSection += `\n### 🛡️ OPERATIONAL PROTOCOLS\n${protocols}\n`;
+      }
+    }
+
+    // Combine into the master PROJECT OVERVIEW variable
+    // This injects it right at the top of the prompt
     const projectOverview = `### PROJECT OVERVIEW
-- **Project:** ${context.repoName || 'Unknown'}
-- **Description:** ${projectDescription}
+
+* **Project:** ${context.repoName || 'Unknown'}
+
+${projectContextBody}
+${strategicSection}
+${operationsSection}
 `;
+
     const normalizedEck = normalizeManifest(context.eckManifest);
     let eckManifestSection = '';
     if (normalizedEck) {
