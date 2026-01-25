@@ -1,0 +1,206 @@
+#!/usr/bin/env node
+
+import { Server } from '@modelcontextprotocol/sdk/server/index.js';
+import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import {
+  CallToolRequestSchema,
+  ListToolsRequestSchema,
+} from '@modelcontextprotocol/sdk/types.js';
+import { execa } from 'execa';
+import fs from 'fs/promises';
+import path from 'path';
+
+/**
+ * EckSnapshot MCP Server
+ * Provides tools for finalizing development tasks with git integration
+ */
+
+class EckSnapshotMCPServer {
+  constructor() {
+    this.server = new Server(
+      {
+        name: 'ecksnapshot-mcp',
+        version: '1.0.0',
+      },
+      {
+        capabilities: {
+          tools: {},
+        },
+      }
+    );
+
+    this.setupToolHandlers();
+
+    // Error handling
+    this.server.onerror = (error) => console.error('[MCP Error]', error);
+    process.on('SIGINT', async () => {
+      await this.server.close();
+      process.exit(0);
+    });
+  }
+
+  setupToolHandlers() {
+    // List available tools
+    this.server.setRequestHandler(ListToolsRequestSchema, async () => ({
+      tools: [
+        {
+          name: 'eck_finish_task',
+          description: 'Finalize a completed task by updating AnswerToSA.md, creating a git commit, and generating a delta snapshot. This should be called when a task is fully complete, tested, and ready to be committed. The tool automatically syncs context by running eck-snapshot update-auto.',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              status: {
+                type: 'string',
+                description: 'Status update message for AnswerToSA.md (e.g., "Fixed bug X", "Implemented feature Y")',
+              },
+              commitMessage: {
+                type: 'string',
+                description: 'Git commit message. Should follow conventional commits format (e.g., "feat: add user authentication", "fix: resolve login issue")',
+              },
+            },
+            required: ['status', 'commitMessage'],
+          },
+        },
+      ],
+    }));
+
+    // Handle tool calls
+    this.server.setRequestHandler(CallToolRequestSchema, async (request) => {
+      if (request.params.name !== 'eck_finish_task') {
+        throw new Error(`Unknown tool: ${request.params.name}`);
+      }
+
+      const { status, commitMessage } = request.params.arguments;
+
+      if (!status || !commitMessage) {
+        throw new Error('Missing required arguments: status and commitMessage are required');
+      }
+
+      try {
+        const result = await this.finishTask(status, commitMessage);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(result, null, 2),
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Error: ${error.message}`,
+            },
+          ],
+          isError: true,
+        };
+      }
+    });
+  }
+
+  async finishTask(status, commitMessage) {
+    const workDir = process.cwd();
+    const answerFilePath = path.join(workDir, '.eck', 'AnswerToSA.md');
+
+    const steps = [];
+
+    // Step 1: Update AnswerToSA.md
+    try {
+      const timestamp = new Date().toISOString();
+      const updateContent = `\n## Update - ${timestamp}\n\n${status}\n`;
+
+      // Check if file exists
+      try {
+        await fs.access(answerFilePath);
+        // Append to existing file
+        await fs.appendFile(answerFilePath, updateContent);
+        steps.push({ step: 'update_answer', success: true, message: 'Updated AnswerToSA.md' });
+      } catch {
+        // Create directory and file if not exists
+        await fs.mkdir(path.dirname(answerFilePath), { recursive: true });
+        await fs.writeFile(answerFilePath, `# Task Status\n${updateContent}`);
+        steps.push({ step: 'update_answer', success: true, message: 'Created AnswerToSA.md' });
+      }
+    } catch (error) {
+      steps.push({ step: 'update_answer', success: false, error: error.message });
+      throw new Error(`Failed to update AnswerToSA.md: ${error.message}`);
+    }
+
+    // Step 2: Git add AnswerToSA.md
+    try {
+      await execa('git', ['add', '.eck/AnswerToSA.md'], { cwd: workDir });
+      steps.push({ step: 'git_add_answer', success: true });
+    } catch (error) {
+      steps.push({ step: 'git_add_answer', success: false, error: error.message });
+      throw new Error(`Failed to git add AnswerToSA.md: ${error.message}`);
+    }
+
+    // Step 3: Git add all other changes
+    try {
+      await execa('git', ['add', '.'], { cwd: workDir });
+      steps.push({ step: 'git_add_all', success: true });
+    } catch (error) {
+      steps.push({ step: 'git_add_all', success: false, error: error.message });
+      throw new Error(`Failed to git add all changes: ${error.message}`);
+    }
+
+    // Step 4: Create git commit
+    try {
+      const fullCommitMessage = `${commitMessage}\n\nCo-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>`;
+      await execa('git', ['commit', '-m', fullCommitMessage], { cwd: workDir });
+      steps.push({ step: 'git_commit', success: true, message: commitMessage });
+    } catch (error) {
+      steps.push({ step: 'git_commit', success: false, error: error.message });
+      throw new Error(`Failed to create commit: ${error.message}`);
+    }
+
+    // Step 5: ALWAYS generate update snapshot (using update-auto for silent JSON output)
+    try {
+      const { stdout } = await execa('eck-snapshot', ['update-auto'], { cwd: workDir });
+
+      // Parse JSON output
+      let snapshotResult;
+      try {
+        snapshotResult = JSON.parse(stdout);
+      } catch {
+        snapshotResult = { raw_output: stdout };
+      }
+
+      steps.push({
+        step: 'update_snapshot',
+        success: snapshotResult.status === 'success',
+        snapshot_file: snapshotResult.snapshot_file,
+        files_count: snapshotResult.files_count,
+        has_agent_report: snapshotResult.has_agent_report,
+        message: snapshotResult.message || 'Delta snapshot generated',
+      });
+    } catch (error) {
+      steps.push({
+        step: 'update_snapshot',
+        success: false,
+        error: error.message,
+        message: 'Snapshot generation failed (non-critical)',
+      });
+      // Don't throw here, snapshot failure shouldn't block task completion
+    }
+
+    return {
+      success: true,
+      message: 'Task finalized successfully',
+      steps,
+      commitMessage,
+    };
+  }
+
+  async run() {
+    const transport = new StdioServerTransport();
+    await this.server.connect(transport);
+    console.error('EckSnapshot MCP server running on stdio');
+  }
+}
+
+// Start the server
+const server = new EckSnapshotMCPServer();
+server.run().catch(console.error);

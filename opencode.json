@@ -1,0 +1,32 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "eck-core": {
+      "type": "local",
+      "command": [
+        "node",
+        "C:\\Users\\Dmytro\\eckSnapshot\\scripts\\mcp-eck-core.js"
+      ],
+      "enabled": true,
+      "timeout": 30000
+    },
+    "glm-zai": {
+      "type": "local",
+      "command": [
+        "node",
+        "C:\\Users\\Dmytro\\eckSnapshot\\scripts\\mcp-glm-zai-worker.js"
+      ],
+      "environment": {
+        "ZAI_API_KEY": "286d1ad8b1e2462cbc26901275b77620.g9c15yve4MsFdQa6"
+      },
+      "enabled": true,
+      "timeout": 120000
+    }
+  },
+  "instructions": [
+    "AGENTS.md"
+  ],
+  "experimental": {
+    "mcp_timeout": 120000
+  }
+}

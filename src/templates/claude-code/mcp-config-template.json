@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "ecksnapshot": {
+      "command": "node",
+      "args": [
+        "<PATH_TO_MCP_SERVER>/src/mcp-server/index.js"
+      ],
+      "env": {}
+    }
+  }
+}
