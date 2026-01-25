@@ -35,9 +35,9 @@ When you have completed your coding task and verified it works:
 2. **DO NOT** just say "I'm done".
 3. **Use the \`eck_finish_task\` tool** to finalize the task.
    - This tool automatically:
-     - Updates \`.eck/snap/AnswerToSA.md\` with your status
-     - Creates a proper git commit with Co-Authored-By attribution
-     - Generates a delta snapshot (\`eck-snapshot update-auto\`) for context sync
+      - Updates \`.eck/lastsnapshot/AnswerToSA.md\` with your status
+      - Creates a proper git commit with Co-Authored-By attribution
+      - Generates a delta snapshot (\`eck-snapshot update-auto\`) for context sync
    - This is the standard way to complete any task.
 
 ## 4. THE RALPH WIGGUM PROTOCOL (AUTONOMOUS LOOPS)
@@ -63,10 +63,10 @@ When you have completed your coding task and verified it works:
     *   If you cannot achieve green tests after max retries, produce a detailed report of *why* it is blocked.
 
 ## 5. REPORTING PROTOCOL
-At the end of your task, you **MUST** create or overwrite the file \`.eck/snap/AnswerToSA.md\` BEFORE calling \`eck_finish_task\`.
+At the end of your task, you **MUST** create or overwrite the file \`.eck/lastsnapshot/AnswerToSA.md\` BEFORE calling \`eck_finish_task\`.
 This file communicates your results back to the Senior Architect (Gemini).
 
-**Format for .eck/snap/AnswerToSA.md:**
+**Format for .eck/lastsnapshot/AnswerToSA.md:**
 \`\`\`markdown
 # Report: [Task Name]
 **Status:** [SUCCESS / BLOCKED / FAILED]
@@ -82,4 +82,4 @@ This file communicates your results back to the Senior Architect (Gemini).
 ## 6. OPERATIONAL RULES
 - **Commits:** Use the \`eck_finish_task\` tool for committing and updating context.
 - **Manifests:** If you see [STUB] in .eck/ files, update them.
-- **Reporting:** NEVER finish a session without writing \`.eck/snap/AnswerToSA.md\` and calling \`eck_finish_task\`.
+- **Reporting:** NEVER finish a session without writing \`.eck/lastsnapshot/AnswerToSA.md\` and calling \`eck_finish_task\`.

@@ -15,7 +15,7 @@ import {
   scanDirectoryRecursively, loadGitignore, readFileWithSizeCheck,
   generateDirectoryTree, loadConfig, displayProjectInfo, loadProjectEckManifest,
   ensureSnapshotsInGitignore, initializeEckManifest, generateTimestamp,
-  SecretScanner
+  getShortRepoName, SecretScanner
 } from '../../utils/fileUtils.js';
 import { detectProjectType, getProjectSpecificFiltering } from '../../utils/projectDetector.js';
 import { estimateTokensWithPolynomial, generateTrainingCommand } from '../../utils/tokenEstimator.js';
@@ -709,9 +709,12 @@ export async function createRepoSnapshot(repoPath, options) {
         const opts = { ...options, agent: false, jag: isJag, jas: isJas, jao: isJao };
         const header = await generateEnhancedAIHeader({ stats, repoName, mode: 'file', eckManifest, options: opts, repoPath: processedRepoPath }, isGitRepo);
 
-        // Compact filename format: eck{timestamp}_{hash}_{suffix}.md
+        // Compact filename format: eck{ShortName}{timestamp}_{hash}_{suffix}.md
+        // getShortRepoName ensures Capitalized Start/End (e.g. SnaOt)
         const shortHash = gitHash ? gitHash.substring(0, 7) : '';
-        let fname = `eck${timestamp}`;
+        const shortRepoName = getShortRepoName(repoName);
+
+        let fname = `eck${shortRepoName}${timestamp}`;
         if (shortHash) fname += `_${shortHash}`;
 
         // Add mode suffix
@@ -727,11 +730,11 @@ export async function createRepoSnapshot(repoPath, options) {
         await fs.writeFile(fpath, fullContent);
         console.log(`📄 Generated Snapshot: ${fname}`);
 
-        // --- FEATURE: Active Snapshot (.eck/snap/) ---
-        // Only create .eck/snap/ entries for the main snapshot
+        // --- FEATURE: Active Snapshot (.eck/lastsnapshot/) ---
+        // Only create .eck/lastsnapshot/ entries for the main snapshot
         if (!isAgentMode) {
           try {
-            const snapDir = path.join(originalCwd, '.eck', 'snap');
+            const snapDir = path.join(originalCwd, '.eck', 'lastsnapshot');
             await fs.mkdir(snapDir, { recursive: true });
 
             // 1. Clean up OLD snapshots in this specific folder
@@ -746,10 +749,10 @@ export async function createRepoSnapshot(repoPath, options) {
             // 2. Save the NEW specific named file
             await fs.writeFile(path.join(snapDir, fname), fullContent);
 
-            console.log(chalk.cyan(`📋 Active snapshot updated in .eck/snap/: ${fname}`));
+            console.log(chalk.cyan(`📋 Active snapshot updated in .eck/lastsnapshot/: ${fname}`));
           } catch (e) {
             // Non-critical failure
-            console.warn(chalk.yellow(`⚠️  Could not update .eck/snap/: ${e.message}`));
+            console.warn(chalk.yellow(`⚠️  Could not update .eck/lastsnapshot/: ${e.message}`));
           }
         }
         // --------------------------------------------

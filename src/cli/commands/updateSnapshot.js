@@ -4,7 +4,7 @@ import ora from 'ora';
 import chalk from 'chalk';
 import { getGitAnchor, getChangedFiles, getGitDiffOutput } from '../../utils/gitUtils.js';
 import { loadSetupConfig } from '../../config.js';
-import { readFileWithSizeCheck, parseSize, formatSize, matchesPattern, loadGitignore, generateTimestamp } from '../../utils/fileUtils.js';
+import { readFileWithSizeCheck, parseSize, formatSize, matchesPattern, loadGitignore, generateTimestamp, getShortRepoName } from '../../utils/fileUtils.js';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -16,19 +16,19 @@ async function generateSnapshotContent(repoPath, changedFiles, anchor, config, g
   let includedCount = 0;
   const fileList = [];
 
-  // Check for Agent Report in .eck/snap/AnswerToSA.md (STRICT LOCATION)
-  const reportPath = path.join(repoPath, '.eck', 'snap', 'AnswerToSA.md');
+  // Check for Agent Report in .eck/lastsnapshot/AnswerToSA.md (STRICT LOCATION)
+  const reportPath = path.join(repoPath, '.eck', 'lastsnapshot', 'AnswerToSA.md');
   let agentReport = null;
   try {
     agentReport = await fs.readFile(reportPath, 'utf-8');
-    if (!changedFiles.includes('.eck/snap/AnswerToSA.md')) {
-      changedFiles.push('.eck/snap/AnswerToSA.md');
+    if (!changedFiles.includes('.eck/lastsnapshot/AnswerToSA.md')) {
+      changedFiles.push('.eck/lastsnapshot/AnswerToSA.md');
     }
   } catch (e) { /* No report */ }
 
   for (const filePath of changedFiles) {
     if (config.dirsToIgnore.some(d => filePath.startsWith(d))) continue;
-    if (gitignore.ignores(filePath) && filePath !== '.eck/snap/AnswerToSA.md') continue;
+    if (gitignore.ignores(filePath) && filePath !== '.eck/lastsnapshot/AnswerToSA.md') continue;
 
     try {
       const fullPath = path.join(repoPath, filePath);
@@ -101,7 +101,8 @@ export async function updateSnapshot(repoPath, options) {
     } catch (e) {}
 
     const timestamp = generateTimestamp();
-    const outputFilename = `eck${timestamp}_${anchor.substring(0, 7)}_up${seqNum}.md`;
+    const shortRepoName = getShortRepoName(path.basename(repoPath));
+    const outputFilename = `eck${shortRepoName}${timestamp}_${anchor.substring(0, 7)}_up${seqNum}.md`;
     const outputPath = path.join(repoPath, '.eck', 'snapshots', outputFilename);
 
     await fs.mkdir(path.dirname(outputPath), { recursive: true });
@@ -109,9 +110,9 @@ export async function updateSnapshot(repoPath, options) {
 
     spinner.succeed(`Update snapshot created: .eck/snapshots/${outputFilename}`);
 
-    // --- FEATURE: Active Snapshot (.eck/snap/) ---
+    // --- FEATURE: Active Snapshot (.eck/lastsnapshot/) ---
     try {
-      const snapDir = path.join(repoPath, '.eck', 'snap');
+      const snapDir = path.join(repoPath, '.eck', 'lastsnapshot');
       await fs.mkdir(snapDir, { recursive: true });
 
       // 1. Clean up OLD snapshots
@@ -124,7 +125,7 @@ export async function updateSnapshot(repoPath, options) {
 
       // 2. Save new file
       await fs.writeFile(path.join(snapDir, outputFilename), fullContent);
-      console.log(chalk.cyan(`📋 Active snapshot updated in .eck/snap/: ${outputFilename}`));
+      console.log(chalk.cyan(`📋 Active snapshot updated in .eck/lastsnapshot/: ${outputFilename}`));
     } catch (e) {
       // Non-critical failure
     }
@@ -132,7 +133,7 @@ export async function updateSnapshot(repoPath, options) {
 
     // Check if agent report was included
     if (agentReport) {
-      console.log(chalk.green('📨 Included Agent Report (.eck/snap/AnswerToSA.md)'));
+      console.log(chalk.green('📨 Included Agent Report (.eck/lastsnapshot/AnswerToSA.md)'));
     }
 
     console.log(`📦 Included ${includedCount} changed files.`);
@@ -178,10 +179,31 @@ export async function updateSnapshotJson(repoPath) {
     } catch (e) {}
 
     const timestamp = generateTimestamp();
-    const outputFilename = `eck${timestamp}_${anchor.substring(0, 7)}_up${seqNum}.md`;
+    const shortRepoName = getShortRepoName(path.basename(repoPath));
+    const outputFilename = `eck${shortRepoName}${timestamp}_${anchor.substring(0, 7)}_up${seqNum}.md`;
     const outputPath = path.join(repoPath, '.eck', 'snapshots', outputFilename);
     await fs.mkdir(path.dirname(outputPath), { recursive: true });
     await fs.writeFile(outputPath, fullContent);
+
+    // --- FEATURE: Active Snapshot (.eck/lastsnapshot/) ---
+    try {
+      const snapDir = path.join(repoPath, '.eck', 'lastsnapshot');
+      await fs.mkdir(snapDir, { recursive: true });
+
+      // 1. Clean up OLD snapshots
+      const existingFiles = await fs.readdir(snapDir);
+      for (const file of existingFiles) {
+        if ((file.startsWith('eck') && file.endsWith('.md')) || file === 'answer.md') {
+          await fs.unlink(path.join(snapDir, file));
+        }
+      }
+
+      // 2. Save new file
+      await fs.writeFile(path.join(snapDir, outputFilename), fullContent);
+    } catch (e) {
+      // Non-critical failure
+    }
+    // --------------------------------------------
 
     console.log(JSON.stringify({
       status: "success",

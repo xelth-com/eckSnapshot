@@ -436,6 +436,22 @@ export function generateTimestamp() {
 }
 
 /**
+ * Generates a short repo name with capitalized first 3 and last 2 characters
+ * Example: "Snapshot" -> "SnaOt", "MyProject" -> "MyPrjt"
+ * @param {string} repoName - The repository name
+ * @returns {string} Shortened repo name (Start3 + End2)
+ */
+export function getShortRepoName(repoName) {
+  if (!repoName) return '';
+  if (repoName.length <= 5) {
+    return repoName.toUpperCase();
+  }
+  const start = repoName.substring(0, 3);
+  const end = repoName.substring(repoName.length - 2);
+  return (start + end).toUpperCase();
+}
+
+/**
  * Displays project detection information in a user-friendly format
  * @param {object} detection - Project detection result
  */
