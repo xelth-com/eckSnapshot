@@ -394,14 +394,7 @@
         "*.pem",
         ".env*"
       ],
-      "alwaysIncludePatterns": [
-        "ARCHITECTURE.md",
-        "CONTEXT.md",
-        "OPERATIONS.md",
-        "ROADMAP.md",
-        "TECH_DEBT.md",
-        "README.md"
-      ]
+      "alwaysIncludePatterns": []
     },
     "projectSpecific": {
       "android": {

@@ -288,7 +288,12 @@ export async function generateDirectoryTree(dir, prefix = '', allFiles, depth = 
       if (config.dirsToIgnore.some(d => entry.name.includes(d.replace('/', '')))) continue;
       const fullPath = path.join(dir, entry.name);
       const relativePath = path.relative(process.cwd(), fullPath).replace(/\\/g, '/');
-      if (entry.isDirectory() || allFiles.includes(relativePath)) {
+
+      // FORCE VISIBILITY for .eck files in the tree
+      // Even if they are gitignored (not in allFiles), we want the Architect to see they exist
+      const isInsideEck = relativePath.startsWith('.eck/') || relativePath === '.eck';
+
+      if (entry.isDirectory() || allFiles.includes(relativePath) || isInsideEck) {
         validEntries.push({ entry, fullPath, relativePath });
       }
     }
