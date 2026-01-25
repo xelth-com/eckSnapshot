@@ -61,7 +61,8 @@ async function generateSnapshotContent(repoPath, changedFiles, anchor, config, g
   return {
     fullContent: header + contentOutput + diffSection,
     includedCount,
-    anchor
+    anchor,
+    agentReport
   };
 }
 
@@ -83,7 +84,7 @@ export async function updateSnapshot(repoPath, options) {
     const config = { ...setupConfig.fileFiltering, ...setupConfig.performance, ...options };
     const gitignore = await loadGitignore(repoPath);
 
-    const { fullContent, includedCount } = await generateSnapshotContent(repoPath, changedFiles, anchor, config, gitignore);
+    const { fullContent, includedCount, agentReport } = await generateSnapshotContent(repoPath, changedFiles, anchor, config, gitignore);
 
     // Determine sequence number
     let seqNum = 1;
@@ -162,7 +163,7 @@ export async function updateSnapshotJson(repoPath) {
     const config = { ...setupConfig.fileFiltering, ...setupConfig.performance };
     const gitignore = await loadGitignore(repoPath);
 
-    const { fullContent, includedCount } = await generateSnapshotContent(repoPath, changedFiles, anchor, config, gitignore);
+    const { fullContent, includedCount, agentReport } = await generateSnapshotContent(repoPath, changedFiles, anchor, config, gitignore);
 
     let seqNum = 1;
     const counterPath = path.join(repoPath, '.eck', 'update_seq');

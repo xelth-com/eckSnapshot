@@ -368,9 +368,9 @@ export async function generateEnhancedAIHeader(context, isGitRepo = false) {
     // 2. Strategic Context (Roadmap & Tech Debt)
     let strategicSection = '';
 
-    // Extract active roadmap items (Current Sprint, Next Phase)
+    // Extract active roadmap items (Phase 2, Current Status)
     if (context.eckManifest?.roadmap) {
-      const activeRoadmap = extractSections(context.eckManifest.roadmap, ['Current Sprint', 'Next Phase']);
+      const activeRoadmap = extractSections(context.eckManifest.roadmap, ['phase 2', 'current status']);
       if (activeRoadmap) {
         strategicSection += `\n### 🚩 ACTIVE ROADMAP\n${activeRoadmap}\n`;
       }
@@ -378,7 +378,7 @@ export async function generateEnhancedAIHeader(context, isGitRepo = false) {
 
     // Extract critical tech debt
     if (context.eckManifest?.techDebt) {
-      const activeDebt = extractSections(context.eckManifest.techDebt, ['Current', 'Critical', 'High Priority']);
+      const activeDebt = extractSections(context.eckManifest.techDebt, ['high priority', 'current', 'critical']);
       if (activeDebt) {
         strategicSection += `\n### 🔧 TECHNICAL DEBT FOCUS\n${activeDebt}\n`;
       }

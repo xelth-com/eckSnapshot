@@ -129,104 +129,32 @@ scope: core
 - Updated file extension mapping for .rs and .go files
 
 ---
-type: fix
-scope: cli
-summary: Fix timezone mismatch in snapshots
-timestamp: 2026-01-01T16:05:00Z
+task_id: smart-header-implementation
+date: 2026-01-25
+type: feat
+scope: core, utils
+summary: Implement Smart Header injection for strategic context and fix update snapshot bug
+details: |
+  Implemented Smart Header feature that automatically injects strategic context (Roadmap, Tech Debt, Operations) into system prompt header.
+  Fixed critical bug in update snapshot command where agentReport variable was not defined.
+  Added force visibility for . Eck directory files in directory tree even if gitignored.
+  Cleared alwaysIncludePatterns in setup.json to prevent file duplication in snapshot body.
 ---
 
-- Replaced toISOString() (UTC) with generateTimestamp() for filenames in createSnapshot.js and updateSnapshot.js
-- Changed aiHeader.js to use toLocaleString() for display timestamps
-- Ensures snapshots respect user's local system time and timezone
-
 ---
+task_id: rename-snap-to-lastsnapshot
+date: 2026-01-25
 type: refactor
-scope: cli
-summary: Switch standard mode to Eck-Protocol v2
-timestamp: 2026-01-01T15:55:00Z
+scope: core,cli
+summary: Rename .eck/snap to .eck/lastsnapshot and update naming convention
+details: |
+  Renamed .eck/snap/ directory to .eck/lastsnapshot/ for clarity about folder purpose.
+  Implemented eck{ShortName}{timestamp} naming convention with capitalized first 3 and last 2 characters.
+  Updated all references in createSnapshot.js, updateSnapshot.js, claudeMdGenerator.js, and templates.
 ---
-
-- Removed legacy JSON command format from standard snapshots
-- Implemented Eck-Protocol v2 instructions (Markdown + XML + Metadata) in aiHeader.js
-- Ensures reliable code generation without JSON escaping issues
 
 ---
 type: fix
-scope: cli
-summary: Hide Gemini agents in standard snapshots
-timestamp: 2026-01-01T15:45:00Z
----
-
-- Updated aiHeader.js to filter out gemini-related agents from the prompt unless --with-ja is used
-- Removed gemini_windows from standard mode command formats
-- Prevents context leakage of JA workflow details in standard architectural snapshots
-
----
-type: refactor
-scope: cli
-summary: Make JA workflow instructions conditional
-timestamp: 2025-12-21T22:09:31Z
----
-
-- Replaced static JA workflow text in templates with dynamic placeholders
-- Updated aiHeader.js to only inject JA instructions if --with-ja flag is present
-- Simplified workflow description for standard snapshots
----
-task_id: feat-browser-automation-config-v1
-date: 2025-12-21
-type: feat
-scope: config
----
-
-# Enable Claude Chrome MCP browser automation capabilities
-
-- Added browser automation capabilities to local_dev agent: 'browser automation (chrome_mcp)', 'visual regression testing', 'network logging'
-- Created browserAutomation section in aiInstructions with detailed capabilities and restrictions
-- Documented Chrome MCP integration for frontend testing, debugging, and visual regression
-
----
-task_id: refine-help-guide-text-v2
-date: 2025-11-08
-type: docs
-scope: cli
----
-
-# Refine help text for generate-profile-guide
-
-- Clarified that `generate-profile-guide` is the recommended alternative to `profile-detect` for very large projects where the underlying AI's context window may be insufficient.
-
----
-task_id: feat-implement-english-help-guide-v2
-date: 2025-11-08
-type: feat
-scope: cli
----
-
-# Implement detailed, workflow-driven help text
-
-- Replaced the main `--help` output with a step-by-step guide in English, formatted for console readability.
-- The guide now prioritizes the core workflow: snapshot, profile-detect, using profiles, and pruning.
-- Added clear, console-style usage examples for each key step.
-
----
-task_id: fix-profile-detect-and-add-index-viewer-v1
-date: 2025-10-10
-type: fix
-scope: cli
----
-
-# Fix JSON parsing in profile-detect
-
-- Modified extractJson to be more robust against AI log wrappers
-- Finds first '{' and last '}' to extract JSON from surrounding text
-- Added /managed_components/ to .gitignore
-- Implemented new index-view command to inspect code chunks database
-- This resolves the crash when running the profile-detect command
-
----
-task_id: feat-c-language-support-v1
-date: 2025-10-10
-type: feat
 scope: core
 ---
 
