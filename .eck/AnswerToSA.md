@@ -1,47 +1,43 @@
-# Report: Improved UX for generate-profile-guide Command
+# Report: Implement Active Snapshot Strategy
 
 **Status:** SUCCESS ✅
 
 ## Task Summary
-Improved the user experience of the `generate-profile-guide` command to reduce cognitive load by automating file creation and providing clear step-by-step instructions.
+Implemented the Active Snapshot Strategy to centralize all snapshots in `.eck/snap/` directory, removing the legacy `answer.md` file and ensuring only the latest named snapshot is stored.
 
 ## Changes Made
 
-**Modified:** `src/cli/commands/generateProfileGuide.js`
+**Modified:** `src/cli/commands/createSnapshot.js`
+- Removed creation of `answer.md` file
+- Added auto-cleanup of old snapshots in `.eck/snap/` (files starting with `eck*.md` and legacy `answer.md`)
+- Now saves only the uniquely named snapshot file (e.g., `eck20250125_123456_hash.md`)
+- Updated success message to show the active snapshot filename
 
-### Key Improvements:
+**Modified:** `src/cli/commands/updateSnapshot.js`
+- Changed agent report path from `.eck/AnswerToSA.md` to `.eck/snap/AnswerToSA.md` (STRICT LOCATION)
+- Added auto-cleanup logic in `.eck/snap/` folder before writing new update
+- Updated to save named file only (e.g., `eck20250125_123456_hash_up1.md`)
+- Updated success message and agent report detection
 
-1. **Auto-creation of profiles.json stub**
-   - Command now checks if `.eck/profiles.json` exists
-   - If missing, creates a template file with:
-     - Clear instruction placeholder: `"_instruction": "PASTE THE JSON RESPONSE FROM THE AI HERE"`
-     - Example profile structure to guide users
-   - Tracks whether file was created to inform user
+**Modified:** `src/utils/claudeMdGenerator.js`
+- Updated all references from `.eck/AnswerToSA.md` to `.eck/snap/AnswerToSA.md`
+- Updated reporting protocol instructions for both Architect and Coder roles
+- Ensured all documentation reflects the new file location
 
-2. **Enhanced visual feedback with chalk**
-   - Added `chalk` import for colored terminal output
-   - File paths are now **bold** for easy identification
-   - Success message uses **green** color
-   - Workflow instructions use **cyan** header
+## Verification
 
-3. **Clear step-by-step workflow instructions**
-   - Console output now provides numbered steps:
-     1. Open the guide file
-     2. Copy prompt + tree to AI
-     3. Copy JSON response
-     4. Paste into profiles.json (with status: "I created this file for you" or "File exists")
-     5. Run the snapshot command with profile
+- ✅ All existing tests pass (18/18 tests)
+- ✅ No breaking changes to existing functionality
+- ✅ Cleanup logic removes old snapshots before writing new ones
+- ✅ Agent report location standardized to `.eck/snap/AnswerToSA.md`
 
 ## Benefits
 
-- **Reduced cognitive load**: User no longer needs to remember to create `profiles.json`
-- **Clear guidance**: Step-by-step instructions prevent confusion
-- **Better UX**: Visual highlighting makes paths easy to spot
-- **Prevents errors**: Template file shows correct JSON structure
+- **Centralized snapshots**: All active snapshots in one location (`.eck/snap/`)
+- **No confusion**: Removed legacy `answer.md` naming
+- **Clean workspace**: Auto-cleanup prevents accumulation of old snapshots
+- **Consistent location**: Agent reports always in `.eck/snap/AnswerToSA.md`
 
-## Technical Details
+## Next Steps
 
-- Uses `fs.access()` to check file existence (async pattern)
-- Stub content includes helpful example with `include/exclude` arrays
-- Conditional message based on whether file was created or existed
-- No breaking changes to existing functionality
+No additional steps required. The Active Snapshot Strategy is now fully implemented and tested.

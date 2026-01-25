@@ -16,19 +16,19 @@ async function generateSnapshotContent(repoPath, changedFiles, anchor, config, g
   let includedCount = 0;
   const fileList = [];
 
-  // Check for Agent Report
-  const reportPath = path.join(repoPath, '.eck', 'AnswerToSA.md');
+  // Check for Agent Report in .eck/snap/AnswerToSA.md (STRICT LOCATION)
+  const reportPath = path.join(repoPath, '.eck', 'snap', 'AnswerToSA.md');
   let agentReport = null;
   try {
     agentReport = await fs.readFile(reportPath, 'utf-8');
-    if (!changedFiles.includes('.eck/AnswerToSA.md')) {
-      changedFiles.push('.eck/AnswerToSA.md');
+    if (!changedFiles.includes('.eck/snap/AnswerToSA.md')) {
+      changedFiles.push('.eck/snap/AnswerToSA.md');
     }
   } catch (e) { /* No report */ }
 
   for (const filePath of changedFiles) {
     if (config.dirsToIgnore.some(d => filePath.startsWith(d))) continue;
-    if (gitignore.ignores(filePath) && filePath !== '.eck/AnswerToSA.md') continue;
+    if (gitignore.ignores(filePath) && filePath !== '.eck/snap/AnswerToSA.md') continue;
 
     try {
       const fullPath = path.join(repoPath, filePath);
@@ -109,12 +109,31 @@ export async function updateSnapshot(repoPath, options) {
 
     spinner.succeed(`Update snapshot created: .eck/snapshots/${outputFilename}`);
 
-    // Check if agent report was included
-    const reportPath = path.join(repoPath, '.eck', 'AnswerToSA.md');
+    // --- FEATURE: Active Snapshot (.eck/snap/) ---
     try {
-      await fs.access(reportPath);
-      console.log(chalk.green('📨 Included Agent Report (.eck/AnswerToSA.md)'));
-    } catch (e) {}
+      const snapDir = path.join(repoPath, '.eck', 'snap');
+      await fs.mkdir(snapDir, { recursive: true });
+
+      // 1. Clean up OLD snapshots
+      const existingFiles = await fs.readdir(snapDir);
+      for (const file of existingFiles) {
+        if ((file.startsWith('eck') && file.endsWith('.md')) || file === 'answer.md') {
+          await fs.unlink(path.join(snapDir, file));
+        }
+      }
+
+      // 2. Save new file
+      await fs.writeFile(path.join(snapDir, outputFilename), fullContent);
+      console.log(chalk.cyan(`📋 Active snapshot updated in .eck/snap/: ${outputFilename}`));
+    } catch (e) {
+      // Non-critical failure
+    }
+    // --------------------------------------------
+
+    // Check if agent report was included
+    if (agentReport) {
+      console.log(chalk.green('📨 Included Agent Report (.eck/snap/AnswerToSA.md)'));
+    }
 
     console.log(`📦 Included ${includedCount} changed files.`);
 

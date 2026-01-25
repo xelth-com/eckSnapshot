@@ -727,17 +727,29 @@ export async function createRepoSnapshot(repoPath, options) {
         await fs.writeFile(fpath, fullContent);
         console.log(`📄 Generated Snapshot: ${fname}`);
 
-        // --- FEATURE: Static Copy for Easy Access ---
-        // Only create .eck/snap/answer.md for the main snapshot (not agent-specific modes)
+        // --- FEATURE: Active Snapshot (.eck/snap/) ---
+        // Only create .eck/snap/ entries for the main snapshot
         if (!isAgentMode) {
           try {
             const snapDir = path.join(originalCwd, '.eck', 'snap');
             await fs.mkdir(snapDir, { recursive: true });
-            const staticPath = path.join(snapDir, 'answer.md');
-            await fs.writeFile(staticPath, fullContent);
-            console.log(chalk.cyan(`📋 Static copy updated: .eck/snap/answer.md`));
+
+            // 1. Clean up OLD snapshots in this specific folder
+            // We keep AnswerToSA.md, but remove old snapshots and legacy answer.md
+            const existingFiles = await fs.readdir(snapDir);
+            for (const file of existingFiles) {
+              if ((file.startsWith('eck') && file.endsWith('.md')) || file === 'answer.md') {
+                await fs.unlink(path.join(snapDir, file));
+              }
+            }
+
+            // 2. Save the NEW specific named file
+            await fs.writeFile(path.join(snapDir, fname), fullContent);
+
+            console.log(chalk.cyan(`📋 Active snapshot updated in .eck/snap/: ${fname}`));
           } catch (e) {
             // Non-critical failure
+            console.warn(chalk.yellow(`⚠️  Could not update .eck/snap/: ${e.message}`));
           }
         }
         // --------------------------------------------
