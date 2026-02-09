@@ -84,7 +84,7 @@ function getVisibleAgents(executionAgents, options) {
     const ja = executionAgents[priorityAgentKey];
     visible[priorityAgentKey] = {
       ...ja,
-      description: `⭐ **PRIMARY AGENT** ⭐ ${ja.description} (Delegates to MiniMax)`
+      description: `⭐ **PRIMARY AGENT** ⭐ ${ja.description} (Delegates to GLM Z.AI)`
     };
   }
 
@@ -95,8 +95,8 @@ function getVisibleAgents(executionAgents, options) {
     }
   }
 
-  // NOTE: We deliberately EXCLUDE 'minimax_worker' here.
-  // The Senior Architect does not call MiniMax directly; the JA does.
+  // NOTE: We deliberately EXCLUDE 'glm_zai_worker' here.
+  // The Senior Architect does not call GLM Z.AI directly; the JA does.
 
   return visible;
 }
@@ -437,7 +437,7 @@ You are the **Senior Architect**. You have a **Junior Architect** available to h
 **PROTOCOL:**
 1.  **Prefer Delegation:** Unless the task is trivial (1-2 file edits), assign it to the **Junior Architect** (ID: \`jas\`, \`jao\`, or \`jag\` - see agents list above).
 2.  **Direct Execution:** Only use \`local_dev\` or \`production_server\` directly if the Junior Architect fails or for simple "hotfixes".
-3.  **No Micro-Management:** Do not tell the Junior Architect *how* to use MiniMax or internal tools. Just give them the strategic objective.
+3.  **No Micro-Management:** Do not tell the Junior Architect *how* to use GLM Z.AI or internal tools. Just give them the strategic objective.
 `;
 
       commandFormats = `### COMMAND FORMATS (Eck-Protocol v2)

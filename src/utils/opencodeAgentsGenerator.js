@@ -197,7 +197,7 @@ When you have completed your coding task and verified it works:
 2. **DO NOT** just say "I'm done".
 3. **Use the \`eck_finish_task\` tool** to finalize the task.
    - This tool automatically:
-     - Updates \`.eck/snap/AnswerToSA.md\` with your status
+     - Updates \`.eck/lastsnapshot/AnswerToSA.md\` with your status
      - Creates a proper git commit with Co-Authored-By attribution
      - Generates a delta snapshot (\`eck-snapshot update-auto\`) for context sync
    - This is the standard way to complete any task.
@@ -225,10 +225,10 @@ When you have completed your coding task and verified it works:
     *   If you cannot achieve green tests after max retries, produce a detailed report of *why* it is blocked.
 
 ## 5. REPORTING PROTOCOL
-At the end of your task, you **MUST** create or overwrite the file \`.eck/snap/AnswerToSA.md\` BEFORE calling \`eck_finish_task\`.
+At the end of your task, you **MUST** create or overwrite the file \`.eck/lastsnapshot/AnswerToSA.md\` BEFORE calling \`eck_finish_task\`.
 This file communicates your results back to the Senior Architect.
 
-**Format for .eck/snap/AnswerToSA.md:**
+**Format for .eck/lastsnapshot/AnswerToSA.md:**
 \`\`\`markdown
 # Report: [Task Name]
 **Status:** [SUCCESS / BLOCKED / FAILED]
@@ -244,7 +244,7 @@ This file communicates your results back to the Senior Architect.
 ## 6. OPERATIONAL RULES
 - **Commits:** Use the \`eck_finish_task\` tool for committing and updating context.
 - **Manifests:** If you see [STUB] in .eck/ files, update them.
-- **Reporting:** NEVER finish a session without writing \`.eck/snap/AnswerToSA.md\` and calling \`eck_finish_task\`.`;
+- **Reporting:** NEVER finish a session without writing \`.eck/lastsnapshot/AnswerToSA.md\` and calling \`eck_finish_task\`.`;
 }
 
 const CODER_INSTRUCTIONS = `# 🛠️ ROLE: Expert Developer (The Fixer)
@@ -254,7 +254,7 @@ You are an Expert Developer. The architecture is already decided. Your job is to
 
 ## DEFINITION OF DONE (CRITICAL)
 When the task is complete:
-1. **UPDATE** the \`.eck/snap/AnswerToSA.md\` file with your status.
+1. **UPDATE** the \`.eck/lastsnapshot/AnswerToSA.md\` file with your status.
 2. **Use the \`eck_finish_task\` tool** to commit and sync context.
    - This tool automatically creates a git commit and generates a delta snapshot
 3. **DO NOT** use raw git commands for the final commit.

@@ -42,14 +42,14 @@ Restart Claude Code CLI or IDE extension to load the MCP server.
 
 ## Quick Settings Commands
 
-You can quickly switch between Claude and MiniMax settings:
+You can quickly switch settings:
 
 ```bash
 # Apply standard Claude settings (empty config)
 eck-snapshot c
 
-# Apply MiniMax proxy settings
-eck-snapshot m
+# Setup MCP servers (eck-core + glm-zai)
+eck-snapshot setup-mcp
 ```
 
 Both commands write to `~/.claude/settings.json` (or `%USERPROFILE%\.claude\settings.json` on Windows).
@@ -95,7 +95,7 @@ The MCP tool is automatically called by Claude when a task is complete according
 - `mcp-server-template.js`: The MCP server implementation
 - `mcp-config-template.json`: Claude Code configuration snippet
 - `settings-claude.json`: Standard Claude settings (empty config)
-- `settings-minimax.json`: MiniMax proxy settings template
+- `settings-glm-zai.json`: GLM Z.AI proxy settings template (legacy)
 - `README.md`: This file
 
 ## Copying to Other Projects

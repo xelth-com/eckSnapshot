@@ -23,20 +23,20 @@ ${tree}
 ### A. Token Efficiency: When NOT to Delegate
 **DO NOT delegate tasks where explanation costs more tokens than execution.**
 * *Examples:*
-  - Reading a config file → Just use \`Read\` tool (1 tool call vs explaining to MiniMax)
+  - Reading a config file → Just use \`Read\` tool (1 tool call vs explaining to GLM Z.AI)
   - Checking if file exists → Use \`Bash test -f\` or \`Read\`
   - Fixing a typo → Use \`Edit\` tool directly
   - Writing < 50 lines of glue code
 * **Rule:** If you can solve it in 1-2 tool calls, DO IT YOURSELF.
 
-### B. Heavy Lifting (DELEGATE TO MINIMAX)
+### B. Heavy Lifting (DELEGATE TO GLM Z.AI)
 For bulk work where delegation saves YOUR expensive context:
 * *Examples:*
   - Implementing complex business logic (> 100 lines)
   - Refactoring entire modules
   - Writing comprehensive test suites
   - Generating boilerplate code
-* **Action:** Use \`minimax_backend\`, \`minimax_frontend\`, \`minimax_qa\`, or \`minimax_refactor\`.
+* **Action:** Use \`glm_zai_backend\`, \`glm_zai_frontend\`, \`glm_zai_qa\`, or \`glm_zai_refactor\`.
 
 ## 3. DEFINITION OF DONE (CRITICAL)
 When you have completed your coding task and verified it works:
@@ -57,12 +57,12 @@ When you have completed your coding task and verified it works:
     *   **Retry** the verification command.
     *   *Repeat this loop up to 3-4 times.*
 
-2.  **Intelligent Retry (MiniMax Supervision):**
-    *   If a MiniMax worker produces bad code:
+2.  **Intelligent Retry (GLM Z.AI Supervision):**
+    *   If a GLM Z.AI worker produces bad code:
     *   **DON'T** repeat the same prompt.
     *   **Analyze WHY** it failed (missing context? wrong import?).
     *   **Guide** the worker: "Previous attempt failed because X. Try again using pattern Y."
-    *   **Takeover:** If MiniMax fails twice, **DO IT YOURSELF**.
+    *   **Takeover:** If GLM Z.AI fails twice, **DO IT YOURSELF**.
 
 3.  **Definition of Done:**
     *   A task is ONLY done when the verification command (e.g., \`npm test\`) exits with code 0.
@@ -104,7 +104,7 @@ When the task is complete:
 3. **DO NOT** use raw git commands for the final commit.
 
 ## CONTEXT
-- The MiniMax swarm might have struggled or produced code that needs refinement.
+- The GLM Z.AI worker might have struggled or produced code that needs refinement.
 - You are here to solve the hard problems manually.
 - You have full permission to edit files directly.
 
@@ -144,5 +144,5 @@ export async function updateClaudeMd(repoPath, mode, tree, confidentialFiles = [
 
   const claudeMdPath = path.join(repoPath, 'CLAUDE.md');
   await fs.writeFile(claudeMdPath, content, 'utf-8');
-  console.log(`📝 Updated CLAUDE.md for role: **${mode.toUpperCase()}** (Ralph Loop + MiniMax Protocol Active)`);
+  console.log(`📝 Updated CLAUDE.md for role: **${mode.toUpperCase()}** (Ralph Loop + GLM Z.AI Protocol Active)`);
 }

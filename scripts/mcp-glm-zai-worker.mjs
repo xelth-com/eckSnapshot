@@ -1,237 +1,231 @@
 #!/usr/bin/env node
+/**
+ * MCP GLM Z.AI Worker - Provides specialized worker agents via GLM-4.7 (Z.AI Coding Plan)
+ * Replacement for MiniMax M2.1 worker. Used by Claude Code (Sonnet/Opus) to delegate
+ * heavy coding tasks and save tokens.
+ *
+ * Setup (Claude Code):
+ *   claude mcp add glm-zai -- node scripts/mcp-glm-zai-worker.mjs
+ *
+ * Setup (OpenCode):
+ *   Add to opencode MCP config with the same command path.
+ *
+ * Environment:
+ *   ZAI_API_KEY or ANTHROPIC_AUTH_TOKEN must be set.
+ */
 
-const { Server } = require("@modelcontextprotocol/sdk/server/index.js");
-const { StdioServerTransport } = require("@modelcontextprotocol/sdk/stdio.js");
-const {
+import { Server } from "@modelcontextprotocol/sdk/server/index.js";
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
-} = require("@modelcontextprotocol/sdk/types.js");
-const Anthropic = require("@anthropic-ai/sdk");
+} from "@modelcontextprotocol/sdk/types.js";
+import Anthropic from "@anthropic-ai/sdk";
+import fs from "fs/promises";
+import path from "path";
+
+const API_KEY = process.env.ZAI_API_KEY || process.env.ANTHROPIC_AUTH_TOKEN;
+
+if (!API_KEY) {
+  console.error("ERROR: ZAI_API_KEY (or ANTHROPIC_AUTH_TOKEN) environment variable is not set");
+  console.error("Get your key at https://z.ai and export ZAI_API_KEY=your-key");
+  process.exit(1);
+}
 
 const glmClient = new Anthropic({
-  apiKey: process.env.ZAI_API_KEY || process.env.ANTHROPIC_AUTH_TOKEN,
+  apiKey: API_KEY,
   baseURL: "https://api.z.ai/api/anthropic",
 });
 
+// Define Personas - specialized worker roles
 const PERSONAS = {
-  "backend": `You are a Senior Backend Engineer.
+  frontend: `You are an Expert Frontend Developer (GLM-4.7).
+Focus: React, Vue, Svelte, Tailwind, CSS, UI/UX, responsive design.
+Goal: Implement the requested UI component, page, or frontend logic.
+Rules:
+- Return ONLY the code or diffs. No explanations unless critical.
+- Follow the existing project conventions you see in the provided files.
+- Use modern ES modules syntax.
+- Ensure accessibility basics (semantic HTML, ARIA where needed).`,
 
-Your expertise includes:
-- REST API design and implementation
-- Database schema design and migrations
-- Authentication and authorization
-- Microservices architecture
-- API documentation (OpenAPI/Swagger)
-- Performance optimization
-- Error handling and logging
+  backend: `You are a Senior Backend Engineer (GLM-4.7).
+Focus: Node.js, Python, Go, SQL, API design, Auth, WebSocket.
+Goal: Implement robust business logic, API endpoints, and data handling.
+Rules:
+- Return ONLY the code or diffs. No explanations unless critical.
+- Follow RESTful principles and existing project patterns.
+- Include proper error handling.
+- Write secure code (no SQL injection, XSS, etc).`,
 
-When implementing backend features:
-1. Design clean, maintainable code structure
-2. Follow RESTful principles
-3. Implement proper error handling
-4. Add comprehensive logging
-5. Write database migrations
-6. Document API endpoints
-7. Consider scalability from day one`,
+  qa: `You are a QA Automation Engineer (GLM-4.7).
+Focus: Unit tests, Integration tests, E2E tests, Edge cases.
+Goal: Write comprehensive tests for the provided code.
+Rules:
+- Return ONLY the test files. No explanations unless critical.
+- Use the testing framework already in the project (Jest, Vitest, pytest, etc).
+- Use AAA pattern (Arrange, Act, Assert).
+- Cover happy paths, edge cases, and error scenarios.
+- Aim for >80% coverage of the provided code.`,
 
-  "frontend": `You are an Expert Frontend Developer.
+  refactor: `You are a Code Quality Specialist (GLM-4.7).
+Focus: Clean Code, DRY, SOLID, Performance optimization, readability.
+Goal: Refactor the provided code to be cleaner, faster, and more maintainable.
+Rules:
+- Return ONLY the refactored code. No explanations unless critical.
+- Preserve existing functionality (no behavior changes).
+- Reduce complexity and duplication.
+- Improve naming and structure.`,
 
-Your expertise includes:
-- Modern frontend frameworks (React, Vue, Svelte, Angular)
-- Responsive design and mobile-first approach
-- CSS and UI/UX implementation
-- State management (Redux, Zustand, Pinia, Vuex)
-- Performance optimization
-- Accessibility (WCAG compliance)
-- Component architecture
-- Animation and transitions
-
-When implementing frontend features:
-1. Create reusable, modular components
-2. Follow accessibility best practices
-3. Optimize for performance (lazy loading, code splitting)
-4. Implement responsive designs
-5. Write clean, maintainable CSS
-6. Handle edge cases and error states
-7. Ensure cross-browser compatibility`,
-
-  "qa": `You are a QA Automation Engineer.
-
-Your expertise includes:
-- Unit testing (Jest, Vitest, pytest)
-- Integration testing
-- End-to-end testing (Cypress, Playwright, Puppeteer)
-- Test-driven development (TDD)
-- Test fixture design
-- Mock data generation
-- Coverage analysis
-- Bug reporting and triage
-
-When writing tests:
-1. Prioritize critical user paths
-2. Write clear, descriptive test names
-3. Use AAA pattern (Arrange, Act, Assert)
-4. Mock external dependencies properly
-5. Test edge cases and error scenarios
-6. Ensure good test coverage (>80%)
-7. Write maintainable test code`,
-
-  "refactor": `You are a Code Quality Specialist.
-
-Your expertise includes:
-- Code refactoring and modernization
-- Design patterns implementation
-- Performance optimization
-- Code deduplication
-- Technical debt reduction
-- SOLID principles application
-- Clean Code practices
-- Code smell detection and elimination
-
-When refactoring code:
-1. Identify code smells and anti-patterns
-2. Apply appropriate design patterns
-3. Improve readability and maintainability
-4. Reduce complexity
-5. Eliminate code duplication
-6. Improve performance
-7. Add documentation where needed
-8. Ensure all tests still pass after refactoring`,
-
-  "general": `You are an Expert Full-Stack Developer.
-
-Your expertise spans both frontend and backend development:
-- Modern web development (React, Node.js, Python)
-- Database design and management
-- API design and integration
-- Deployment and DevOps basics
-- Git workflows and CI/CD
-- Problem-solving and debugging
-- Code review best practices
-
-When working on tasks:
-1. Understand requirements fully before coding
-2. Write clean, well-documented code
-3. Follow project conventions
-4. Test thoroughly before committing
-5. Consider edge cases
-6. Optimize for performance and maintainability
-7. Communicate clearly about progress`
+  general: `You are an Expert Full-Stack Developer (GLM-4.7).
+Focus: Full-stack web development, problem-solving, debugging.
+Goal: Complete the requested task efficiently and correctly.
+Rules:
+- Return ONLY the code or diffs. No explanations unless critical.
+- Follow existing project conventions.
+- Write clean, maintainable code.
+- Consider edge cases.`
 };
 
-async function main() {
-  const server = new Server(
-    {
-      name: "glm-zai",
-      version: "1.0.0"
+const server = new Server(
+  { name: "glm-zai-worker", version: "2.0.0" },
+  { capabilities: { tools: {} } }
+);
+
+// 1. Register Tools Dynamically
+server.setRequestHandler(ListToolsRequestSchema, async () => {
+  const tools = Object.keys(PERSONAS).map((role) => ({
+    name: `glm_zai_${role}`,
+    description: `Delegate task to GLM Z.AI ${role.toUpperCase()} Specialist (GLM-4.7). Cost-effective worker for heavy coding tasks.`,
+    inputSchema: {
+      type: "object",
+      properties: {
+        instruction: {
+          type: "string",
+          description:
+            "Detailed technical instruction for the worker. Be specific about what to implement/change.",
+        },
+        file_paths: {
+          type: "array",
+          items: { type: "string" },
+          description:
+            "List of files the worker needs to read as context (paths relative to project root).",
+        },
+        context_summary: {
+          type: "string",
+          description:
+            "Brief context about the project and what we are building (optional but recommended).",
+        },
+      },
+      required: ["instruction"],
     },
-    {
-      capabilities: {
-        tools: {}
-      }
-    }
-  );
+  }));
 
-  server.setRequestHandler(ListToolsRequestSchema, async () => {
+  return { tools };
+});
+
+// 2. Handle Tool Calls
+server.setRequestHandler(CallToolRequestSchema, async (request) => {
+  const toolName = request.params.name;
+
+  if (!toolName.startsWith("glm_zai_")) {
     return {
-      tools: Object.keys(PERSONAS).map(role => ({
-        name: `glm_zai_${role}`,
-        description: `Delegate to GLM ZAI ${role.toUpperCase()} Specialist`,
-        inputSchema: {
-          type: "object",
-          properties: {
-            instruction: {
-              type: "string",
-              description: "The task or instruction for GLM ZAI specialist"
-            },
-            file_paths: {
-              type: "array",
-              items: {
-                type: "string"
-              },
-              description: "Array of file paths to include as context",
-              default: []
-            },
-            context_summary: {
-              type: "string",
-              description: "Brief summary of project context (optional)",
-              default: ""
-            }
-          },
-          required: ["instruction"]
-        }
-      }))
+      content: [
+        {
+          type: "text",
+          text: `Unknown tool: ${toolName}. Available: ${Object.keys(PERSONAS)
+            .map((p) => `glm_zai_${p}`)
+            .join(", ")}`,
+        },
+      ],
+      isError: true,
     };
-  });
+  }
 
-  server.setRequestHandler(CallToolRequestSchema, async (request) => {
-    const toolName = request.params.name;
+  const role = toolName.replace("glm_zai_", "");
+  const {
+    instruction,
+    file_paths = [],
+    context_summary = "",
+  } = request.params.arguments;
 
-    if (!toolName.startsWith('glm_zai_')) {
-      return {
-        content: [{
-          type: "text",
-          text: `Unknown tool: ${toolName}. Available tools: ${Object.keys(PERSONAS).map(p => `glm_zai_${p}`).join(', ')}`
-        }],
-        isError: true
-      };
-    }
+  try {
+    // Read files internally to avoid sending file content through the supervisor
+    let heavyContext = "";
+    const missingFiles = [];
 
-    const role = toolName.replace('glm_zai_', '');
-    const { instruction, file_paths = [], context_summary = "" } = request.params.arguments;
-
-    try {
-      let heavyContext = "";
-
-      if (file_paths && file_paths.length > 0) {
-        for (const filePath of file_paths) {
-          try {
-            const fs = require('fs/promises');
-            const content = await fs.readFile(filePath, "utf-8");
-            heavyContext += `\n\n=== FILE: ${filePath} ===\n${content}\n=== END FILE ===`;
-          } catch (error) {
-            heavyContext += `\n\n[Could not read file: ${filePath} - ${error.message}]`;
-          }
-        }
+    for (const filePath of file_paths) {
+      try {
+        const absolutePath = path.resolve(process.cwd(), filePath);
+        const content = await fs.readFile(absolutePath, "utf-8");
+        heavyContext += `\n=== FILE: ${filePath} ===\n${content}\n=== END FILE ===\n`;
+      } catch (e) {
+        missingFiles.push(`${filePath} (${e.code || e.message})`);
       }
+    }
 
-      const systemPrompt = PERSONAS[role] || PERSONAS.general;
-      const userMessage = context_summary
-        ? `CONTEXT: ${context_summary}\n\nTASK: ${instruction}\n\nFILES:\n${heavyContext}`
-        : `TASK: ${instruction}\n\nFILES:\n${heavyContext}`;
-
-      const response = await glmClient.messages.create({
-        model: "GLM-4.7",
-        system: systemPrompt,
-        messages: [{
-          role: "user",
-          content: userMessage
-        }],
-        max_tokens: 8192
-      });
-
-      const resultText = response.content[0]?.text || "No response from GLM ZAI";
-
+    if (missingFiles.length > 0 && file_paths.length > 0 && missingFiles.length === file_paths.length) {
       return {
-        content: [{
-          type: "text",
-          text: resultText
-        }]
-      };
-
-    } catch (error) {
-      return {
-        content: [{
-          type: "text",
-          text: `Error calling GLM ZAI: ${error.message}\n\nPlease ensure ZAI_API_KEY or ANTHROPIC_AUTH_TOKEN environment variable is set.`
-        }],
-        isError: true
+        content: [
+          {
+            type: "text",
+            text: `Error: Could not read any files: ${missingFiles.join(", ")}`,
+          },
+        ],
+        isError: true,
       };
     }
-  });
 
-  const transport = new StdioServerTransport();
-  server.connect(transport);
-}
+    const systemPrompt = PERSONAS[role] || PERSONAS.general;
 
-main().catch(console.error);
+    let userMessage = "";
+    if (context_summary) {
+      userMessage += `PROJECT CONTEXT: ${context_summary}\n\n`;
+    }
+    userMessage += `TASK: ${instruction}\n`;
+    if (missingFiles.length > 0) {
+      userMessage += `\nWARNING: Could not read some files: ${missingFiles.join(", ")}\n`;
+    }
+    if (heavyContext) {
+      userMessage += `\nSOURCE FILES:\n${heavyContext}`;
+    }
+
+    const response = await glmClient.messages.create({
+      model: "GLM-4.7",
+      max_tokens: 16384,
+      system: systemPrompt,
+      messages: [{ role: "user", content: userMessage }],
+    });
+
+    let resultText = "";
+    if (response.content && Array.isArray(response.content)) {
+      resultText = response.content
+        .filter((block) => block.type === "text")
+        .map((b) => b.text)
+        .join("\n\n");
+    } else {
+      resultText = "No content returned from GLM Z.AI.";
+    }
+
+    return {
+      content: [
+        {
+          type: "text",
+          text: `## GLM Z.AI (${role.toUpperCase()}) Output\n\n${resultText}`,
+        },
+      ],
+    };
+  } catch (error) {
+    return {
+      content: [
+        {
+          type: "text",
+          text: `GLM Z.AI API Error: ${error.message}\n\nEnsure ZAI_API_KEY is set. Get your key at https://z.ai`,
+        },
+      ],
+      isError: true,
+    };
+  }
+});
+
+const transport = new StdioServerTransport();
+await server.connect(transport);

@@ -34,6 +34,18 @@ node index.js --jas
 node index.js --jao
 ```
 
+## MCP Setup / Restoration
+```bash
+# Setup MCP servers for Claude Code (eck-core + glm-zai)
+eck-snapshot setup-mcp
+
+# Setup for OpenCode
+eck-snapshot setup-mcp --opencode
+
+# Setup for both
+eck-snapshot setup-mcp --both
+```
+
 ## Testing
 ```bash
 # Run tests
@@ -58,7 +70,7 @@ This project supports browser automation via the `local_dev` agent. This allows 
 - Visual regression checks
 - DOM inspection and data extraction
 
-### ⚠️ Critical Usage Protocol
+### Critical Usage Protocol
 **Direct Execution Only:** Browser tasks MUST be delegated directly to the interactive agent.
 - **DO NOT** use: `eck-snapshot ask-claude "Navigate to..."` (Subprocess lacks MCP context)
 - **DO USE**: Natural language instructions in the agent session (e.g., "Please use your browser tool to test the login flow...")
@@ -88,7 +100,7 @@ Examples:
 
 **Rule:** If you can solve it in 1-2 tool calls, DO IT YOURSELF.
 
-#### When to Delegate to MiniMax
+#### When to Delegate to GLM Z.AI
 For bulk work where delegation saves expensive context:
 
 Examples:
@@ -97,7 +109,7 @@ Examples:
 - Writing comprehensive test suites
 - Generating boilerplate code
 
-**Action:** Use `minimax_backend`, `minimax_frontend`, `minimax_qa`, or `minimax_refactor`.
+**Action:** Use `glm_zai_backend`, `glm_zai_frontend`, `glm_zai_qa`, or `glm_zai_refactor`.
 
 ### 4.2 The Ralph Wiggum Protocol (Deterministic Persistence)
 
@@ -111,12 +123,12 @@ Examples:
 - **Retry** the verification command
 - **Repeat** this loop up to 3-4 times
 
-#### 2. Intelligent Retry (MiniMax Supervision)
-If a MiniMax worker produces bad code:
+#### 2. Intelligent Retry (GLM Z.AI Supervision)
+If a GLM Z.AI worker produces bad code:
 - **DON'T** repeat the same prompt
 - **Analyze WHY** it failed (missing context? wrong import?)
 - **Guide** the worker: "Previous attempt failed because X. Try again using pattern Y."
-- **Takeover:** If MiniMax fails twice, **DO IT YOURSELF**
+- **Takeover:** If GLM Z.AI fails twice, **DO IT YOURSELF**
 
 #### 3. Definition of Done
 - A task is ONLY done when the verification command (e.g., `npm test`) exits with code 0
@@ -124,9 +136,9 @@ If a MiniMax worker produces bad code:
 
 ### 4.3 Feedback Loop (Reporting Protocol)
 
-**CRITICAL:** At the end of your task, you **MUST** create or overwrite the file `.eck/AnswerToSA.md`.
+**CRITICAL:** At the end of your task, you **MUST** create or overwrite the file `.eck/lastsnapshot/AnswerToSA.md`.
 
-This file communicates results back to the Senior Architect (Gemini).
+This file communicates results back to the Senior Architect.
 
 #### Required Format
 ```markdown
@@ -142,6 +154,6 @@ This file communicates results back to the Senior Architect (Gemini).
 ```
 
 #### Operational Rules
-- **Commits:** Use the structured commit workflow provided in commands (/eck:commit)
-- **Manifests:** If you see [STUB] in .eck/ files, update them
-- **Reporting:** NEVER finish a session without writing `.eck/AnswerToSA.md`
+- **Commits:** Use the `eck_finish_task` tool for committing and updating context.
+- **Manifests:** If you see [STUB] in .eck/ files, update them.
+- **Reporting:** NEVER finish a session without writing `.eck/lastsnapshot/AnswerToSA.md`.

@@ -138,11 +138,11 @@ To understand the project state, you can command the `eck-snapshot` tool directl
 
 You are managing an advanced instance of **Claude Code** equipped with specific plugins and tools. You must structure your commands to leverage these capabilities:
 
-1.  **Token Economy (MiniMax Swarm):**
+1.  **Token Economy (GLM Z.AI Worker Fleet):**
     *   **Goal:** Save money and Claude's context window.
     *   **Rule:** NEVER ask Claude to write >50 lines of code from scratch or refactor huge files personally.
-    *   **Command:** Instruct Claude to use the `minimax_worker` MCP tool.
-    *   **Phrasing:** "Delegate the implementation of [feature] to MiniMax Backend Worker. Review their output."
+    *   **Command:** Instruct Claude to use the `glm_zai_*` MCP tools.
+    *   **Phrasing:** "Delegate the implementation of [feature] to GLM Z.AI Backend Worker. Review their output."
 
 2.  **Self-Correction (The Ralph Loop):**
     *   **Goal:** Autonomous task completion.

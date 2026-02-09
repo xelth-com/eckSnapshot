@@ -258,25 +258,26 @@ This generates `.eck/snapshots/update_<timestamp>.md`.
 
 For a full list of commands and options, run `eck-snapshot --help`.
 
-## 🤖 MiniMax M2.1 Integration
+## 🤖 AI Integration (Claude Code + GLM Z.AI + OpenCode)
 
-eckSnapshot supports **two ways** to integrate with MiniMax M2.1, a cost-effective AI model with a 1M token context window:
+eckSnapshot supports multiple AI coding tools with a unified MCP infrastructure:
 
-### Method 1: Supervisor-Worker Mode (Hybrid)
-Claude Code acts as the Supervisor, delegating heavy tasks to MiniMax via MCP. Best for interactive development.
-- **Platforms:** Linux, macOS, Windows (CMD & PowerShell)
-- **Cost:** Moderate (Claude + MiniMax)
-- **Complexity:** Requires MCP setup
-- **Setup:** [Hybrid Mode Guide](./MINIMAX_INTEGRATION.md#method-1-supervisor-worker-mode-hybrid-architecture)
+### Claude Code (Sonnet 4.5 / Opus 4.6)
+Primary interactive coding agent. Can delegate heavy tasks to GLM Z.AI workers via MCP.
+- **Platforms:** Linux, macOS, Windows
+- **Setup:** `eck-snapshot setup-mcp`
 
-### Method 2: Standalone Mode
-Use MiniMax directly as your primary AI assistant. Best for batch processing and bulk refactoring.
-- **Platforms:** Linux, macOS, Windows (Batch & PowerShell)
-- **Cost:** Low (MiniMax only)
-- **Complexity:** Simple alias/script
-- **Setup:** [Standalone Guide](./MINIMAX_INTEGRATION.md#method-2-standalone-mode-direct-minimax-usage)
+### OpenCode (GLM-4.7 Z.AI Coding Plan)
+Alternative coding agent with the same MCP tool access.
+- **Platforms:** Linux, macOS, Windows
+- **Setup:** `eck-snapshot setup-mcp --opencode`
 
-👉 **[Full Integration Guide](./MINIMAX_INTEGRATION.md)** (v5.1.0) - Now with complete Windows support!
+### GLM Z.AI Worker Fleet (MCP)
+Cost-effective worker for heavy coding tasks. Called by Claude Code or OpenCode to save tokens.
+- **Tools:** `glm_zai_backend`, `glm_zai_frontend`, `glm_zai_qa`, `glm_zai_refactor`, `glm_zai_general`
+- **Requires:** `ZAI_API_KEY` environment variable
+
+👉 **[Full Integration Guide](./AI_INTEGRATION.md)**
 
 ## Experimental Features
 

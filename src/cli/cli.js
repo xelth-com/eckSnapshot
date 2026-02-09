@@ -20,6 +20,7 @@ import { setupGemini } from './commands/setupGemini.js';
 import { generateAutoDocs } from './commands/autoDocs.js';
 import { showFile } from './commands/showFile.js';
 import { runDoctor } from './commands/doctor.js';
+import { setupMcp } from './commands/setupMcp.js';
 import inquirer from 'inquirer';
 import ora from 'ora';
 import { execa } from 'execa';
@@ -64,7 +65,7 @@ async function checkCodeBoundaries(filePath, agentId) {
 export function run() {
   const program = new Command();
 
-  const helpGuide = `eck-snapshot (v5.0.0) - AI-Native Repository Context Tool.
+  const helpGuide = `eck-snapshot (v5.1.0) - AI-Native Repository Context Tool.
 
 --- 🚀 Core Workflow: Optimized for Web LLMs (Gemini/ChatGPT) ---
 
@@ -114,12 +115,13 @@ Option C: Using Profiles
 - prune:              Use AI to shrink a snapshot file by importance.
 - ask-claude:        Delegate tasks to Claude CLI agent.
 - setup-gemini:       Configure gemini-cli integration.
+- setup-mcp:          Setup/restore MCP servers (eck-core + glm-zai).
 `;
 
   program
     .name('eck-snapshot')
     .description('A lightweight, platform-independent CLI for creating project snapshots.')
-    .version('5.0.0')
+    .version('5.1.0')
     .addHelpText('before', helpGuide);
 
   // Main snapshot command
@@ -343,6 +345,15 @@ Quick --profile Examples:
     .description('Check project health and detect unfinished manifest stubs')
     .argument('[repoPath]', 'Path to the repository', process.cwd())
     .action(runDoctor);
+
+  // Setup MCP servers command (replaces setup-claude-mcp with unified approach)
+  program
+    .command('setup-mcp')
+    .description('Setup/restore MCP servers (eck-core + glm-zai) for Claude Code and/or OpenCode')
+    .option('--opencode', 'Setup for OpenCode only')
+    .option('--both', 'Setup for both Claude Code and OpenCode')
+    .option('-v, --verbose', 'Show detailed output')
+    .action(setupMcp);
 
   program.parse(process.argv);
 }

@@ -10,7 +10,7 @@ const __dirname = path.dirname(__filename);
 
 /**
  * Apply Claude Code settings preset
- * @param {string} preset - Preset name ('claude' or 'minimax')
+ * @param {string} preset - Preset name ('claude' or 'glm-zai')
  * @param {object} options - Command options
  */
 export async function applyClaudeSettings(preset, options = {}) {
@@ -67,10 +67,9 @@ export async function applyClaudeSettings(preset, options = {}) {
       const settings = JSON.parse(settingsContent);
       if (preset === 'claude') {
         console.log(chalk.green('✓ Standard Claude settings (empty config)'));
-      } else if (preset === 'minimax') {
-        console.log(chalk.green('✓ MiniMax proxy settings applied'));
-        console.log(chalk.yellow('\n⚠️  Remember to set your MiniMax API key in settings.json'));
-        console.log(chalk.gray(`   Path: ${settingsPath}`));
+      } else if (preset === 'glm-zai') {
+        console.log(chalk.green('✓ GLM Z.AI proxy settings applied'));
+        console.log(chalk.yellow('\n⚠️  Remember to set ZAI_API_KEY environment variable'));
       }
     }
 

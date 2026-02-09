@@ -102,7 +102,7 @@ class EckSnapshotMCPServer {
 
   async finishTask(status, commitMessage) {
     const workDir = process.cwd();
-    const answerFilePath = path.join(workDir, '.eck', 'AnswerToSA.md');
+    const answerFilePath = path.join(workDir, '.eck', 'lastsnapshot', 'AnswerToSA.md');
 
     const steps = [];
 
@@ -130,7 +130,7 @@ class EckSnapshotMCPServer {
 
     // Step 2: Git add AnswerToSA.md
     try {
-      await execa('git', ['add', '.eck/AnswerToSA.md'], { cwd: workDir });
+      await execa('git', ['add', '.eck/lastsnapshot/AnswerToSA.md'], { cwd: workDir });
       steps.push({ step: 'git_add_answer', success: true });
     } catch (error) {
       steps.push({ step: 'git_add_answer', success: false, error: error.message });
