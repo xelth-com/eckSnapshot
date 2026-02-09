@@ -5,7 +5,7 @@
       "type": "local",
       "command": [
         "node",
-        "C:\\Users\\Dmytro\\eckSnapshot\\scripts\\mcp-eck-core.js"
+        "C:\\Users\\Dmytro\\ecksnapshot\\scripts\\mcp-eck-core.js"
       ],
       "enabled": true,
       "timeout": 30000
@@ -14,11 +14,8 @@
       "type": "local",
       "command": [
         "node",
-        "C:\\Users\\Dmytro\\eckSnapshot\\scripts\\mcp-glm-zai-worker.js"
+        "C:\\Users\\Dmytro\\ecksnapshot\\scripts\\mcp-glm-zai-worker.mjs"
       ],
-      "environment": {
-        "ZAI_API_KEY": "286d1ad8b1e2462cbc26901275b77620.g9c15yve4MsFdQa6"
-      },
       "enabled": true,
       "timeout": 120000
     }

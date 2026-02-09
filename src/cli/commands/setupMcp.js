@@ -75,54 +75,30 @@ async function setupForClaude(packageRoot, eckCorePath, glmZaiPath, mcpServerPat
 
   try {
     spinner.start('Checking if `claude` CLI is available...');
-    await execa('claude', ['--version'], { shell: true });
+    await execa('claude', ['--version']);
     spinner.succeed('Claude CLI found');
 
-    // Register eck-core (eck_finish_task)
-    spinner.start('Registering eck-core MCP server...');
-    try {
-      await execa('claude', ['mcp', 'add', 'eck-core', '--', 'node', eckCorePath], { shell: true });
-      spinner.succeed('eck-core registered');
-    } catch (e) {
-      // May already exist - try remove then add
+    // Helper to register a single MCP server via claude CLI
+    async function registerClaudeMcp(name, scriptPath) {
+      spinner.start(`Registering ${name} MCP server...`);
       try {
-        await execa('claude', ['mcp', 'remove', 'eck-core'], { shell: true });
-        await execa('claude', ['mcp', 'add', 'eck-core', '--', 'node', eckCorePath], { shell: true });
-        spinner.succeed('eck-core re-registered');
-      } catch (e2) {
-        spinner.warn(`eck-core registration via CLI failed: ${e2.message}`);
+        await execa('claude', ['mcp', 'add', name, '--', 'node', scriptPath]);
+        spinner.succeed(`${name} registered`);
+      } catch (e) {
+        // May already exist - try remove then add
+        try {
+          await execa('claude', ['mcp', 'remove', name]);
+          await execa('claude', ['mcp', 'add', name, '--', 'node', scriptPath]);
+          spinner.succeed(`${name} re-registered`);
+        } catch (e2) {
+          spinner.warn(`${name} registration via CLI failed: ${e2.message}`);
+        }
       }
     }
 
-    // Register glm-zai (GLM-4.7 workers)
-    spinner.start('Registering glm-zai MCP server...');
-    try {
-      await execa('claude', ['mcp', 'add', 'glm-zai', '--', 'node', glmZaiPath], { shell: true });
-      spinner.succeed('glm-zai registered');
-    } catch (e) {
-      try {
-        await execa('claude', ['mcp', 'remove', 'glm-zai'], { shell: true });
-        await execa('claude', ['mcp', 'add', 'glm-zai', '--', 'node', glmZaiPath], { shell: true });
-        spinner.succeed('glm-zai re-registered');
-      } catch (e2) {
-        spinner.warn(`glm-zai registration via CLI failed: ${e2.message}`);
-      }
-    }
-
-    // Also register the main ecksnapshot MCP server (eck_finish_task with AnswerToSA.md integration)
-    spinner.start('Registering ecksnapshot MCP server...');
-    try {
-      await execa('claude', ['mcp', 'add', 'ecksnapshot', '--', 'node', mcpServerPath], { shell: true });
-      spinner.succeed('ecksnapshot registered');
-    } catch (e) {
-      try {
-        await execa('claude', ['mcp', 'remove', 'ecksnapshot'], { shell: true });
-        await execa('claude', ['mcp', 'add', 'ecksnapshot', '--', 'node', mcpServerPath], { shell: true });
-        spinner.succeed('ecksnapshot re-registered');
-      } catch (e2) {
-        spinner.warn(`ecksnapshot registration via CLI failed: ${e2.message}`);
-      }
-    }
+    await registerClaudeMcp('eck-core', eckCorePath);
+    await registerClaudeMcp('glm-zai', glmZaiPath);
+    await registerClaudeMcp('ecksnapshot', mcpServerPath);
 
     usedCliRegistration = true;
   } catch {
@@ -220,76 +196,74 @@ async function setupForClaude(packageRoot, eckCorePath, glmZaiPath, mcpServerPat
 }
 
 /**
- * Register MCP servers for OpenCode
- * OpenCode uses a different config format - generates opencode.json MCP config
+ * Register MCP servers for OpenCode.
+ * OpenCode uses opencode.json at project root with its own format:
+ *   { "mcp": { "name": { "type": "local", "command": [...], "enabled": true } } }
+ * The CLI (`opencode mcp add`) is interactive (TUI), so we write the config directly.
  */
 async function setupForOpenCode(packageRoot, eckCorePath, glmZaiPath, options) {
   const spinner = ora();
 
   console.log(chalk.blue('📦 Setting up for OpenCode...\n'));
 
-  // OpenCode typically uses a config file in the project or home directory
-  // Try to detect opencode config location
-  const homeDir = os.homedir();
-  const possiblePaths = [
-    path.join(process.cwd(), '.opencode', 'mcp.json'),
-    path.join(process.cwd(), 'opencode.json'),
-    path.join(homeDir, '.opencode', 'mcp.json'),
-    path.join(homeDir, '.config', 'opencode', 'mcp.json'),
-  ];
+  const configPath = path.join(process.cwd(), 'opencode.json');
 
-  // Also try to use `opencode` CLI if available
-  let usedCli = false;
+  spinner.start('Updating OpenCode config (opencode.json)...');
+
+  // Read existing config or create new
+  let config = {};
   try {
-    spinner.start('Checking if `opencode` CLI is available...');
-    await execa('opencode', ['--version'], { shell: true });
-    spinner.succeed('OpenCode CLI found');
+    const content = await fs.readFile(configPath, 'utf-8');
+    config = JSON.parse(content);
+  } catch { /* new config */ }
 
-    // Try registering via CLI
-    try {
-      spinner.start('Registering MCP servers via OpenCode CLI...');
-      await execa('opencode', ['mcp', 'add', 'eck-core', '--', 'node', eckCorePath], { shell: true });
-      await execa('opencode', ['mcp', 'add', 'glm-zai', '--', 'node', glmZaiPath], { shell: true });
-      spinner.succeed('MCP servers registered via OpenCode CLI');
-      usedCli = true;
-    } catch (e) {
-      spinner.warn(`OpenCode CLI registration failed: ${e.message}`);
-    }
-  } catch {
-    spinner.info('OpenCode CLI not found, using config file method');
+  // Ensure $schema and base structure
+  if (!config.$schema) {
+    config.$schema = 'https://opencode.ai/config.json';
+  }
+  if (!config.mcp) {
+    config.mcp = {};
   }
 
-  if (!usedCli) {
-    // Generate config file
-    spinner.start('Generating OpenCode MCP config...');
+  // Register eck-core
+  config.mcp['eck-core'] = {
+    type: 'local',
+    command: ['node', eckCorePath],
+    enabled: true,
+    timeout: 30000,
+  };
 
-    const openCodeMcpConfig = {
-      mcpServers: {
-        'eck-core': {
-          command: 'node',
-          args: [eckCorePath],
-        },
-        'glm-zai': {
-          command: 'node',
-          args: [glmZaiPath],
-        },
-      },
+  // Register glm-zai
+  config.mcp['glm-zai'] = {
+    type: 'local',
+    command: ['node', glmZaiPath],
+    enabled: true,
+    timeout: 120000,
+  };
+
+  // Preserve ZAI_API_KEY in environment if it was set before
+  if (process.env.ZAI_API_KEY) {
+    config.mcp['glm-zai'].environment = {
+      ZAI_API_KEY: process.env.ZAI_API_KEY,
     };
-
-    // Save to project directory
-    const configDir = path.join(process.cwd(), '.opencode');
-    const configPath = path.join(configDir, 'mcp.json');
-
-    try {
-      await fs.mkdir(configDir, { recursive: true });
-      await fs.writeFile(configPath, JSON.stringify(openCodeMcpConfig, null, 2));
-      spinner.succeed(`OpenCode MCP config saved: ${chalk.cyan(configPath)}`);
-    } catch (e) {
-      spinner.warn(`Could not save OpenCode config: ${e.message}`);
-    }
-
-    console.log(chalk.gray('\n  If OpenCode uses a different config path, copy:'));
-    console.log(chalk.gray(`  ${configPath}`));
-    console.log(chalk.gray('  to your OpenCode MCP configuration directory.\n'));
   }
+
+  // Remove old minimax entries if present
+  if (config.mcp['minimax-worker']) {
+    delete config.mcp['minimax-worker'];
+    console.log(chalk.gray('  Removed old minimax-worker from opencode.json'));
+  }
+
+  // Ensure AGENTS.md is in instructions
+  if (!config.instructions) {
+    config.instructions = ['AGENTS.md'];
+  } else if (!config.instructions.includes('AGENTS.md')) {
+    config.instructions.push('AGENTS.md');
+  }
+
+  await fs.writeFile(configPath, JSON.stringify(config, null, 2));
+  spinner.succeed(`OpenCode config updated: ${chalk.cyan(configPath)}`);
+
+  console.log(chalk.gray('\n  OpenCode will read MCP servers from opencode.json on next start.'));
+  console.log(chalk.gray('  Use `eck-snapshot --jas` or `--jao` to generate AGENTS.md for OpenCode.\n'));
 }

@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "eck-core": {
+      "command": "node",
+      "args": [
+        "C:\\Users\\Dmytro\\ecksnapshot\\scripts\\mcp-eck-core.js"
+      ]
+    },
+    "glm-zai": {
+      "command": "node",
+      "args": [
+        "C:\\Users\\Dmytro\\ecksnapshot\\scripts\\mcp-glm-zai-worker.mjs"
+      ]
+    }
+  }
+}
