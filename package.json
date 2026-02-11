@@ -41,6 +41,7 @@
     "ignore": "^5.3.1",
     "inquirer": "^9.2.20",
     "is-binary-path": "^2.1.0",
+    "js-yaml": "^4.1.0",
     "micromatch": "^4.0.8",
     "minimatch": "^9.0.3",
     "ora": "^8.1.0",
