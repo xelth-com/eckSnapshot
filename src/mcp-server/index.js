@@ -9,6 +9,11 @@ import {
 import { execa } from 'execa';
 import fs from 'fs/promises';
 import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const PROJECT_ROOT = path.resolve(__dirname, '../..');
 
 /**
  * EckSnapshot MCP Server
@@ -130,7 +135,7 @@ class EckSnapshotMCPServer {
 
     // Step 2: Git add AnswerToSA.md
     try {
-      await execa('git', ['add', '.eck/lastsnapshot/AnswerToSA.md'], { cwd: workDir });
+      await execa('git', ['add', '.eck/lastsnapshot/AnswerToSA.md'], { cwd: workDir, timeout: 30000 });
       steps.push({ step: 'git_add_answer', success: true });
     } catch (error) {
       steps.push({ step: 'git_add_answer', success: false, error: error.message });
@@ -139,7 +144,7 @@ class EckSnapshotMCPServer {
 
     // Step 3: Git add all other changes
     try {
-      await execa('git', ['add', '.'], { cwd: workDir });
+      await execa('git', ['add', '.'], { cwd: workDir, timeout: 30000 });
       steps.push({ step: 'git_add_all', success: true });
     } catch (error) {
       steps.push({ step: 'git_add_all', success: false, error: error.message });
@@ -148,8 +153,7 @@ class EckSnapshotMCPServer {
 
     // Step 4: Create git commit
     try {
-      const fullCommitMessage = `${commitMessage}\n\nCo-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>`;
-      await execa('git', ['commit', '-m', fullCommitMessage], { cwd: workDir });
+      await execa('git', ['commit', '-m', commitMessage], { cwd: workDir, timeout: 30000 });
       steps.push({ step: 'git_commit', success: true, message: commitMessage });
     } catch (error) {
       steps.push({ step: 'git_commit', success: false, error: error.message });
@@ -158,7 +162,8 @@ class EckSnapshotMCPServer {
 
     // Step 5: ALWAYS generate update snapshot (using update-auto for silent JSON output)
     try {
-      const { stdout } = await execa('eck-snapshot', ['update-auto'], { cwd: workDir });
+      const cliPath = path.join(PROJECT_ROOT, 'index.js');
+      const { stdout } = await execa('node', [cliPath, 'update-auto'], { cwd: workDir, timeout: 120000 });
 
       // Parse JSON output
       let snapshotResult;

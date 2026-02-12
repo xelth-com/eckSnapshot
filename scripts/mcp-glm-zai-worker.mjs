@@ -21,6 +21,7 @@ import {
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import Anthropic from "@anthropic-ai/sdk";
+import pRetry from "p-retry";
 import fs from "fs/promises";
 import path from "path";
 
@@ -189,12 +190,23 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       userMessage += `\nSOURCE FILES:\n${heavyContext}`;
     }
 
-    const response = await glmClient.messages.create({
-      model: "GLM-4.7",
-      max_tokens: 16384,
-      system: systemPrompt,
-      messages: [{ role: "user", content: userMessage }],
-    });
+    const response = await pRetry(
+      () => glmClient.messages.create({
+        model: "GLM-4.7",
+        max_tokens: 16384,
+        system: systemPrompt,
+        messages: [{ role: "user", content: userMessage }],
+      }),
+      {
+        retries: 2,
+        onFailedAttempt: (error) => {
+          // Don't retry auth errors or invalid requests
+          if (error.status === 401 || error.status === 400 || error.status === 403) {
+            throw error;
+          }
+        },
+      }
+    );
 
     let resultText = "";
     if (response.content && Array.isArray(response.content)) {

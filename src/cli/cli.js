@@ -17,7 +17,7 @@ import { executePrompt, executePromptWithSession } from '../services/claudeCliSe
 import { detectProfiles } from './commands/detectProfiles.js';
 import { generateProfileGuide } from './commands/generateProfileGuide.js';
 import { setupGemini } from './commands/setupGemini.js';
-import { generateAutoDocs } from './commands/autoDocs.js';
+
 import { showFile } from './commands/showFile.js';
 import { runDoctor } from './commands/doctor.js';
 import { setupMcp } from './commands/setupMcp.js';
@@ -326,11 +326,6 @@ Quick --profile Examples:
     .option('-v, --verbose', 'Show detailed output and error information')
     .action(setupGemini);
 
-  // Auto-docs command
-  program
-    .command('docs-auto')
-    .description('Auto-generate documentation from gemini-extension.json files')
-    .action(generateAutoDocs);
 
   // Show file command (for skeleton mode lazy loading)
   program

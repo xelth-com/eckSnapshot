@@ -46,16 +46,16 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
     try {
       // 1. Git Add
-      await execa("git", ["add", "."], { cwd: process.cwd() });
+      await execa("git", ["add", "."], { cwd: process.cwd(), timeout: 30000 });
 
       // 2. Git Commit
       // We allow empty commits just in case, though unlikely in a finish_task scenario
-      await execa("git", ["commit", "--allow-empty", "-m", message], { cwd: process.cwd() });
+      await execa("git", ["commit", "--allow-empty", "-m", message], { cwd: process.cwd(), timeout: 30000 });
 
       // 3. Auto Update Snapshot via CLI
       // We use the local index.js to ensure we use the current version of the tool
       const cliPath = path.join(PROJECT_ROOT, "index.js");
-      const { stdout } = await execa("node", [cliPath, "update-auto"], { cwd: process.cwd() });
+      const { stdout } = await execa("node", [cliPath, "update-auto"], { cwd: process.cwd(), timeout: 120000 });
 
       let result;
       try {

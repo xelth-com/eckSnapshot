@@ -9,17 +9,16 @@
   },
   "files": [
     "index.js",
-    ".ecksnapshot.config.js",
     "README.md",
     "LICENSE",
     "src/",
+    "scripts/",
     "setup.json"
   ],
   "scripts": {
     "test": "vitest",
     "test:ui": "vitest --ui",
-    "test:run": "vitest run",
-    "docs:auto": "node index.js docs-auto"
+    "test:run": "vitest run"
   },
   "author": "xelth-com",
   "license": "MIT",
