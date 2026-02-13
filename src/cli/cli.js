@@ -21,6 +21,7 @@ import { setupGemini } from './commands/setupGemini.js';
 import { showFile } from './commands/showFile.js';
 import { runDoctor } from './commands/doctor.js';
 import { setupMcp } from './commands/setupMcp.js';
+import { envPush, envPull } from './commands/envSync.js';
 import inquirer from 'inquirer';
 import ora from 'ora';
 import { execa } from 'execa';
@@ -349,6 +350,20 @@ Quick --profile Examples:
     .option('--both', 'Setup for both Claude Code and OpenCode')
     .option('-v, --verbose', 'Show detailed output')
     .action(setupMcp);
+
+  // Environment sync commands (encrypted .eck/ transfer between machines)
+  const envCmd = program.command('env').description('Encrypted environment sync');
+  envCmd
+    .command('push')
+    .description('Pack and encrypt .eck/ config files into .eck-sync.enc')
+    .option('-v, --verbose', 'Show detailed output')
+    .action(envPush);
+  envCmd
+    .command('pull')
+    .description('Decrypt and restore .eck/ config files from .eck-sync.enc')
+    .option('-f, --force', 'Overwrite existing .eck/ files without prompting')
+    .option('-v, --verbose', 'Show detailed output')
+    .action(envPull);
 
   program.parse(process.argv);
 }
