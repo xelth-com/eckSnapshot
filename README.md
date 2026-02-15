@@ -1,106 +1,128 @@
+# eck-snapshot
 
-# eckSnapshot (v5.4.0)
-
-A specialized CLI tool designed to create and restore single-file text snapshots of Git repositories. It is specifically optimized for providing full project context to Large Language Models (LLMs) like Claude, Gemini, and OpenCode.
-
-🎉 **WE ARE BACK ON NPM!** Version 5.4.0 and onwards are officially available via the npm registry.
-
-## 🚀 Quick Start
+A CLI tool that packs your entire Git repository into a single text file optimized for LLMs (Claude, Gemini, ChatGPT). Give any AI full project context in one copy-paste.
 
 ```bash
-# Install globally via npm
 npm install -g @xelth/eck-snapshot
+```
 
-# Create a snapshot of your current project
+## Core Workflow
+
+### 1. Full Snapshot
+
+Run `eck-snapshot` in your project root. It scans every tracked file, filters out noise (lock files, build artifacts, secrets), and produces a single `.md` file ready for an AI chat.
+
+```bash
 eck-snapshot
+# -> .eck/snapshots/eckMyProject_26-02-15_12-00_abc1234.md
 ```
 
-## ✨ Core Features
+That's it. Upload the file to your AI and start working.
 
-- **Skeleton Mode:** Strips function bodies using Tree-sitter and Babel to save massive amounts of context tokens.
-- **Delta Updates:** Tracks changes via Git anchors and generates incremental snapshots (`eck-snapshot update`).
-- **Royal Court Architecture:** Multi-agent protocol with dedicated modes for Claude Sonnet (JAS), Claude Opus (JAO), and Gemini (JAG).
-- **GLM Z.AI Worker Fleet:** Built-in MCP server integration for delegating heavy coding tasks to specialized AI workers.
-- **Security:** Built-in `SecretScanner` automatically redacts API keys and sensitive credentials before they hit the LLM context.
-- **Context Profiles:** Smart filtering using auto-detected or manual profiles (e.g., `--profile backend`).
+### 2. Incremental Update
 
----
+After you make changes, don't re-send the entire project. Send only what changed since the last full snapshot:
 
-## 🛠️ The Core Workflow
-
-### 1. Initial Context (Maximum Compression)
-Create a lightweight map of your entire project. Bodies of functions are hidden, allowing huge monoliths to fit into the AI's context window.
-```bash
-eck-snapshot --skeleton
-# -> Generates: .eck/snapshots/eck[Name]_[Hash]_sk.md
-```
-
-### 2. Lazy Loading (On-Demand Details)
-If the AI needs to see the exact implementation of specific files, it can request them on demand.
-```bash
-eck-snapshot show src/auth.js src/utils/hash.js
-```
-
-### 3. Incremental Updates (Delta)
-As you apply changes, the AI loses context. Instead of re-sending the full repository, send only what changed since the last snapshot!
 ```bash
 eck-snapshot update
-# -> Generates an update snapshot with git diffs and modified files
+# -> .eck/snapshots/eckMyProject_26-02-15_14-30_abc1234_up1.md
 ```
 
----
+This uses a Git anchor (saved automatically during full snapshot) to detect all modified files and includes their full content. No redundant diffs, no wasted tokens.
 
-## 👑 Royal Court Architecture & GLM Z.AI
+### 3. Lazy Loading
 
-`eck-snapshot` is designed to orchestrate a hierarchy of AI agents:
+If the AI asks to see specific files that weren't in the snapshot, show them instantly:
 
-- **Senior Architect:** (You / Gemini / ChatGPT) - Directs the high-level strategy.
-- **Junior Architects:**
-  - `JAS` (Sonnet 4.5): Fast manager for standard features. Run `eck-snapshot --jas`.
-  - `JAO` (Opus 4.5): Deep thinker for critical architecture. Run `eck-snapshot --jao`.
-  - `JAG` (Gemini 3 Pro): Massive context handler. Run `eck-snapshot --jag`.
+```bash
+eck-snapshot show src/auth.rs src/handlers/sync.rs
+```
+
+## Context Profiles
+
+Large repositories waste tokens on irrelevant code. Profiles let you partition the codebase so the AI only sees what matters.
+
+### Auto-Detection
+
+Let AI scan your directory tree and generate profiles automatically:
+
+```bash
+eck-snapshot profile-detect
+# -> Saves profiles to .eck/profiles.json
+```
+
+### Manual Guide
+
+For very large repos where auto-detection is too slow, generate a prompt guide, paste it into a powerful Web LLM (Gemini, ChatGPT), and save the resulting JSON:
+
+```bash
+eck-snapshot generate-profile-guide
+# -> .eck/profile_generation_guide.md (paste into AI, get profiles back)
+```
+
+### Using Profiles
+
+```bash
+eck-snapshot --profile                            # List all available profiles
+eck-snapshot --profile backend                    # Use a named profile
+eck-snapshot --profile backend --skeleton         # Profile + skeleton mode
+eck-snapshot --profile "src/**/*.rs,-**/test_*"   # Ad-hoc glob filtering
+```
+
+Profiles work with both full snapshots and incremental updates.
+
+## Smart Filtering
+
+eck-snapshot automatically detects your project type (Rust, Node.js, Android, Python, etc.) and excludes language-specific noise:
+
+- **Rust**: `Cargo.lock`, `target/`
+- **Node.js**: `package-lock.json`, `node_modules/`
+- **Android**: build artifacts, generated code
+- **All projects**: `.git/`, IDE configs, binary files
+
+The built-in `SecretScanner` also redacts API keys, tokens, and credentials before they reach the AI.
+
+## Multi-Agent Architecture
+
+eck-snapshot generates tailored `CLAUDE.md` instructions for different AI agent roles:
+
+```bash
+eck-snapshot --jas    # Junior Architect Sonnet - fast, standard features
+eck-snapshot --jao    # Junior Architect Opus - deep, critical architecture
+eck-snapshot --jag    # Junior Architect Gemini - massive context tasks
+```
 
 ### MCP Server Integration
-Delegate heavy coding tasks (>100 lines) to the **GLM Z.AI Worker Fleet** to save expensive context window tokens.
 
-1. Get your API key from [Z.AI](https://z.ai) and export it: `export ZAI_API_KEY="your-key-here"`
-2. Setup the MCP servers for Claude Code or OpenCode:
-   ```bash
-   eck-snapshot setup-mcp --both
-   ```
-3. Your AI will now have access to specialized tools: `glm_zai_frontend`, `glm_zai_backend`, `glm_zai_qa`, `glm_zai_refactor`, and the `eck_finish_task` commit tool.
-
----
-
-## 🧩 Context Profiles
-
-If your repository is huge, you can partition it using Context Profiles:
+Delegate coding tasks to the GLM Z.AI Worker Fleet via MCP:
 
 ```bash
-# Auto-detect profiles using AI
-eck-snapshot profile-detect
-
-# List available profiles
-eck-snapshot --profile
-
-# Use a specific profile
-eck-snapshot --profile backend
-
-# Ad-hoc inclusion/exclusion
-eck-snapshot --profile "src/**/*.js,-**/*.test.js"
+export ZAI_API_KEY="your-key"
+eck-snapshot setup-mcp --both    # Setup for Claude Code + OpenCode
 ```
 
-## 🔐 Environment Syncing
+This gives your AI access to specialized workers: `glm_zai_frontend`, `glm_zai_backend`, `glm_zai_qa`, `glm_zai_refactor`, and the `eck_finish_task` commit tool.
 
-Securely share your `.eck/` configuration (profiles, roadmap, AI instructions) between machines without committing them to the public git history:
+## Skeleton Mode
+
+For extremely large projects, skeleton mode strips function bodies and keeps only signatures, types, and structure:
 
 ```bash
-# Encrypt and pack .eck/ config files
-eck-snapshot env push
+eck-snapshot --skeleton
+```
 
-# Decrypt and restore on another machine
-eck-snapshot env pull
+Useful for initial orientation in massive codebases, but full snapshots with profiles are usually more practical.
+
+## Other Commands
+
+```bash
+eck-snapshot restore <snapshot>    # Restore files from a snapshot to disk
+eck-snapshot prune <snapshot>      # AI-powered snapshot size reduction
+eck-snapshot doctor                # Check project health
+eck-snapshot env push              # Encrypt and sync .eck/ config between machines
+eck-snapshot env pull              # Restore .eck/ config on another machine
 ```
 
 ## License
-MIT License
+
+MIT
