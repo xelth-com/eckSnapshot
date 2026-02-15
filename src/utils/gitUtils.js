@@ -34,9 +34,16 @@ export async function getChangedFiles(repoPath, anchorHash) {
   }
 }
 
-export async function getGitDiffOutput(repoPath, anchorHash) {
+export async function getGitDiffOutput(repoPath, anchorHash, excludeFiles = []) {
   try {
-    const { stdout } = await execa('git', ['diff', anchorHash, 'HEAD'], { cwd: repoPath });
+    const args = ['diff', anchorHash, 'HEAD'];
+    if (excludeFiles.length > 0) {
+      args.push('--');
+      for (const file of excludeFiles) {
+        args.push(`:(exclude)${file}`);
+      }
+    }
+    const { stdout } = await execa('git', args, { cwd: repoPath });
     return stdout;
   } catch (e) {
     return '';

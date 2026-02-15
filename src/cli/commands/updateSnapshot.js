@@ -60,7 +60,7 @@ async function generateSnapshotContent(repoPath, changedFiles, anchor, config, g
 
   header = reportSection + header;
 
-  const diffOutput = await getGitDiffOutput(repoPath, anchor);
+  const diffOutput = await getGitDiffOutput(repoPath, anchor, config.filesToIgnore || []);
   const diffSection = `\n--- GIT DIFF (For Context) ---\n\n\`\`\`diff\n${diffOutput}\n\`\`\``;
 
   return {
