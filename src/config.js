@@ -50,16 +50,6 @@ function validateConfigSchema(config) {
     warnings.push('Missing "aiInstructions" section');
   }
 
-  // Legacy support
-  if (!config.filesToIgnore || !Array.isArray(config.filesToIgnore)) {
-    warnings.push('filesToIgnore missing or not an array - using defaults');
-    config.filesToIgnore = DEFAULT_CONFIG.filesToIgnore;
-  }
-  if (!config.dirsToIgnore || !Array.isArray(config.dirsToIgnore)) {
-    warnings.push('dirsToIgnore missing or not an array - using defaults');
-    config.dirsToIgnore = DEFAULT_CONFIG.dirsToIgnore;
-  }
-
   if (warnings.length > 0) {
     console.warn('\n⚠️ Config Validation Warnings:');
     warnings.forEach(w => console.warn(`   - ${w}`));
