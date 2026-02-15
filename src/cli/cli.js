@@ -184,6 +184,7 @@ Option C: Using Profiles
     .option('--jag', 'Generate snapshot for Junior Architect Gemini (Gemini 3 Pro)')
     .option('--jas', 'Configure project for Junior Architect Sonnet (Sonnet 4.5)')
     .option('--jao', 'Configure project for Junior Architect Opus (Opus 4.5)')
+    .option('--zh', 'Communicate with GLM Z.AI workers in Chinese for better quality')
     .option('--skeleton', 'Enable skeleton mode: strip function bodies to save context window tokens')
     .option('--max-lines-per-file <number>', 'Truncate files to max N lines (e.g., 200 for compact snapshots)', (val) => parseInt(val))
     .action(createRepoSnapshot)

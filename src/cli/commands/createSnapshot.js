@@ -812,7 +812,7 @@ export async function createRepoSnapshot(repoPath, options) {
       if (isJao) claudeMode = 'jao';
       if (isJag) claudeMode = 'jag';
 
-      await updateClaudeMd(processedRepoPath, claudeMode, directoryTree, confidentialFiles);
+      await updateClaudeMd(processedRepoPath, claudeMode, directoryTree, confidentialFiles, { zh: options.zh });
 
       // --- Combined Report ---
       console.log('\n✅ Snapshot generation complete!');

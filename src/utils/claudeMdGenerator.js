@@ -118,7 +118,7 @@ When the task is complete:
 /**
  * Generates and writes the CLAUDE.md file based on the selected mode.
  */
-export async function updateClaudeMd(repoPath, mode, tree, confidentialFiles = []) {
+export async function updateClaudeMd(repoPath, mode, tree, confidentialFiles = [], options = {}) {
   let content = '';
 
   if (mode === 'jas') {
@@ -130,6 +130,18 @@ export async function updateClaudeMd(repoPath, mode, tree, confidentialFiles = [
   } else {
     // Default coder mode (or if flags are missing)
     content = CODER_INSTRUCTIONS;
+  }
+
+  // Chinese delegation mode
+  if (options.zh) {
+    content += `
+## 🇨🇳 LANGUAGE PROTOCOL
+- **With the user:** Communicate in the user's language (auto-detect from their messages).
+- **With GLM Z.AI workers:** ALWAYS write the \`instruction\` parameter in **Chinese (中文)**.
+  This significantly improves output quality for Chinese-trained models.
+  Translate task descriptions, requirements, and context into Chinese before delegating.
+- **Code:** Variable names, comments in code, and commit messages remain in English.
+`;
   }
 
   // Append Confidential Files Reference
