@@ -2,7 +2,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import ora from 'ora';
 import chalk from 'chalk';
-import { getGitAnchor, getChangedFiles, getGitDiffOutput } from '../../utils/gitUtils.js';
+import { getGitAnchor, getChangedFiles } from '../../utils/gitUtils.js';
 import { loadSetupConfig } from '../../config.js';
 import { readFileWithSizeCheck, parseSize, formatSize, matchesPattern, loadGitignore, generateTimestamp, getShortRepoName } from '../../utils/fileUtils.js';
 import { detectProjectType, getProjectSpecificFiltering } from '../../utils/projectDetector.js';
@@ -60,11 +60,8 @@ async function generateSnapshotContent(repoPath, changedFiles, anchor, config, g
 
   header = reportSection + header;
 
-  const diffOutput = await getGitDiffOutput(repoPath, anchor, config.filesToIgnore || []);
-  const diffSection = `\n--- GIT DIFF (For Context) ---\n\n\`\`\`diff\n${diffOutput}\n\`\`\``;
-
   return {
-    fullContent: header + contentOutput + diffSection,
+    fullContent: header + contentOutput,
     includedCount,
     anchor,
     agentReport
