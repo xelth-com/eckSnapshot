@@ -17,15 +17,19 @@ async function generateSnapshotContent(repoPath, changedFiles, anchor, config, g
   let includedCount = 0;
   const fileList = [];
 
-  // Check for Agent Report in .eck/lastsnapshot/AnswerToSA.md (STRICT LOCATION)
-  const reportPath = path.join(repoPath, '.eck', 'lastsnapshot', 'AnswerToSA.md');
+  // Include Agent Report ONLY if it was modified in this commit cycle
+  const reportRelPath = '.eck/lastsnapshot/AnswerToSA.md';
+  const reportChanged = changedFiles.some(f =>
+    f === reportRelPath || f === reportRelPath.replace(/\//g, path.sep)
+  );
+
   let agentReport = null;
-  try {
-    agentReport = await fs.readFile(reportPath, 'utf-8');
-    if (!changedFiles.includes('.eck/lastsnapshot/AnswerToSA.md')) {
-      changedFiles.push('.eck/lastsnapshot/AnswerToSA.md');
-    }
-  } catch (e) { /* No report */ }
+  if (reportChanged) {
+    try {
+      const reportPath = path.join(repoPath, '.eck', 'lastsnapshot', 'AnswerToSA.md');
+      agentReport = await fs.readFile(reportPath, 'utf-8');
+    } catch (e) { /* Failed to read */ }
+  }
 
   for (const filePath of changedFiles) {
     if (config.dirsToIgnore?.some(d => filePath.startsWith(d))) continue;

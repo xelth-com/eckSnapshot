@@ -56,14 +56,14 @@ class EckSnapshotMCPServer {
             properties: {
               status: {
                 type: 'string',
-                description: 'Status update message for AnswerToSA.md (e.g., "Fixed bug X", "Implemented feature Y")',
+                description: 'Status update for the Architect: what was done, what issues remain, what needs review',
               },
-              commitMessage: {
+              message: {
                 type: 'string',
-                description: 'Git commit message. Should follow conventional commits format (e.g., "feat: add user authentication", "fix: resolve login issue")',
+                description: 'Git commit message (follow Conventional Commits, e.g. "feat: add login")',
               },
             },
-            required: ['status', 'commitMessage'],
+            required: ['status', 'message'],
           },
         },
       ],
@@ -75,10 +75,12 @@ class EckSnapshotMCPServer {
         throw new Error(`Unknown tool: ${request.params.name}`);
       }
 
-      const { status, commitMessage } = request.params.arguments;
+      const { status, message } = request.params.arguments;
+      // Support legacy 'commitMessage' parameter
+      const commitMessage = message || request.params.arguments.commitMessage;
 
       if (!status || !commitMessage) {
-        throw new Error('Missing required arguments: status and commitMessage are required');
+        throw new Error('Missing required arguments: status and message are required');
       }
 
       try {
@@ -111,23 +113,11 @@ class EckSnapshotMCPServer {
 
     const steps = [];
 
-    // Step 1: Update AnswerToSA.md
+    // Step 1: Write AnswerToSA.md (OVERWRITE, not append)
     try {
-      const timestamp = new Date().toISOString();
-      const updateContent = `\n## Update - ${timestamp}\n\n${status}\n`;
-
-      // Check if file exists
-      try {
-        await fs.access(answerFilePath);
-        // Append to existing file
-        await fs.appendFile(answerFilePath, updateContent);
-        steps.push({ step: 'update_answer', success: true, message: 'Updated AnswerToSA.md' });
-      } catch {
-        // Create directory and file if not exists
-        await fs.mkdir(path.dirname(answerFilePath), { recursive: true });
-        await fs.writeFile(answerFilePath, `# Task Status\n${updateContent}`);
-        steps.push({ step: 'update_answer', success: true, message: 'Created AnswerToSA.md' });
-      }
+      await fs.mkdir(path.dirname(answerFilePath), { recursive: true });
+      await fs.writeFile(answerFilePath, `# Agent Report\n\n${status}\n`, 'utf-8');
+      steps.push({ step: 'update_answer', success: true, message: 'Updated AnswerToSA.md' });
     } catch (error) {
       steps.push({ step: 'update_answer', success: false, error: error.message });
       throw new Error(`Failed to update AnswerToSA.md: ${error.message}`);
