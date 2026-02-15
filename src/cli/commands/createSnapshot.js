@@ -312,6 +312,17 @@ async function estimateProjectTokens(projectPath, config, projectType = null) {
 }
 
 async function processProjectFiles(repoPath, options, config, projectType = null) {
+  // Merge project-specific filtering rules (e.g., Cargo.lock for Rust)
+  if (projectType) {
+    const projectSpecific = await getProjectSpecificFiltering(projectType);
+    config = {
+      ...config,
+      dirsToIgnore: [...(config.dirsToIgnore || []), ...(projectSpecific.dirsToIgnore || [])],
+      filesToIgnore: [...(config.filesToIgnore || []), ...(projectSpecific.filesToIgnore || [])],
+      extensionsToIgnore: [...(config.extensionsToIgnore || []), ...(projectSpecific.extensionsToIgnore || [])]
+    };
+  }
+
   const originalCwd = process.cwd();
   console.log(`\n📸 Processing files for: ${path.basename(repoPath)}`);
 

@@ -5,6 +5,7 @@ import chalk from 'chalk';
 import { getGitAnchor, getChangedFiles, getGitDiffOutput } from '../../utils/gitUtils.js';
 import { loadSetupConfig } from '../../config.js';
 import { readFileWithSizeCheck, parseSize, formatSize, matchesPattern, loadGitignore, generateTimestamp, getShortRepoName } from '../../utils/fileUtils.js';
+import { detectProjectType, getProjectSpecificFiltering } from '../../utils/projectDetector.js';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -27,7 +28,11 @@ async function generateSnapshotContent(repoPath, changedFiles, anchor, config, g
   } catch (e) { /* No report */ }
 
   for (const filePath of changedFiles) {
-    if (config.dirsToIgnore.some(d => filePath.startsWith(d))) continue;
+    if (config.dirsToIgnore?.some(d => filePath.startsWith(d))) continue;
+    const fileName = path.basename(filePath);
+    const fileExt = path.extname(filePath);
+    if (config.filesToIgnore?.includes(fileName)) continue;
+    if (fileExt && config.extensionsToIgnore?.includes(fileExt)) continue;
     if (gitignore.ignores(filePath) && filePath !== '.eck/lastsnapshot/AnswerToSA.md') continue;
 
     try {
@@ -81,7 +86,20 @@ export async function updateSnapshot(repoPath, options) {
     }
 
     const setupConfig = await loadSetupConfig();
-    const config = { ...setupConfig.fileFiltering, ...setupConfig.performance, ...options };
+    let config = { ...setupConfig.fileFiltering, ...setupConfig.performance, ...options };
+
+    // Detect project type and merge project-specific filters
+    const projectDetection = await detectProjectType(repoPath);
+    if (projectDetection.type) {
+      const projectSpecific = await getProjectSpecificFiltering(projectDetection.type);
+      config = {
+        ...config,
+        dirsToIgnore: [...(config.dirsToIgnore || []), ...(projectSpecific.dirsToIgnore || [])],
+        filesToIgnore: [...(config.filesToIgnore || []), ...(projectSpecific.filesToIgnore || [])],
+        extensionsToIgnore: [...(config.extensionsToIgnore || []), ...(projectSpecific.extensionsToIgnore || [])]
+      };
+    }
+
     const gitignore = await loadGitignore(repoPath);
 
     const { fullContent, includedCount, agentReport } = await generateSnapshotContent(repoPath, changedFiles, anchor, config, gitignore);
@@ -160,7 +178,20 @@ export async function updateSnapshotJson(repoPath) {
     }
 
     const setupConfig = await loadSetupConfig();
-    const config = { ...setupConfig.fileFiltering, ...setupConfig.performance };
+    let config = { ...setupConfig.fileFiltering, ...setupConfig.performance };
+
+    // Detect project type and merge project-specific filters
+    const projectDetection = await detectProjectType(repoPath);
+    if (projectDetection.type) {
+      const projectSpecific = await getProjectSpecificFiltering(projectDetection.type);
+      config = {
+        ...config,
+        dirsToIgnore: [...(config.dirsToIgnore || []), ...(projectSpecific.dirsToIgnore || [])],
+        filesToIgnore: [...(config.filesToIgnore || []), ...(projectSpecific.filesToIgnore || [])],
+        extensionsToIgnore: [...(config.extensionsToIgnore || []), ...(projectSpecific.extensionsToIgnore || [])]
+      };
+    }
+
     const gitignore = await loadGitignore(repoPath);
 
     const { fullContent, includedCount, agentReport } = await generateSnapshotContent(repoPath, changedFiles, anchor, config, gitignore);
