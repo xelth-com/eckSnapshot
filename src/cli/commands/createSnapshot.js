@@ -215,18 +215,25 @@ async function getProjectFiles(projectPath, config) {
   if (isGitRepo) {
     const { stdout } = await execa('git', ['ls-files'], { cwd: projectPath });
     const gitFiles = stdout.split('\n').filter(Boolean);
-    // Filter out hidden directories/files (starting with '.')
-    // AND apply global hard-ignores for node_modules, lockfiles, etc.
+
+    // Build effective dirsToIgnore list (global hard-ignores + config)
+    const dirsToIgnore = [...GLOBAL_HARD_IGNORE_DIRS, ...(config.dirsToIgnore || []).map(d => d.replace(/\/$/, ''))];
+    const filesToIgnore = [...GLOBAL_HARD_IGNORE_FILES, ...(config.filesToIgnore || [])];
+    const extensionsToIgnore = config.extensionsToIgnore || [];
+
     const filteredFiles = gitFiles.filter(file => {
       if (isHiddenPath(file)) return false;
       const fileName = file.split('/').pop();
-      // Check if any parent directory should be ignored (e.g., node_modules/subdir)
+      const fileExt = path.extname(fileName);
+      // Check if any parent directory should be ignored
       const pathParts = file.split('/');
       for (let i = 0; i < pathParts.length - 1; i++) {
-        if (GLOBAL_HARD_IGNORE_DIRS.includes(pathParts[i])) return false;
+        if (dirsToIgnore.includes(pathParts[i])) return false;
       }
-      // Check if file itself is a lockfile
-      if (GLOBAL_HARD_IGNORE_FILES.includes(fileName)) return false;
+      // Check filesToIgnore
+      if (filesToIgnore.includes(fileName)) return false;
+      // Check extensionsToIgnore
+      if (fileExt && extensionsToIgnore.includes(fileExt)) return false;
       return true;
     });
     return filteredFiles;

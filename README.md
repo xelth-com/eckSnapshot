@@ -93,6 +93,17 @@ eck-snapshot --jao    # Junior Architect Opus - deep, critical architecture
 eck-snapshot --jag    # Junior Architect Gemini - massive context tasks
 ```
 
+### Chinese Delegation (`--zh`)
+
+For GLM Z.AI workers (trained on Chinese data), the `--zh` flag instructs the architect to formulate all worker tasks in Chinese, improving output quality:
+
+```bash
+eck-snapshot --jas --zh    # Claude Code: delegate to GLM workers in Chinese
+eck-snapshot --zh          # OpenCode/GLM: generate AGENTS.md with Chinese protocol
+```
+
+The architect still communicates with you in your language. Only the `instruction` parameter sent to GLM workers switches to Chinese. Code, variable names, and commit messages stay in English.
+
 ### MCP Server Integration
 
 Delegate coding tasks to the GLM Z.AI Worker Fleet via MCP:
