@@ -10,7 +10,7 @@ import { updateClaudeMd } from './claudeMdGenerator.js';
  * @param {string} tree - Directory tree string
  * @param {string[]} confidentialFiles - Array of confidential file paths
  */
-export async function generateOpenCodeAgents(repoPath, mode, tree, confidentialFiles = []) {
+export async function generateOpenCodeAgents(repoPath, mode, tree, confidentialFiles = [], options = {}) {
   let frontmatter = {};
   let body = '';
 
@@ -137,6 +137,19 @@ export async function generateOpenCodeAgents(repoPath, mode, tree, confidentialF
       body += `- \`${file}\`\n`;
     }
     body += '> **Note:** Read these files only when strictly necessary.\n';
+  }
+
+  // Chinese delegation mode
+  if (options.zh) {
+    body += `
+
+## 🇨🇳 LANGUAGE PROTOCOL
+- **With the user:** Communicate in the user's language (auto-detect from their messages).
+- **With GLM Z.AI workers:** ALWAYS write the \`instruction\` parameter in **Chinese (中文)**.
+  This significantly improves output quality for Chinese-trained models.
+  Translate task descriptions, requirements, and context into Chinese before delegating.
+- **Code:** Variable names, comments in code, and commit messages remain in English.
+`;
   }
 
   // Generate final content with YAML frontmatter

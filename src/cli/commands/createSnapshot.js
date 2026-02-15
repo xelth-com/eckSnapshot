@@ -24,6 +24,7 @@ import { applyProfileFilter } from '../../utils/fileUtils.js';
 import { saveGitAnchor } from '../../utils/gitUtils.js';
 import { skeletonize } from '../../core/skeletonizer.js';
 import { updateClaudeMd } from '../../utils/claudeMdGenerator.js';
+import { generateOpenCodeAgents } from '../../utils/opencodeAgentsGenerator.js';
 
 /**
  * Creates dynamic project context based on detection results
@@ -813,6 +814,9 @@ export async function createRepoSnapshot(repoPath, options) {
       if (isJag) claudeMode = 'jag';
 
       await updateClaudeMd(processedRepoPath, claudeMode, directoryTree, confidentialFiles, { zh: options.zh });
+
+      // Also generate AGENTS.md for OpenCode
+      await generateOpenCodeAgents(processedRepoPath, claudeMode, directoryTree, confidentialFiles, { zh: options.zh });
 
       // --- Combined Report ---
       console.log('\n✅ Snapshot generation complete!');
