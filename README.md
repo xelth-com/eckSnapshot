@@ -1,10 +1,19 @@
 # eck-snapshot
 
-A CLI tool that packs your entire Git repository into a single text file optimized for LLMs (Claude, Gemini, ChatGPT). Give any AI full project context in one copy-paste.
+A CLI tool that packs your entire Git repository into a single text file optimized for LLMs. Give any AI full project context in one copy-paste.
 
 ```bash
 npm install -g @xelth/eck-snapshot
 ```
+
+## Recommended AI Setup
+
+For best results, we recommend splitting roles between models:
+
+- **Architect** (large context window): Gemini, Grok Fast, ChatGPT — upload the full snapshot, design the architecture, plan tasks
+- **Coder** (execution): Claude (via Claude Code), GLM (via OpenCode) — receive tasks from the architect, write and fix code
+
+eck-snapshot generates tailored instructions (`CLAUDE.md`, `AGENTS.md`) for each role automatically.
 
 ## Core Workflow
 
@@ -17,7 +26,7 @@ eck-snapshot
 # -> .eck/snapshots/eckMyProject_26-02-15_12-00_abc1234.md
 ```
 
-That's it. Upload the file to your AI and start working.
+Upload the file to your architect AI and start working.
 
 ### 2. Incremental Update
 
@@ -29,14 +38,6 @@ eck-snapshot update
 ```
 
 This uses a Git anchor (saved automatically during full snapshot) to detect all modified files and includes their full content. No redundant diffs, no wasted tokens.
-
-### 3. Lazy Loading
-
-If the AI asks to see specific files that weren't in the snapshot, show them instantly:
-
-```bash
-eck-snapshot show src/auth.rs src/handlers/sync.rs
-```
 
 ## Context Profiles
 
@@ -103,12 +104,18 @@ eck-snapshot setup-mcp --both    # Setup for Claude Code + OpenCode
 
 This gives your AI access to specialized workers: `glm_zai_frontend`, `glm_zai_backend`, `glm_zai_qa`, `glm_zai_refactor`, and the `eck_finish_task` commit tool.
 
-## Skeleton Mode
+## Skeleton Mode & Lazy Loading
 
 For extremely large projects, skeleton mode strips function bodies and keeps only signatures, types, and structure:
 
 ```bash
 eck-snapshot --skeleton
+```
+
+When using skeleton mode, the AI can request full content of specific files on demand:
+
+```bash
+eck-snapshot show src/auth.rs src/handlers/sync.rs
 ```
 
 Useful for initial orientation in massive codebases, but full snapshots with profiles are usually more practical.
