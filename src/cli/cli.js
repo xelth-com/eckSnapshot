@@ -26,6 +26,7 @@ import inquirer from 'inquirer';
 import ora from 'ora';
 import { execa } from 'execa';
 import chalk from 'chalk';
+import { createRequire } from 'module';
 
 /**
  * Check code boundaries in a file
@@ -63,10 +64,46 @@ async function checkCodeBoundaries(filePath, agentId) {
 }
 
 // Main run function that sets up the CLI
+// Check for newer version on npm (non-blocking)
+function checkForUpdates() {
+  const require = createRequire(import.meta.url);
+  const pkg = require('../../package.json');
+  const currentVersion = pkg.version;
+
+  // Fire and forget — result captured via closure
+  let updateMessage = null;
+
+  const check = execa('npm', ['view', '@xelth/eck-snapshot', 'version'], { timeout: 5000 })
+    .then(({ stdout }) => {
+      const latest = stdout.trim();
+      if (latest && latest !== currentVersion) {
+        const current = currentVersion.split('.').map(Number);
+        const remote = latest.split('.').map(Number);
+        const isNewer = remote[0] > current[0] ||
+          (remote[0] === current[0] && remote[1] > current[1]) ||
+          (remote[0] === current[0] && remote[1] === current[1] && remote[2] > current[2]);
+        if (isNewer) {
+          updateMessage = `\n${chalk.yellow(`⬆ Update available: ${currentVersion} → ${latest}`)}  run: ${chalk.cyan('npm i -g @xelth/eck-snapshot')}`;
+        }
+      }
+    })
+    .catch(() => { /* network error, skip silently */ });
+
+  process.on('exit', () => {
+    if (updateMessage) {
+      console.error(updateMessage);
+    }
+  });
+}
+
 export function run() {
+  // Start version check in background (non-blocking)
+  checkForUpdates();
+
   const program = new Command();
 
-  const helpGuide = `eck-snapshot (v5.1.0) - AI-Native Repository Context Tool.
+  const pkg = createRequire(import.meta.url)('../../package.json');
+  const helpGuide = `eck-snapshot (v${pkg.version}) - AI-Native Repository Context Tool.
 
 --- 🚀 Core Workflow: Optimized for Web LLMs (Gemini/ChatGPT) ---
 
@@ -122,7 +159,7 @@ Option C: Using Profiles
   program
     .name('eck-snapshot')
     .description('A lightweight, platform-independent CLI for creating project snapshots.')
-    .version('5.1.0')
+    .version(pkg.version)
     .addHelpText('before', helpGuide);
 
   // Main snapshot command
