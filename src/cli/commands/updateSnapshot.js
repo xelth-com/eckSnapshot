@@ -34,19 +34,16 @@ async function generateSnapshotContent(repoPath, changedFiles, anchor, config, g
   let includedCount = 0;
   const fileList = [];
 
-  // Include Agent Report ONLY if it was modified in this commit cycle
-  const reportRelPath = '.eck/lastsnapshot/AnswerToSA.md';
-  const reportChanged = changedFiles.some(f =>
-    f === reportRelPath || f === reportRelPath.replace(/\//g, path.sep)
-  );
-
+  // Include Agent Report if it exists and hasn't been embedded yet
   let agentReport = null;
-  if (reportChanged) {
-    try {
-      const reportPath = path.join(repoPath, '.eck', 'lastsnapshot', 'AnswerToSA.md');
-      agentReport = await fs.readFile(reportPath, 'utf-8');
-    } catch (e) { /* Failed to read */ }
-  }
+  const reportPath = path.join(repoPath, '.eck', 'lastsnapshot', 'AnswerToSA.md');
+  try {
+    const reportContent = await fs.readFile(reportPath, 'utf-8');
+    if (!reportContent.includes('[SYSTEM: EMBEDDED]')) {
+      agentReport = reportContent;
+      await fs.appendFile(reportPath, '\n\n[SYSTEM: EMBEDDED]\n', 'utf-8');
+    }
+  } catch (e) { /* File not found or unreadable */ }
 
   for (const filePath of changedFiles) {
     if (config.dirsToIgnore?.some(d => filePath.startsWith(d))) continue;
@@ -54,7 +51,7 @@ async function generateSnapshotContent(repoPath, changedFiles, anchor, config, g
     const fileExt = path.extname(filePath);
     if (config.filesToIgnore?.includes(fileName)) continue;
     if (fileExt && config.extensionsToIgnore?.includes(fileExt)) continue;
-    if (gitignore.ignores(filePath) && filePath !== '.eck/lastsnapshot/AnswerToSA.md') continue;
+    if (gitignore.ignores(filePath)) continue;
 
     try {
       const fullPath = path.join(repoPath, filePath);
