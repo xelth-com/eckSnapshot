@@ -143,6 +143,9 @@ eck-snapshot env pull              # Restore .eck/ config on another machine
 
 ## Changelog
 
+### v5.8.2
+- Fixed agent report injection in incremental snapshots. The `AnswerToSA.md` file is now preserved on disk for manual debugging and uses an internal `[SYSTEM: EMBEDDED]` marker to prevent duplicate injections into future snapshots.
+
 ### v5.8.1
 - Improved Android project parsing by ignoring boilerplate and vector graphics.
 - Removed duplicate `ecksnapshot` MCP server and fixed JSON parsing in `update-auto`.
