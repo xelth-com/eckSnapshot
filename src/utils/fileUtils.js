@@ -244,7 +244,6 @@ export async function loadGitignore(repoPath) {
   try {
     const gitignoreContent = await fs.readFile(path.join(repoPath, '.gitignore'), 'utf-8');
     const ig = ignore().add(gitignoreContent);
-    console.log('✅ .gitignore patterns loaded');
     return ig;
   } catch {
     console.log('ℹ️ No .gitignore file found or could not be read');

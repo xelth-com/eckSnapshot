@@ -24,8 +24,6 @@ export async function setupMcp(options = {}) {
   const packageRoot = path.resolve(__dirname, '../../..');
   const eckCorePath = path.join(packageRoot, 'scripts', 'mcp-eck-core.js');
   const glmZaiPath = path.join(packageRoot, 'scripts', 'mcp-glm-zai-worker.mjs');
-  const mcpServerPath = path.join(packageRoot, 'src', 'mcp-server', 'index.js');
-
   const targets = [];
   if (options.opencode && !options.both) {
     targets.push('opencode');
@@ -39,7 +37,7 @@ export async function setupMcp(options = {}) {
 
   for (const target of targets) {
     if (target === 'claude') {
-      await setupForClaude(packageRoot, eckCorePath, glmZaiPath, mcpServerPath, options);
+      await setupForClaude(packageRoot, eckCorePath, glmZaiPath, options);
     } else {
       await setupForOpenCode(packageRoot, eckCorePath, glmZaiPath, options);
     }
@@ -65,7 +63,7 @@ export async function setupMcp(options = {}) {
 /**
  * Register MCP servers for Claude Code using `claude mcp add`
  */
-async function setupForClaude(packageRoot, eckCorePath, glmZaiPath, mcpServerPath, options) {
+async function setupForClaude(packageRoot, eckCorePath, glmZaiPath, options) {
   const spinner = ora();
 
   console.log(chalk.blue('📦 Setting up for Claude Code...\n'));
@@ -98,7 +96,6 @@ async function setupForClaude(packageRoot, eckCorePath, glmZaiPath, mcpServerPat
 
     await registerClaudeMcp('eck-core', eckCorePath);
     await registerClaudeMcp('glm-zai', glmZaiPath);
-    await registerClaudeMcp('ecksnapshot', mcpServerPath);
 
     usedCliRegistration = true;
   } catch {
@@ -147,11 +144,10 @@ async function setupForClaude(packageRoot, eckCorePath, glmZaiPath, mcpServerPat
 
   if (!config.mcpServers) config.mcpServers = {};
 
-  config.mcpServers.ecksnapshot = {
-    command: 'node',
-    args: [mcpServerPath],
-    env: {},
-  };
+  // Remove old ecksnapshot server if present
+  if (config.mcpServers.ecksnapshot) {
+    delete config.mcpServers.ecksnapshot;
+  }
 
   config.mcpServers['eck-core'] = {
     command: 'node',
@@ -180,7 +176,6 @@ async function setupForClaude(packageRoot, eckCorePath, glmZaiPath, mcpServerPat
   const localConfigPath = path.join(process.cwd(), '.eck', 'claude-mcp-config.json');
   const localConfig = {
     mcpServers: {
-      ecksnapshot: config.mcpServers.ecksnapshot,
       'eck-core': config.mcpServers['eck-core'],
       'glm-zai': config.mcpServers['glm-zai'],
     },
