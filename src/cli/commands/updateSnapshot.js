@@ -69,7 +69,7 @@ async function generateSnapshotContent(repoPath, changedFiles, anchor, config, g
   // Inject Agent Report
   let reportSection = '';
   if (agentReport) {
-    reportSection = `\n#######################################################\n# 📨 MESSAGE FROM EXECUTION AGENT\n#######################################################\n${agentReport}\n#######################################################\n\n`;
+    reportSection = `\n---\n### 📨 MESSAGE FROM EXECUTION AGENT\n\n${agentReport}\n---\n\n`;
   }
 
   header = header.replace('{{anchor}}', anchor.substring(0, 7))
