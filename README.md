@@ -141,6 +141,12 @@ eck-snapshot env push              # Encrypt and sync .eck/ config between machi
 eck-snapshot env pull              # Restore .eck/ config on another machine
 ```
 
+## Changelog
+
+### v5.8.1
+- Improved Android project parsing by ignoring boilerplate and vector graphics.
+- Removed duplicate `ecksnapshot` MCP server and fixed JSON parsing in `update-auto`.
+
 ## License
 
 MIT

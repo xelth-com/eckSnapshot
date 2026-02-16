@@ -20,10 +20,9 @@ You are an Expert Developer. The architecture is already decided. Your job is to
 
 ## DEFINITION OF DONE (CRITICAL)
 When the task is complete:
-1. **UPDATE** the `.eck/lastsnapshot/AnswerToSA.md` file with your status.
-2. **Use the `eck_finish_task` tool** to commit and sync context.
-   - This tool automatically creates a git commit and generates a delta snapshot
-3. **DO NOT** use raw git commands for the final commit.
+1. **Write** your report to `.eck/lastsnapshot/AnswerToSA.md` (overwrite, not append).
+2. **Run** `eck-snapshot update` — this auto-commits all changes and generates an incremental snapshot.
+3. If `eck_finish_task` MCP tool is available, you may use it instead.
 
 ## CONTEXT
 - The GLM ZAI swarm might have struggled or produced code that needs refinement.
