@@ -126,22 +126,45 @@ function parseJournalEntries(journalContent) {
     return [];
   }
 
-  // Split by --- separators, filter empty blocks
-  const blocks = journalContent.split(/^---$/m).filter(b => b.trim());
   const entries = [];
 
+  // Strategy 1: Markdown headers with dates (## 2026-02-15 — Session...)
+  const headerPattern = /^##\s+(\d{4}-\d{2}-\d{2})[^\n]*/gm;
+  const headerMatches = [...journalContent.matchAll(headerPattern)];
+
+  if (headerMatches.length > 0) {
+    for (let i = 0; i < headerMatches.length; i++) {
+      const match = headerMatches[i];
+      const date = match[1];
+      const start = match.index + match[0].length;
+      const end = i + 1 < headerMatches.length ? headerMatches[i + 1].index : journalContent.length;
+      const body = journalContent.substring(start, end).trim();
+
+      const typeMatch = body.match(/^[-*]\s*type:\s*(.+)$/m);
+      const scopeMatch = body.match(/^[-*]\s*scope:\s*(.+)$/m);
+      const summaryMatch = body.match(/^[-*]\s*\*\*(.*?)\*\*:/m) || body.match(/^[-*]\s*([^*:].+?)$/m);
+
+      entries.push({
+        date,
+        type: typeMatch ? typeMatch[1].trim() : 'update',
+        scope: scopeMatch ? scopeMatch[1].trim() : 'general',
+        summary: summaryMatch ? summaryMatch[1].trim() : 'Development update',
+        body: body.substring(0, 500)
+      });
+    }
+    return entries;
+  }
+
+  // Strategy 2: Legacy format with --- separators and YAML frontmatter
+  const blocks = journalContent.split(/^---$/m).filter(b => b.trim());
   for (let i = 0; i < blocks.length; i += 2) {
     const frontmatter = blocks[i];
     const body = blocks[i + 1] || '';
 
-    // Parse frontmatter
     const typeMatch = frontmatter.match(/^type:\s*(.+)$/m);
     const scopeMatch = frontmatter.match(/^scope:\s*(.+)$/m);
     const summaryMatch = frontmatter.match(/^summary:\s*(.+)$/m);
     const dateMatch = frontmatter.match(/^(?:date|timestamp):\s*(.+)$/m);
-    const taskIdMatch = frontmatter.match(/^task_id:\s*(.+)$/m);
-
-    // Extract title from body (first # heading)
     const titleMatch = body.match(/^#\s+(.+)$/m);
 
     entries.push({
@@ -149,8 +172,7 @@ function parseJournalEntries(journalContent) {
       scope: scopeMatch ? scopeMatch[1].trim() : '',
       summary: summaryMatch ? summaryMatch[1].trim() : (titleMatch ? titleMatch[1].trim() : ''),
       date: dateMatch ? dateMatch[1].trim() : '',
-      taskId: taskIdMatch ? taskIdMatch[1].trim() : '',
-      body: body.trim()
+      body: body.trim().substring(0, 500)
     });
   }
 
@@ -365,32 +387,29 @@ export async function generateEnhancedAIHeader(context, isGitRepo = false) {
       projectContextBody = await resolveProjectDescription(context);
     }
 
-    // 2. Strategic Context (Roadmap & Tech Debt)
+    // 2. Strategic Context (Roadmap & Tech Debt) — include full content
     let strategicSection = '';
 
-    // Extract active roadmap items (Phase 2, Current Status)
     if (context.eckManifest?.roadmap) {
-      const activeRoadmap = extractSections(context.eckManifest.roadmap, ['phase 2', 'current status']);
-      if (activeRoadmap) {
-        strategicSection += `\n### 🚩 ACTIVE ROADMAP\n${activeRoadmap}\n`;
+      const cleanRoadmap = context.eckManifest.roadmap.replace(/^#\s+Roadmap\r?\n/i, '').trim();
+      if (cleanRoadmap) {
+        strategicSection += `\n### 🚩 ACTIVE ROADMAP\n${cleanRoadmap}\n`;
       }
     }
 
-    // Extract critical tech debt
     if (context.eckManifest?.techDebt) {
-      const activeDebt = extractSections(context.eckManifest.techDebt, ['high priority', 'current', 'critical']);
-      if (activeDebt) {
-        strategicSection += `\n### 🔧 TECHNICAL DEBT FOCUS\n${activeDebt}\n`;
+      const cleanDebt = context.eckManifest.techDebt.replace(/^#\s+Tech Debt\r?\n/i, '').trim();
+      if (cleanDebt) {
+        strategicSection += `\n### 🔧 TECHNICAL DEBT FOCUS\n${cleanDebt}\n`;
       }
     }
 
-    // 3. Operational Protocols (Royal Court / Advanced)
+    // 3. Operational Protocols
     let operationsSection = '';
     if (context.eckManifest?.operations) {
-      // Look for autonomous protocols
-      const protocols = extractSections(context.eckManifest.operations, ['Protocol', 'Autonomous', 'Rules']);
-      if (protocols) {
-        operationsSection += `\n### 🛡️ OPERATIONAL PROTOCOLS\n${protocols}\n`;
+      const cleanOps = context.eckManifest.operations.replace(/^#\s+Operations\r?\n/i, '').trim();
+      if (cleanOps) {
+        operationsSection += `\n### 🛡️ OPERATIONAL PROTOCOLS\n${cleanOps}\n`;
       }
     }
 
