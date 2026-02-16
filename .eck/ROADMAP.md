@@ -7,7 +7,6 @@
 
 ## Next Phase
 - [ ] Improved Incremental Snapshots (tracking deleted files).
-- [ ] MCP (Model Context Protocol) Server integration for direct IDE tool-use.
 - [ ] Shannon Entropy check in SecretScanner for better credential detection.
 
 ## Long-term
@@ -19,3 +18,4 @@
 - [x] Smart Delegation Protocol with intelligent retry (2-4 attempts based on progress)
 - [x] MiniMax Worker Swarm via MCP (frontend/backend/qa/refactor specialists)
 - [x] JAG/JAS/JAO snapshot modes
+- [x] MCP (Model Context Protocol) Server integration for direct IDE tool-use.
