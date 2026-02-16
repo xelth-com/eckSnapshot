@@ -409,7 +409,13 @@
           "*.jar",
           "*.dex",
           "R.java",
-          "BuildConfig.java"
+          "BuildConfig.java",
+          "gradlew",
+          "gradlew.bat",
+          "gradle-wrapper.properties",
+          "ExampleInstrumentedTest.kt",
+          "ExampleUnitTest.kt",
+          "ic_launcher*.xml"
         ],
         "dirsToIgnore": [
           "build/",
@@ -430,7 +436,8 @@
           ".dex",
           ".pro",
           ".ap_",
-          ".aidl"
+          ".aidl",
+          ".svg"
         ]
       },
       "nodejs": {
