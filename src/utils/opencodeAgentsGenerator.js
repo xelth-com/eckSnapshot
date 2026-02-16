@@ -206,14 +206,9 @@ For bulk work where delegation saves YOUR expensive context:
 
 ## 3. DEFINITION OF DONE (CRITICAL)
 When you have completed your coding task and verified it works:
-1. **DO NOT** run \`git commit\` manually.
-2. **DO NOT** just say "I'm done".
-3. **Use the \`eck_finish_task\` tool** to finalize the task.
-   - This tool automatically:
-     - Updates \`.eck/lastsnapshot/AnswerToSA.md\` with your status
-     - Creates a proper git commit with Co-Authored-By attribution
-     - Generates a delta snapshot (\`eck-snapshot update-auto\`) for context sync
-   - This is the standard way to complete any task.
+1. **Write** your report to \`.eck/lastsnapshot/AnswerToSA.md\` (overwrite, not append).
+2. **Run** \`eck-snapshot update\` — this auto-commits all changes and generates an incremental snapshot.
+3. If \`eck_finish_task\` MCP tool is available, you may use it instead (it does the same thing).
 
 ## 4. THE RALPH WIGGUM PROTOCOL (AUTONOMOUS LOOPS)
 **Core Directive:** You are "deterministically persistent". Failures are expected, giving up is not.
@@ -238,8 +233,7 @@ When you have completed your coding task and verified it works:
     *   If you cannot achieve green tests after max retries, produce a detailed report of *why* it is blocked.
 
 ## 5. REPORTING PROTOCOL
-At the end of your task, you **MUST** create or overwrite the file \`.eck/lastsnapshot/AnswerToSA.md\` BEFORE calling \`eck_finish_task\`.
-This file communicates your results back to the Senior Architect.
+At the end of your task, you **MUST** overwrite the file \`.eck/lastsnapshot/AnswerToSA.md\` and then run \`eck-snapshot update\`.
 
 **Format for .eck/lastsnapshot/AnswerToSA.md:**
 \`\`\`markdown
@@ -255,9 +249,9 @@ This file communicates your results back to the Senior Architect.
 \`\`\`
 
 ## 6. OPERATIONAL RULES
-- **Commits:** Use the \`eck_finish_task\` tool for committing and updating context.
+- **Finishing:** Write \`.eck/lastsnapshot/AnswerToSA.md\`, then run \`eck-snapshot update\` (it auto-commits).
 - **Manifests:** If you see [STUB] in .eck/ files, update them.
-- **Reporting:** NEVER finish a session without writing \`.eck/lastsnapshot/AnswerToSA.md\` and calling \`eck_finish_task\`.`;
+- **Reporting:** NEVER finish a session without writing the report and running \`eck-snapshot update\`.`;
 }
 
 const CODER_INSTRUCTIONS = `# 🛠️ ROLE: Expert Developer (The Fixer)
@@ -267,10 +261,9 @@ You are an Expert Developer. The architecture is already decided. Your job is to
 
 ## DEFINITION OF DONE (CRITICAL)
 When the task is complete:
-1. **UPDATE** the \`.eck/lastsnapshot/AnswerToSA.md\` file with your status.
-2. **Use the \`eck_finish_task\` tool** to commit and sync context.
-   - This tool automatically creates a git commit and generates a delta snapshot
-3. **DO NOT** use raw git commands for the final commit.
+1. **Write** your report to \`.eck/lastsnapshot/AnswerToSA.md\` (overwrite, not append).
+2. **Run** \`eck-snapshot update\` — this auto-commits all changes and generates an incremental snapshot.
+3. If \`eck_finish_task\` MCP tool is available, you may use it instead.
 
 ## CONTEXT
 - The GLM ZAI swarm might have struggled or produced code that needs refinement.

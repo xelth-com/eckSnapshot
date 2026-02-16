@@ -40,11 +40,22 @@ For bulk work where delegation saves YOUR expensive context:
 
 ## 3. DEFINITION OF DONE (CRITICAL)
 When you have completed your coding task and verified it works:
-1. **DO NOT** run \`git commit\` manually.
-2. **DO NOT** just say "I'm done".
-3. **YOU MUST use the tool \`eck_finish_task\`**.
-   - This tool handles the commit AND automatically updates your context snapshot.
-   - Using this tool is the ONLY way to successfully close a task.
+1. **Write** your report to \`.eck/lastsnapshot/AnswerToSA.md\` (overwrite, not append).
+2. **Run** \`eck-snapshot update\` — this auto-commits all changes and generates an incremental snapshot.
+3. If \`eck_finish_task\` MCP tool is available, you may use it instead (it does the same thing).
+
+**Format for .eck/lastsnapshot/AnswerToSA.md:**
+\`\`\`markdown
+# Report: [Task Name]
+**Status:** [SUCCESS / BLOCKED / FAILED]
+**Changes:**
+- Modified X
+- Created Y
+**Verification:**
+- Ran test Z -> Passed
+**Next Steps / Questions:**
+- [What should the Architect do next?]
+\`\`\`
 
 ## 4. THE RALPH WIGGUM PROTOCOL (AUTONOMOUS LOOPS)
 **Core Directive:** You are "deterministically persistent". Failures are expected, giving up is not.
@@ -65,30 +76,12 @@ When you have completed your coding task and verified it works:
     *   **Takeover:** If GLM Z.AI fails twice, **DO IT YOURSELF**.
 
 3.  **Definition of Done:**
-    *   A task is ONLY done when the verification command (e.g., \`npm test\`) exits with code 0.
+    *   A task is ONLY done when the verification command (e.g., \`npm test\`, \`cargo build\`) exits with code 0.
     *   If you cannot achieve green tests after max retries, produce a detailed report of *why* it is blocked.
 
-## 5. REPORTING PROTOCOL
-At the end of your task, you **MUST** create or overwrite the file \`.eck/lastsnapshot/AnswerToSA.md\` BEFORE calling \`eck_finish_task\`.
-This file communicates your results back to the Senior Architect (Gemini).
-
-**Format for .eck/lastsnapshot/AnswerToSA.md:**
-\`\`\`markdown
-# Report: [Task Name]
-**Status:** [SUCCESS / BLOCKED / FAILED]
-**Changes:**
-- Modified X
-- Created Y
-**Verification:**
-- Ran test Z -> Passed
-**Next Steps / Questions:**
-- [What should the Architect do next?]
-\`\`\`
-
-## 6. OPERATIONAL RULES
-- **Commits:** Use the \`eck_finish_task\` tool for committing and updating context.
+## 5. OPERATIONAL RULES
 - **Manifests:** If you see [STUB] in .eck/ files, update them.
-- **Reporting:** NEVER finish a session without writing \`.eck/lastsnapshot/AnswerToSA.md\` and calling \`eck_finish_task\`.
+- **Reporting:** NEVER finish a session without writing \`.eck/lastsnapshot/AnswerToSA.md\` and running \`eck-snapshot update\`.
 `;
 }
 
@@ -99,9 +92,9 @@ You are an Expert Developer. The architecture is already decided. Your job is to
 
 ## DEFINITION OF DONE (CRITICAL)
 When the task is complete:
-1. **UPDATE** the \`.eck/lastsnapshot/AnswerToSA.md\` file with your status.
-2. **Use the \`eck_finish_task\` tool** to commit and sync context.
-3. **DO NOT** use raw git commands for the final commit.
+1. **Write** your report to \`.eck/lastsnapshot/AnswerToSA.md\` (overwrite, not append).
+2. **Run** \`eck-snapshot update\` — this auto-commits all changes and generates an incremental snapshot.
+3. If \`eck_finish_task\` MCP tool is available, you may use it instead.
 
 ## CONTEXT
 - The GLM Z.AI worker might have struggled or produced code that needs refinement.

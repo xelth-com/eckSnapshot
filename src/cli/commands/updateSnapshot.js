@@ -6,7 +6,24 @@ import { getGitAnchor, getChangedFiles } from '../../utils/gitUtils.js';
 import { loadSetupConfig } from '../../config.js';
 import { readFileWithSizeCheck, parseSize, formatSize, matchesPattern, loadGitignore, generateTimestamp, getShortRepoName } from '../../utils/fileUtils.js';
 import { detectProjectType, getProjectSpecificFiltering } from '../../utils/projectDetector.js';
+import { execa } from 'execa';
 import { fileURLToPath } from 'url';
+
+// Auto-commit uncommitted changes before collecting diffs
+async function autoCommit(repoPath) {
+  try {
+    // Check if there are uncommitted changes
+    const { stdout: status } = await execa('git', ['status', '--porcelain'], { cwd: repoPath });
+    if (!status.trim()) return false;
+
+    await execa('git', ['add', '.'], { cwd: repoPath, timeout: 30000 });
+    await execa('git', ['commit', '--allow-empty', '-m', 'chore: auto-commit before snapshot update'], { cwd: repoPath, timeout: 30000 });
+    return true;
+  } catch (e) {
+    // Non-critical — maybe nothing to commit
+    return false;
+  }
+}
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -78,6 +95,13 @@ export async function updateSnapshot(repoPath, options) {
     const anchor = await getGitAnchor(repoPath);
     if (!anchor) {
       throw new Error('No snapshot anchor found. Run a full snapshot first: eck-snapshot snapshot');
+    }
+
+    // Auto-commit any uncommitted changes so they appear in the diff
+    const didCommit = await autoCommit(repoPath);
+    if (didCommit) {
+      spinner.info('Auto-committed uncommitted changes.');
+      spinner.start('Generating update snapshot...');
     }
 
     const changedFiles = await getChangedFiles(repoPath, anchor);
@@ -171,6 +195,9 @@ export async function updateSnapshotJson(repoPath) {
       console.log(JSON.stringify({ status: "error", message: "No snapshot anchor found" }));
       return;
     }
+
+    // Auto-commit any uncommitted changes
+    await autoCommit(repoPath);
 
     const changedFiles = await getChangedFiles(repoPath, anchor);
     if (changedFiles.length === 0) {
