@@ -143,6 +143,9 @@ eck-snapshot env pull              # Restore .eck/ config on another machine
 
 ## Changelog
 
+### v5.8.4
+- Fixed directory filtering in incremental snapshots. Paths like `web/build/app.js` are now correctly ignored when `build/` is in the ignore list.
+
 ### v5.8.3
 - Optimized agent report formatting with clean Markdown to improve token efficiency.
 - Fixed report injection order so it appears correctly after system instructions.
