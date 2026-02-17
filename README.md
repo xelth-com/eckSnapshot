@@ -143,6 +143,9 @@ eck-snapshot env pull              # Restore .eck/ config on another machine
 
 ## Changelog
 
+### v5.8.5
+- Re-publish to fix missing README on npmjs.com.
+
 ### v5.8.4
 - Fixed directory filtering in incremental snapshots. Paths like `web/build/app.js` are now correctly ignored when `build/` is in the ignore list.
 
