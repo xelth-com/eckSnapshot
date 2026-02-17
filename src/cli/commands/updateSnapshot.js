@@ -45,8 +45,19 @@ async function generateSnapshotContent(repoPath, changedFiles, anchor, config, g
     }
   } catch (e) { /* File not found or unreadable */ }
 
+  const cleanDirsToIgnore = (config.dirsToIgnore || []).map(d => d.replace(/\/$/, ''));
+
   for (const filePath of changedFiles) {
-    if (config.dirsToIgnore?.some(d => filePath.startsWith(d))) continue;
+    const pathParts = filePath.split('/');
+    let isIgnoredDir = false;
+    for (let i = 0; i < pathParts.length - 1; i++) {
+      if (cleanDirsToIgnore.includes(pathParts[i])) {
+        isIgnoredDir = true;
+        break;
+      }
+    }
+    if (isIgnoredDir) continue;
+
     const fileName = path.basename(filePath);
     const fileExt = path.extname(filePath);
     if (config.filesToIgnore?.includes(fileName)) continue;
