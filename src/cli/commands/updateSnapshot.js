@@ -154,7 +154,8 @@ export async function updateSnapshot(repoPath, options) {
 
     const timestamp = generateTimestamp();
     const shortRepoName = getShortRepoName(path.basename(repoPath));
-    const outputFilename = `eck${shortRepoName}${timestamp}_${anchor.substring(0, 7)}_up${seqNum}.md`;
+    const sizeKB = Math.max(1, Math.round(Buffer.byteLength(fullContent, 'utf-8') / 1024));
+    const outputFilename = `eck${shortRepoName}${timestamp}_${anchor.substring(0, 7)}_up${seqNum}_${sizeKB}kb.md`;
     const outputPath = path.join(repoPath, '.eck', 'snapshots', outputFilename);
 
     await fs.mkdir(path.dirname(outputPath), { recursive: true });
@@ -248,7 +249,8 @@ export async function updateSnapshotJson(repoPath) {
 
     const timestamp = generateTimestamp();
     const shortRepoName = getShortRepoName(path.basename(repoPath));
-    const outputFilename = `eck${shortRepoName}${timestamp}_${anchor.substring(0, 7)}_up${seqNum}.md`;
+    const sizeKB = Math.max(1, Math.round(Buffer.byteLength(fullContent, 'utf-8') / 1024));
+    const outputFilename = `eck${shortRepoName}${timestamp}_${anchor.substring(0, 7)}_up${seqNum}_${sizeKB}kb.md`;
     const outputPath = path.join(repoPath, '.eck', 'snapshots', outputFilename);
     await fs.mkdir(path.dirname(outputPath), { recursive: true });
     await fs.writeFile(outputPath, fullContent);

@@ -743,9 +743,10 @@ export async function createRepoSnapshot(repoPath, options) {
           fname += suffix;
         }
 
-        fname += `.${fileExtension}`;
-        const fpath = path.join(outputPath, fname);
         const fullContent = header + fileBody;
+        const sizeKB = Math.max(1, Math.round(Buffer.byteLength(fullContent, 'utf-8') / 1024));
+        fname += `_${sizeKB}kb.${fileExtension}`;
+        const fpath = path.join(outputPath, fname);
         await fs.writeFile(fpath, fullContent);
         console.log(`📄 Generated Snapshot: ${fname}`);
 

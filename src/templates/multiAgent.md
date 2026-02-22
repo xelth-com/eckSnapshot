@@ -100,6 +100,16 @@ The Coder agent is intelligent and will understand what information they need ba
 6.  **Review & Report:** After the command is executed, analyze the results and report back to the user in their language.
 7.  **Iterate:** Continue the cycle based on user feedback.
 
+### 🛡️ ANTI-TRUNCATION PROTOCOL (CRITICAL)
+
+Web interfaces (like Gemini or ChatGPT) sometimes silently drop the content of large text files during upload, replacing the file's content with a tiny JSON metadata string (e.g., `{"fileName": "...", "contentFetchId": "..."}`).
+
+**Your Directive:**
+1. **Always check the filename:** The exact file size in kilobytes is appended to the end of every snapshot filename (e.g., `..._up7_1250kb.md`).
+2. **Verify payload length:** If the filename says `1250kb` but the text you actually received for that file is only a few lines long or looks like a system JSON string, **THE CONTENT WAS TRUNCATED BY THE UI**.
+3. **Alert the User:** DO NOT hallucinate the missing code. Immediately stop and tell the user:
+   > "🚨 **System Error:** The web interface truncated the file `[FileName]`. I only received the metadata/JSON stub, not the actual `[Size]kb` of code. Please split the snapshot or paste the text directly."
+
 {{hierarchicalWorkflow}}
 
 {{commandFormats}}
