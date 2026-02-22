@@ -34,10 +34,12 @@ After you make changes, don't re-send the entire project. Send only what changed
 
 ```bash
 eck-snapshot update
-# -> .eck/snapshots/eckMyProject_26-02-15_14-30_abc1234_up1.md
+# -> .eck/snapshots/eckMyProject_26-02-15_14-30_abc1234_up1_42kb.md
 ```
 
 This uses a Git anchor (saved automatically during full snapshot) to detect all modified files and includes their full content. No redundant diffs, no wasted tokens.
+
+Notice the `_42kb` suffix in the filename — this is the **Anti-Truncation Guard** (see below).
 
 ## Context Profiles
 
@@ -71,6 +73,25 @@ eck-snapshot --profile "src/**/*.rs,-**/test_*"   # Ad-hoc glob filtering
 ```
 
 Profiles work with both full snapshots and incremental updates.
+
+## Anti-Truncation Guard
+
+Web AI interfaces (Gemini, ChatGPT) sometimes silently drop the content of large uploaded files, replacing them with a small JSON metadata stub like `{"fileName": "...", "contentFetchId": "..."}`. The AI then hallucinates code it never actually received.
+
+eck-snapshot counters this with two mechanisms:
+
+**1. Size-stamped filenames.** Every snapshot — full and incremental — embeds its exact size in kilobytes directly in the filename:
+
+```
+eckMyProject_26-02-15_12-00_abc1234_1250kb.md      ← full snapshot
+eckMyProject_26-02-15_14-30_abc1234_up1_42kb.md    ← incremental update
+```
+
+**2. AI instructions baked into the snapshot.** The snapshot header instructs the AI to cross-check the `kb` value in the filename against the actual payload it received. If there is a mismatch, the AI is required to stop and alert you instead of hallucinating:
+
+> 🚨 **System Error:** The web interface truncated the file `eckMyProject_..._1250kb.md`. I only received the metadata/JSON stub, not the actual 1250 kb of code. Please split the snapshot or paste the text directly.
+
+This protection works on any web interface that embeds the filename (Gemini, ChatGPT, Grok, etc.).
 
 ## Smart Filtering
 
@@ -142,6 +163,10 @@ eck-snapshot env pull              # Restore .eck/ config on another machine
 ```
 
 ## Changelog
+
+### v5.8.6
+- **Anti-Truncation Guard:** Every snapshot filename now includes its size in KB (e.g., `_1250kb.md`). The snapshot header instructs the AI to verify the payload size matches the filename and alert the user if the web UI truncated the file instead of hallucinating missing code.
+- **Incremental snapshot filtering parity:** `eck-snapshot update` now applies the same file guards as full snapshots — hidden paths (`.idea/`, `.vscode/`), binary files, and glob patterns in `filesToIgnore` are all properly filtered out, preventing IDE config files or committed binaries from bloating update snapshots.
 
 ### v5.8.5
 - Re-publish to fix missing README on npmjs.com.
