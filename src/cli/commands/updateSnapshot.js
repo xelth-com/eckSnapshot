@@ -2,12 +2,19 @@ import fs from 'fs/promises';
 import path from 'path';
 import ora from 'ora';
 import chalk from 'chalk';
+import isBinaryPath from 'is-binary-path';
 import { getGitAnchor, getChangedFiles } from '../../utils/gitUtils.js';
 import { loadSetupConfig } from '../../config.js';
 import { readFileWithSizeCheck, parseSize, formatSize, matchesPattern, loadGitignore, generateTimestamp, getShortRepoName } from '../../utils/fileUtils.js';
 import { detectProjectType, getProjectSpecificFiltering } from '../../utils/projectDetector.js';
 import { execa } from 'execa';
 import { fileURLToPath } from 'url';
+
+// Mirror the same hidden-path guard used in createSnapshot.js
+function isHiddenPath(filePath) {
+  const parts = filePath.split('/');
+  return parts.some(part => part.startsWith('.') && part !== '.eck');
+}
 
 // Auto-commit uncommitted changes before collecting diffs
 async function autoCommit(repoPath) {
@@ -48,7 +55,15 @@ async function generateSnapshotContent(repoPath, changedFiles, anchor, config, g
   const cleanDirsToIgnore = (config.dirsToIgnore || []).map(d => d.replace(/\/$/, ''));
 
   for (const filePath of changedFiles) {
-    const pathParts = filePath.split('/');
+    const normalizedPath = filePath.replace(/\\/g, '/');
+
+    // Skip hidden paths (.idea/, .vscode/, etc.) — mirrors createSnapshot.js
+    if (isHiddenPath(normalizedPath)) continue;
+
+    // Skip binary files — mirrors createSnapshot.js
+    if (isBinaryPath(filePath)) continue;
+
+    const pathParts = normalizedPath.split('/');
     let isIgnoredDir = false;
     for (let i = 0; i < pathParts.length - 1; i++) {
       if (cleanDirsToIgnore.includes(pathParts[i])) {
@@ -58,17 +73,17 @@ async function generateSnapshotContent(repoPath, changedFiles, anchor, config, g
     }
     if (isIgnoredDir) continue;
 
-    const fileName = path.basename(filePath);
     const fileExt = path.extname(filePath);
-    if (config.filesToIgnore?.includes(fileName)) continue;
+    // Use matchesPattern (glob support) instead of exact includes() — mirrors createSnapshot.js
+    if (config.filesToIgnore && matchesPattern(normalizedPath, config.filesToIgnore)) continue;
     if (fileExt && config.extensionsToIgnore?.includes(fileExt)) continue;
-    if (gitignore.ignores(filePath)) continue;
+    if (gitignore.ignores(normalizedPath)) continue;
 
     try {
       const fullPath = path.join(repoPath, filePath);
       const content = await readFileWithSizeCheck(fullPath, parseSize(config.maxFileSize));
-      contentOutput += `--- File: /${filePath} ---\n\n${content}\n\n`;
-      fileList.push(`- ${filePath}`);
+      contentOutput += `--- File: /${normalizedPath} ---\n\n${content}\n\n`;
+      fileList.push(`- ${normalizedPath}`);
       includedCount++;
     } catch (e) { /* Skip */ }
   }
