@@ -76,7 +76,7 @@ function getVisibleAgents(executionAgents, options) {
   let priorityAgentKey = null;
   if (options.jas) priorityAgentKey = 'jas';
   if (options.jao) priorityAgentKey = 'jao';
-  if (options.jag) priorityAgentKey = 'jag';
+  if (options.jaz) priorityAgentKey = 'jaz';
 
   // 3. Build the list
   // If a JA is selected, add them FIRST with a note
@@ -438,10 +438,10 @@ ${operationsSection}
     // The `agent` prompt template is used ONLY in CLAUDE.md (via claudeMdGenerator.js)
     // NOT in the snapshot itself.
 
-    const isJag = context.options && context.options.jag;
     const isJas = context.options && context.options.jas;
     const isJao = context.options && context.options.jao;
-    const isJaMode = isJag || isJas || isJao;
+    const isJaz = context.options && context.options.jaz;
+    const isJaMode = isJas || isJao || isJaz;
 
     // --- Determine Workflow Content based on JA Flag ---
     let hierarchicalWorkflow = '';
@@ -454,7 +454,7 @@ ${operationsSection}
 You are the **Senior Architect**. You have a **Junior Architect** available to handle implementation.
 
 **PROTOCOL:**
-1.  **Prefer Delegation:** Unless the task is trivial (1-2 file edits), assign it to the **Junior Architect** (ID: \`jas\`, \`jao\`, or \`jag\` - see agents list above).
+1.  **Prefer Delegation:** Unless the task is trivial (1-2 file edits), assign it to the **Junior Architect** (ID: \`jas\`, \`jao\`, or \`jaz\` - see agents list above).
 2.  **Direct Execution:** Only use \`local_dev\` or \`production_server\` directly if the Junior Architect fails or for simple "hotfixes".
 3.  **No Micro-Management:** Do not tell the Junior Architect *how* to use GLM Z.AI or internal tools. Just give them the strategic objective.
 `;

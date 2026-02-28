@@ -579,7 +579,7 @@
       "jas": {
         "active": true,
         "name": "Junior Architect (Sonnet 4.5)",
-        "description": "Smart & Fast Manager. Best for standard features and refactoring. Manages GLM Z.AI workers.",
+        "description": "Project Mode Orchestrator (Claude Code only). Smart & Fast Manager. Manages GLM Z.AI workers for efficient task delegation.",
         "guiSupport": true,
         "identification": {
           "markers": ["sonnet", "fast_architect"]
@@ -601,7 +601,7 @@
       "jao": {
         "active": true,
         "name": "Junior Architect (Opus 4.5)",
-        "description": "Deep Thinker & Planner. Expensive. Use for critical architecture, security, and complex logic.",
+        "description": "Project Mode Orchestrator (Claude Code only). Deep Thinker & Planner. Expensive. Use for critical architecture, security, and complex logic.",
         "guiSupport": true,
         "identification": {
           "markers": ["opus", "deep_architect"]
@@ -620,20 +620,24 @@
           "Plan before execution"
         ]
       },
-      "jag": {
+      "jaz": {
         "active": true,
-        "name": "Junior Architect (Gemini 3 Pro)",
-        "description": "Massive Context Handler. Use when changes span >50 files or require full repo understanding.",
-        "guiSupport": false,
+        "name": "Junior Architect (GLM-4.7 via OpenCode)",
+        "description": "Project Orchestrator for OpenCode. Highly accessible/budget-friendly. Manages the GLM Z.AI worker swarm.",
+        "guiSupport": true,
         "identification": {
-          "markers": ["gemini_wsl"]
+          "markers": ["opencode", "glm-4.7"]
         },
         "capabilities": [
-          "read entire repo",
-          "delegate to claude"
+          "glm_zai_frontend",
+          "glm_zai_backend",
+          "glm_zai_qa",
+          "glm_zai_refactor",
+          "glm_zai_general",
+          "git operations"
         ],
         "restrictions": [
-          "Experimental environment"
+          "Strictly delegate complex/large logic to workers to preserve context window"
         ]
       },
       "production_server": {

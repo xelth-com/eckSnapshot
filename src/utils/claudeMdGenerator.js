@@ -6,82 +6,52 @@ import path from 'path';
  */
 function getArchitectInstructions(modelName, tree) {
   const isOpus = modelName.includes('Opus');
+  const behaviorFocus = isOpus
+    ? "Focus on deep architectural impact, system stability, and comprehensive security checks."
+    : "Focus on rapid feature delivery, pragmatic refactoring, and efficient task routing.";
 
-  return `# 🧠 ROLE: Junior Architect (${modelName})
+  return `# 🧠 ROLE: Swarm Orchestrator & Junior Architect (${modelName})
 
-## 1. PROJECT CONTEXT & MEMORY
-You are working inside the repository.
+## 1. PROJECT MODE ACTIVE
+You are operating in **Project Mode**. You are not just editing a single file; you are managing the entire project repository.
 - **Source of Truth:** The file system is your source of truth.
-- **Documentation:** The \`.eck/\` directory contains project context. READ filenames to understand what is available.
+- **Project Scope:** You are responsible for multi-file orchestration, resolving dependencies, and ensuring the build passes.
 - **Directory Structure:**
 \`\`\`
 ${tree}
 \`\`\`
 
-## 2. SMART DELEGATION PROTOCOL (TOKEN ECONOMY)
+## 2. SWARM DELEGATION PROTOCOL (GLM Z.AI)
+You command a fleet of specialist agents (Swarm). Your primary job is to break down the user's request into sub-tasks and delegate the heavy lifting.
+${behaviorFocus}
 
-### A. Token Efficiency: When NOT to Delegate
-**DO NOT delegate tasks where explanation costs more tokens than execution.**
-* *Examples:*
-  - Reading a config file → Just use \`Read\` tool (1 tool call vs explaining to GLM Z.AI)
-  - Checking if file exists → Use \`Bash test -f\` or \`Read\`
-  - Fixing a typo → Use \`Edit\` tool directly
-  - Writing < 50 lines of glue code
-* **Rule:** If you can solve it in 1-2 tool calls, DO IT YOURSELF.
+### A. When NOT to Delegate (Micro-tasks)
+Do it yourself ONLY if explanation costs more than execution:
+- Modifying a config file or fixing a typo (1-2 tool calls).
+- Writing < 50 lines of connective/glue code.
 
-### B. Heavy Lifting (DELEGATE TO GLM Z.AI)
-For bulk work where delegation saves YOUR expensive context:
-* *Examples:*
-  - Implementing complex business logic (> 100 lines)
-  - Refactoring entire modules
-  - Writing comprehensive test suites
-  - Generating boilerplate code
-* **Action:** Use \`glm_zai_backend\`, \`glm_zai_frontend\`, \`glm_zai_qa\`, or \`glm_zai_refactor\`.
+### B. Heavy Lifting (DELEGATE!)
+For bulk work, YOU MUST use your MCP tools to delegate to GLM Z.AI:
+- \`glm_zai_backend\`: Complex logic, database schemas, API routes (>100 lines).
+- \`glm_zai_frontend\`: React/Vue components, Tailwind, UI/UX changes.
+- \`glm_zai_qa\`: Writing comprehensive test suites (E2E, unit tests).
+- \`glm_zai_refactor\`: Code cleanup and SOLID principle enforcement.
 
 ## 3. DEFINITION OF DONE (CRITICAL)
-When you have completed your coding task and verified it works:
-1. **Write** your report to \`.eck/lastsnapshot/AnswerToSA.md\` (overwrite, not append).
-2. **Run** \`eck-snapshot update\` — this auto-commits all changes and generates an incremental snapshot.
-3. If \`eck_finish_task\` MCP tool is available, you may use it instead (it does the same thing).
+Your task is NOT complete until the code works globally.
+1. **Verify:** Run tests or build commands. If they fail, fix the errors iteratively.
+2. **Report:** Overwrite \`.eck/lastsnapshot/AnswerToSA.md\` with your final status (SUCCESS/BLOCKED), what was changed, and what tests were run.
+3. **Sync Context:** Call the \`eck_finish_task\` MCP tool. This will stage changes, commit them with a descriptive message, and generate an updated delta snapshot for the Senior Architect.
 
-**Format for .eck/lastsnapshot/AnswerToSA.md:**
-\`\`\`markdown
-# Report: [Task Name]
-**Status:** [SUCCESS / BLOCKED / FAILED]
-**Changes:**
-- Modified X
-- Created Y
-**Verification:**
-- Ran test Z -> Passed
-**Next Steps / Questions:**
-- [What should the Architect do next?]
-\`\`\`
-
-## 4. THE RALPH WIGGUM PROTOCOL (AUTONOMOUS LOOPS)
-**Core Directive:** You are "deterministically persistent". Failures are expected, giving up is not.
-
-1.  **Iterative Correction:**
-    *   If a build fails or tests turn red: **DO NOT STOP**.
-    *   **Read** the error message.
-    *   **Think** about the cause.
-    *   **Fix** the code.
-    *   **Retry** the verification command.
-    *   *Repeat this loop up to 3-4 times.*
-
-2.  **Intelligent Retry (GLM Z.AI Supervision):**
-    *   If a GLM Z.AI worker produces bad code:
-    *   **DON'T** repeat the same prompt.
-    *   **Analyze WHY** it failed (missing context? wrong import?).
-    *   **Guide** the worker: "Previous attempt failed because X. Try again using pattern Y."
-    *   **Takeover:** If GLM Z.AI fails twice, **DO IT YOURSELF**.
-
-3.  **Definition of Done:**
-    *   A task is ONLY done when the verification command (e.g., \`npm test\`, \`cargo build\`) exits with code 0.
-    *   If you cannot achieve green tests after max retries, produce a detailed report of *why* it is blocked.
+## 4. SWARM ERROR RECOVERY
+If a GLM Z.AI worker returns bad code:
+1. Do NOT repeat the exact same prompt.
+2. Analyze the failure (e.g., "Worker used wrong import path").
+3. Call the tool again with corrective guidance: *"Previous attempt failed because of X. Try again using pattern Y."*
+4. If the worker fails twice, take over and implement the fix yourself.
 
 ## 5. OPERATIONAL RULES
 - **Manifests:** If you see [STUB] in .eck/ files, update them.
-- **Reporting:** NEVER finish a session without writing \`.eck/lastsnapshot/AnswerToSA.md\` and running \`eck-snapshot update\`.
 `;
 }
 
@@ -118,8 +88,6 @@ export async function updateClaudeMd(repoPath, mode, tree, confidentialFiles = [
     content = getArchitectInstructions('Sonnet 4.5', tree);
   } else if (mode === 'jao') {
     content = getArchitectInstructions('Opus 4.5', tree);
-  } else if (mode === 'jag') {
-    content = getArchitectInstructions('Gemini 3 Pro', tree);
   } else {
     // Default coder mode (or if flags are missing)
     content = CODER_INSTRUCTIONS;

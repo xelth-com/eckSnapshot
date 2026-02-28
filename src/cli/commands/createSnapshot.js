@@ -630,12 +630,12 @@ export async function createRepoSnapshot(repoPath, options) {
     };
 
     // Detect architect modes
-    const isJag = options.jag;
     const isJas = options.jas;
     const isJao = options.jao;
+    const isJaz = options.jaz;
 
     // If NOT in Junior Architect mode, hide JA-specific documentation to prevent context pollution
-    if (!options.withJa && !isJag && !isJas && !isJao) {
+    if (!options.withJa && !isJas && !isJao && !isJaz) {
       if (!config.filesToIgnore) config.filesToIgnore = [];
       config.filesToIgnore.push(
         'COMMANDS_REFERENCE.md',
@@ -725,7 +725,7 @@ export async function createRepoSnapshot(repoPath, options) {
         // CHANGE: Force agent to FALSE for the main snapshot header.
         // The snapshot is read by the Human/Senior Arch, not the Agent itself.
         // The Agent reads CLAUDE.md.
-        const opts = { ...options, agent: false, jag: isJag, jas: isJas, jao: isJao };
+        const opts = { ...options, agent: false, jas: isJas, jao: isJao, jaz: isJaz };
         const header = await generateEnhancedAIHeader({ stats, repoName, mode: 'file', eckManifest, options: opts, repoPath: processedRepoPath }, isGitRepo);
 
         // Compact filename format: eck{ShortName}{timestamp}_{hash}_{suffix}.md
@@ -781,12 +781,12 @@ export async function createRepoSnapshot(repoPath, options) {
       };
 
       // Generate snapshot file for ALL modes
-      if (isJag) {
-        architectFilePath = await writeSnapshot('_jag', true);
-      } else if (isJas) {
+      if (isJas) {
         architectFilePath = await writeSnapshot('_jas', true);
       } else if (isJao) {
         architectFilePath = await writeSnapshot('_jao', true);
+      } else if (isJaz) {
+        architectFilePath = await writeSnapshot('_jaz', true);
       } else {
         // Standard snapshot behavior
         architectFilePath = await writeSnapshot('', false);
@@ -819,12 +819,17 @@ export async function createRepoSnapshot(repoPath, options) {
       let claudeMode = 'coder';
       if (isJas) claudeMode = 'jas';
       if (isJao) claudeMode = 'jao';
-      if (isJag) claudeMode = 'jag';
+      if (isJaz) claudeMode = 'jaz';
 
-      await updateClaudeMd(processedRepoPath, claudeMode, directoryTree, confidentialFiles, { zh: options.zh });
+      // Claude Code exclusively uses CLAUDE.md
+      if (isJas || isJao || (!isJaz && !options.withJa)) {
+        await updateClaudeMd(processedRepoPath, claudeMode, directoryTree, confidentialFiles, { zh: options.zh });
+      }
 
-      // Also generate AGENTS.md for OpenCode
-      await generateOpenCodeAgents(processedRepoPath, claudeMode, directoryTree, confidentialFiles, { zh: options.zh });
+      // OpenCode exclusively uses AGENTS.md
+      if (isJaz || (!isJas && !isJao && !options.withJa)) {
+        await generateOpenCodeAgents(processedRepoPath, claudeMode, directoryTree, confidentialFiles, { zh: options.zh });
+      }
 
       // --- Combined Report ---
       console.log('\n✅ Snapshot generation complete!');
