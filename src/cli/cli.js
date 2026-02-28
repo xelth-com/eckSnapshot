@@ -415,5 +415,13 @@ Quick --profile Examples:
       await pushTelemetry(repoPath, false);
     });
 
+  telemetryCmd
+    .command('sync-weights')
+    .description('Fetch the latest global token estimation weights from Telemetry Hub')
+    .action(async () => {
+      const { syncTokenWeights } = await import('../utils/tokenEstimator.js');
+      await syncTokenWeights();
+    });
+
   program.parse(process.argv);
 }

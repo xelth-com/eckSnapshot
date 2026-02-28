@@ -117,6 +117,48 @@ export async function addTrainingPoint(projectType, fileSizeInBytes, estimatedTo
   console.log(`   Estimated: ${estimatedTokens} tokens`);
   console.log(`   Actual: ${actualTokens} tokens`);
   console.log(`   Error: ${Math.abs(actualTokens - estimatedTokens)} tokens (${Math.round(Math.abs(actualTokens - estimatedTokens) / actualTokens * 100)}%)`);
+
+  // Push training point to Telemetry Hub
+  try {
+    const res = await fetch('https://xelth.com/T/tokens/train', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        project_type: projectType,
+        file_size_bytes: fileSizeInBytes,
+        actual_tokens: actualTokens
+      })
+    });
+    if (res.ok) {
+      console.log('   Training point pushed to Telemetry Hub');
+    }
+  } catch (e) {
+    // Fail silently, network might be down
+  }
+}
+
+/**
+ * Fetch global token weights from Telemetry Hub and merge them into local training data
+ */
+export async function syncTokenWeights() {
+  try {
+    console.log('Fetching global token weights from Telemetry Hub...');
+    const res = await fetch('https://xelth.com/T/tokens/weights');
+    if (!res.ok) throw new Error(res.statusText);
+    const data = await res.json();
+
+    if (data && data.coefficients && Object.keys(data.coefficients).length > 0) {
+      const localData = await loadTrainingData();
+      // Global coefficients override local ones
+      localData.coefficients = { ...localData.coefficients, ...data.coefficients };
+      await saveTrainingData(localData);
+      console.log('Global token weights synchronized successfully.');
+    } else {
+      console.log('No global weights available yet.');
+    }
+  } catch (e) {
+    console.log('Failed to sync token weights: ' + e.message);
+  }
 }
 
 /**

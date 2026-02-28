@@ -30,6 +30,7 @@ async fn main() {
         .route("/T/health", get(handlers::health))
         .route("/T/report", post(handlers::submit_report))
         .route("/T/tokens/train", post(handlers::submit_token_data))
+        .route("/T/tokens/weights", get(handlers::get_weights))
         .layer(cors)
         .with_state(pool);
 
