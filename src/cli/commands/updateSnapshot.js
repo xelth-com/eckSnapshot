@@ -9,6 +9,7 @@ import { readFileWithSizeCheck, parseSize, formatSize, matchesPattern, loadGitig
 import { detectProjectType, getProjectSpecificFiltering } from '../../utils/projectDetector.js';
 import { execa } from 'execa';
 import { fileURLToPath } from 'url';
+import { pushTelemetry } from '../../utils/telemetry.js';
 
 // Mirror the same hidden-path guard used in createSnapshot.js
 function isHiddenPath(filePath) {
@@ -206,6 +207,9 @@ export async function updateSnapshot(repoPath, options) {
 
     console.log(`📦 Included ${includedCount} changed files.`);
 
+    // Auto-push telemetry
+    await pushTelemetry(repoPath, true);
+
   } catch (error) {
     spinner.fail(`Update failed: ${error.message}`);
   }
@@ -296,6 +300,9 @@ export async function updateSnapshotJson(repoPath) {
       files_count: includedCount,
       timestamp: timestamp
     }));
+
+    // Auto-push telemetry (fire and forget so it doesn't break JSON output)
+    pushTelemetry(repoPath, true).catch(() => {});
 
   } catch (error) {
     console.log(JSON.stringify({ status: "error", message: error.message }));

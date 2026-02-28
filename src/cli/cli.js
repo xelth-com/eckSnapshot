@@ -17,6 +17,7 @@ import { executePrompt, executePromptWithSession } from '../services/claudeCliSe
 import { detectProfiles } from './commands/detectProfiles.js';
 import { generateProfileGuide } from './commands/generateProfileGuide.js';
 import { setupGemini } from './commands/setupGemini.js';
+import { pushTelemetry } from '../utils/telemetry.js';
 
 import { showFile } from './commands/showFile.js';
 import { runDoctor } from './commands/doctor.js';
@@ -402,6 +403,17 @@ Quick --profile Examples:
     .option('-f, --force', 'Overwrite existing .eck/ files without prompting')
     .option('-v, --verbose', 'Show detailed output')
     .action(envPull);
+
+  // Telemetry commands
+  const telemetryCmd = program.command('telemetry').description('Manage Telemetry Hub synchronization');
+  telemetryCmd
+    .command('push')
+    .description('Manually push the latest AnswerToSA.md report to xelth.com/T/report')
+    .argument('[repoPath]', 'Path to the repository', process.cwd())
+    .action(async (repoPath) => {
+      console.log(chalk.blue('Pushing agent telemetry...'));
+      await pushTelemetry(repoPath, false);
+    });
 
   program.parse(process.argv);
 }
