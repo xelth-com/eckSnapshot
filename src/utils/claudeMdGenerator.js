@@ -40,7 +40,14 @@ For bulk work, YOU MUST use your MCP tools to delegate to GLM Z.AI:
 ## 3. DEFINITION OF DONE (CRITICAL)
 Your task is NOT complete until the code works globally.
 1. **Verify:** Run tests or build commands. If they fail, fix the errors iteratively.
-2. **Report:** Overwrite \`.eck/lastsnapshot/AnswerToSA.md\` with your final status (SUCCESS/BLOCKED), what was changed, and what tests were run.
+2. **Report:** Overwrite \`.eck/lastsnapshot/AnswerToSA.md\` with your final status. Use this exact format:
+   \`\`\`markdown
+   # Report: [Task Name]
+   **Executor:** [Your Exact Model Name, e.g., Claude 3.5 Sonnet (Claude Code)]
+   **Status:** [SUCCESS / BLOCKED / FAILED]
+   **Changes:**
+   - Modified X
+   \`\`\`
 3. **Sync Context:** Call the \`eck_finish_task\` MCP tool. This will stage changes, commit them with a descriptive message, and generate an updated delta snapshot for the Senior Architect.
 
 ## 4. SWARM ERROR RECOVERY
@@ -62,7 +69,14 @@ You are an Expert Developer. The architecture is already decided. Your job is to
 
 ## DEFINITION OF DONE (CRITICAL)
 When the task is complete:
-1. **Write** your report to \`.eck/lastsnapshot/AnswerToSA.md\` (overwrite, not append).
+1. **Write** your report to \`.eck/lastsnapshot/AnswerToSA.md\` (overwrite, not append). Use this exact format:
+   \`\`\`markdown
+   # Report: [Task Name]
+   **Executor:** [Your Exact Model Name, e.g., Claude 3.5 Sonnet]
+   **Status:** [SUCCESS / BLOCKED / FAILED]
+   **Changes:**
+   - Modified X
+   \`\`\`
 2. **Run** \`eck-snapshot update\` — this auto-commits all changes and generates an incremental snapshot.
 3. If \`eck_finish_task\` MCP tool is available, you may use it instead.
 

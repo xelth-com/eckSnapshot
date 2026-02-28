@@ -56,6 +56,7 @@ At the end of your task, you **MUST** overwrite `.eck/lastsnapshot/AnswerToSA.md
 **Format for .eck/lastsnapshot/AnswerToSA.md:**
 ```markdown
 # Report: [Task Name]
+**Executor:** [Your Exact Model Name, e.g., GLM-4.7 (OpenCode)]
 **Status:** [SUCCESS / BLOCKED / FAILED]
 **Changes:**
 - Modified X
