@@ -25,9 +25,13 @@ export async function getGitAnchor(repoPath) {
   }
 }
 
-export async function getChangedFiles(repoPath, anchorHash) {
+export async function getChangedFiles(repoPath, anchorHash, includeWorkingTree = false) {
   try {
-    const { stdout } = await execa('git', ['diff', '--name-only', anchorHash, 'HEAD'], { cwd: repoPath });
+    const args = ['diff', '--name-only', anchorHash];
+    if (!includeWorkingTree) {
+      args.push('HEAD');
+    }
+    const { stdout } = await execa('git', args, { cwd: repoPath });
     return stdout.split('\n').filter(Boolean);
   } catch (e) {
     throw new Error(`Failed to get git diff: ${e.message}`);

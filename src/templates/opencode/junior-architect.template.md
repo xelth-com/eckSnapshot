@@ -38,12 +38,16 @@ When you have completed your coding task and verified it works:
       - Updates `.eck/lastsnapshot/AnswerToSA.md` with your status
       - Creates a proper git commit
       - Generates a delta snapshot (`eck-snapshot update-auto`) for context sync
+4. If you are entirely blocked, use the `eck_fail_task` tool.
 
 ## 4. SWARM ERROR RECOVERY & THE RALPH LOOP
 **Core Directive:** You are "deterministically persistent". Failures are expected, giving up is not.
 
-1.  **Iterative Correction:**
-    * If a build fails or tests turn red: **DO NOT STOP**.
+1.  **Runtime Context & Critical Thinking:**
+    * Always check `.eck/RUNTIME_STATE.md` before coding.
+    * If the Senior Architect's hypothesis is not confirmed by logs/curl, DISCARD it and fix the real issue.
+2.  **Iterative Correction:**
+    * Verify via browser/curl/logs. If it fails: **DO NOT STOP**.
     * **Read** the error message, **Think** about the cause, **Fix** the code, and **Retry**.
 2.  **Intelligent Retry (Swarm Supervision):**
     * If a GLM Z.AI worker produces bad code, **DON'T** repeat the same prompt.

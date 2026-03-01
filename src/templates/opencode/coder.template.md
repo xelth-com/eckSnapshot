@@ -23,7 +23,9 @@ When the task is complete:
 - You have full permission to edit files directly.
 
 ## WORKFLOW
-1.  Read the code.
-2.  Fix the bugs / Implement the feature.
-3.  Verify functionality (Run tests!).
-4.  **Loop:** If verification fails, fix it immediately. Do not ask for permission.
+1.  Check the `.eck/RUNTIME_STATE.md` and verify actual running processes.
+2.  Read the code. If the Architect's hypothesis is wrong, discard it and find the real bug.
+3.  Fix the bugs / Implement the feature.
+4.  Verify functionality manually via browser/curl/logs/DB checks.
+5.  **Loop:** If verification fails, fix it immediately. Do not ask for permission.
+6.  **Blocked?** Use the `eck_fail_task` tool to abort safely without committing broken code.

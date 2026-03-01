@@ -49,6 +49,29 @@ async function generateSnapshotContent(repoPath, changedFiles, anchor, config, g
     const reportContent = await fs.readFile(reportPath, 'utf-8');
     if (!reportContent.includes('[SYSTEM: EMBEDDED]')) {
       agentReport = reportContent;
+
+      // Auto-Journaling: prepend agent report to JOURNAL.md
+      const journalPath = path.join(repoPath, '.eck', 'JOURNAL.md');
+      try {
+        const dateStr = new Date().toISOString().split('T')[0];
+        const journalEntry = `## ${dateStr} — Agent Report\n\n${reportContent.trim()}\n`;
+
+        let existingJournal = '';
+        try {
+          existingJournal = await fs.readFile(journalPath, 'utf-8');
+        } catch (e) { /* might not exist */ }
+
+        const insertPos = existingJournal.indexOf('\n## ');
+        if (insertPos !== -1) {
+          const newJournal = existingJournal.slice(0, insertPos) + '\n\n' + journalEntry + existingJournal.slice(insertPos);
+          await fs.writeFile(journalPath, newJournal, 'utf-8');
+        } else {
+          await fs.writeFile(journalPath, (existingJournal ? existingJournal + '\n\n' : '') + journalEntry + '\n', 'utf-8');
+        }
+      } catch (je) {
+        console.warn('Could not auto-update JOURNAL.md', je.message);
+      }
+
       await fs.appendFile(reportPath, '\n\n[SYSTEM: EMBEDDED]\n', 'utf-8');
     }
   } catch (e) { /* File not found or unreadable */ }
@@ -122,13 +145,18 @@ export async function updateSnapshot(repoPath, options) {
     }
 
     // Auto-commit any uncommitted changes so they appear in the diff
-    const didCommit = await autoCommit(repoPath);
-    if (didCommit) {
-      spinner.info('Auto-committed uncommitted changes.');
-      spinner.start('Generating update snapshot...');
+    let didCommit = false;
+    if (!options.fail) {
+      didCommit = await autoCommit(repoPath);
+      if (didCommit) {
+        spinner.info('Auto-committed uncommitted changes.');
+      }
+    } else {
+      spinner.info('Fail flag passed: skipping auto-commit.');
     }
+    spinner.start('Generating update snapshot...');
 
-    const changedFiles = await getChangedFiles(repoPath, anchor);
+    const changedFiles = await getChangedFiles(repoPath, anchor, options.fail);
     if (changedFiles.length === 0) {
       spinner.succeed('No changes detected since last full snapshot.');
       return;
@@ -216,7 +244,7 @@ export async function updateSnapshot(repoPath, options) {
 }
 
 // New Silent/JSON command for Agents
-export async function updateSnapshotJson(repoPath) {
+export async function updateSnapshotJson(repoPath, options = {}) {
   try {
     const anchor = await getGitAnchor(repoPath);
     if (!anchor) {
@@ -225,9 +253,11 @@ export async function updateSnapshotJson(repoPath) {
     }
 
     // Auto-commit any uncommitted changes
-    await autoCommit(repoPath);
+    if (!options.fail) {
+      await autoCommit(repoPath);
+    }
 
-    const changedFiles = await getChangedFiles(repoPath, anchor);
+    const changedFiles = await getChangedFiles(repoPath, anchor, !!options.fail);
     if (changedFiles.length === 0) {
       console.log(JSON.stringify({ status: "no_changes", message: "No changes detected" }));
       return;

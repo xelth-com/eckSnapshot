@@ -24,6 +24,20 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
   return {
     tools: [
       {
+        name: "eck_fail_task",
+        description: "Use this if you are stuck, blocked, or unable to complete the task. It saves your report to AnswerToSA.md and generates an emergency snapshot WITHOUT committing broken code. Do NOT use this if tests pass.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            status: {
+              type: "string",
+              description: "Detailed explanation of why you are blocked, what you tried, and what the Architect should know."
+            }
+          },
+          required: ["status"]
+        }
+      },
+      {
         name: "eck_finish_task",
         description: "Completes the current coding task. 1) Overwrites AnswerToSA.md with status for the Architect. 2) Stages all changes. 3) Commits with the provided message. 4) Automatically updates the context snapshot. Use this instead of manual git commands.",
         inputSchema: {
@@ -46,6 +60,40 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
 });
 
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
+  if (request.params.name === "eck_fail_task") {
+    const { status } = request.params.arguments;
+    const workDir = process.cwd();
+
+    try {
+      const answerDir = path.join(workDir, '.eck', 'lastsnapshot');
+      await fs.mkdir(answerDir, { recursive: true });
+      await fs.writeFile(
+        path.join(answerDir, 'AnswerToSA.md'),
+        `# Agent Report (BLOCKED/FAILED)\n\n${status}\n`,
+        'utf-8'
+      );
+
+      const cliPath = path.join(PROJECT_ROOT, "index.js");
+      const { stdout } = await execa("node", [cliPath, "update-auto", "--fail"], { cwd: workDir, timeout: 120000 });
+
+      let result;
+      try {
+        result = JSON.parse(stdout);
+      } catch (e) {
+        return { content: [{ type: "text", text: `⚠️ Task aborted, but snapshot update returned invalid JSON: ${stdout}` }] };
+      }
+
+      return {
+        content: [{
+          type: "text",
+          text: `🚨 Task marked as FAILED.\n📝 AnswerToSA.md updated\n📸 Emergency Snapshot: ${result.snapshot_file} (${result.files_count} files)`
+        }]
+      };
+    } catch (error) {
+      return { content: [{ type: "text", text: `❌ Error: ${error.message}\n${error.stderr || ''}` }], isError: true };
+    }
+  }
+
   if (request.params.name === "eck_finish_task") {
     const { status, message } = request.params.arguments;
     const workDir = process.cwd();

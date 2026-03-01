@@ -205,6 +205,7 @@ Quick --profile Examples:
     .description('Create a delta snapshot of changed files since the last full snapshot')
     .argument('[repoPath]', 'Path to the repository', process.cwd())
     .option('--config <path>', 'Configuration file path')
+    .option('-f, --fail', 'Create an emergency snapshot without git commit')
     .action(updateSnapshot);
 
   // Auto/Silent Update command for Agents
@@ -212,6 +213,7 @@ Quick --profile Examples:
     .command('update-auto')
     .description('Silent update for AI agents (JSON output)')
     .argument('[repoPath]', 'Path to the repository', process.cwd())
+    .option('-f, --fail', 'Create an emergency snapshot without git commit')
     .action(updateSnapshotJson);
 
   // Restore command

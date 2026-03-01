@@ -39,7 +39,7 @@ For bulk work, YOU MUST use your MCP tools to delegate to GLM Z.AI:
 
 ## 3. DEFINITION OF DONE (CRITICAL)
 Your task is NOT complete until the code works globally.
-1. **Verify:** Run tests or build commands. If they fail, fix the errors iteratively.
+1. **Verify:** Verify functionality manually via browser/curl/logs/DB checks. If they fail, fix the errors iteratively.
 2. **Report:** Overwrite \`.eck/lastsnapshot/AnswerToSA.md\` with your final status. Use this exact format:
    \`\`\`markdown
    # Report: [Task Name]
@@ -50,12 +50,13 @@ Your task is NOT complete until the code works globally.
    \`\`\`
 3. **Sync Context:** Call the \`eck_finish_task\` MCP tool. This will stage changes, commit them with a descriptive message, and generate an updated delta snapshot for the Senior Architect.
 
-## 4. SWARM ERROR RECOVERY
-If a GLM Z.AI worker returns bad code:
-1. Do NOT repeat the exact same prompt.
-2. Analyze the failure (e.g., "Worker used wrong import path").
-3. Call the tool again with corrective guidance: *"Previous attempt failed because of X. Try again using pattern Y."*
-4. If the worker fails twice, take over and implement the fix yourself.
+## 4. SWARM ERROR RECOVERY & ARCHITECT HYPOTHESES
+1. **Runtime Check:** Always check the \`.eck/RUNTIME_STATE.md\` and running processes before coding.
+2. **Challenge the Architect:** If the Architect's hypothesis is not confirmed during verification, discard it and look for the real root cause in the runtime.
+3. If a GLM Z.AI worker returns bad code, do NOT repeat the exact same prompt.
+4. Analyze the failure (e.g., "Worker used wrong import path").
+5. Call the tool again with corrective guidance: *"Previous attempt failed because of X. Try again using pattern Y."*
+6. If the worker fails twice, take over and implement the fix yourself.
 
 ## 5. OPERATIONAL RULES
 - **Manifests:** If you see [STUB] in .eck/ files, update them.
@@ -86,10 +87,12 @@ When the task is complete:
 - You have full permission to edit files directly.
 
 ## WORKFLOW
-1.  Read the code.
-2.  Fix the bugs / Implement the feature.
-3.  Verify functionality (Run tests!).
-4.  **Loop:** If verification fails, fix it immediately. Do not ask for permission.
+1.  Check the \`.eck/RUNTIME_STATE.md\` and verify actual running processes.
+2.  Read the code. If the Architect's hypothesis is wrong, discard it and find the real bug.
+3.  Fix the bugs / Implement the feature.
+4.  Verify functionality manually via browser/curl/logs/DB checks.
+5.  **Loop:** If verification fails, fix it immediately. Do not ask for permission.
+6.  **Blocked?** Use the \`eck_fail_task\` tool to abort safely without committing broken code.
 `;
 
 /**

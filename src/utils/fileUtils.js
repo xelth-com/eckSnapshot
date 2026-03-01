@@ -944,6 +944,21 @@ ${staticFacts.type === 'nodejs' ? 'npm install' : 'TBD'}`
 
 **CODER:** Scan for TODOs/FIXMEs or structural issues and list them here. Remove this stub marker.`
       },
+      'RUNTIME_STATE.md': {
+        prompt: `Based on the project type (${staticFacts.type}), generate a template for RUNTIME_STATE.md. Start with '# Runtime State'.`,
+        fallback: `# Runtime State
+
+## 🚨 ATTENTION CODER
+Always check this file and verify the actual runtime state (ports, running processes, env variables) BEFORE writing code. Update this file if ports or access methods change.
+
+- **Server:** e.g., running on port 3210
+- **Services:** e.g., Scraper running on port 3211
+- **Auth:** e.g., admin@local / password
+- **Verification Commands:**
+  - \`pm2 ls\`
+  - \`curl http://localhost:3210/health\`
+`
+      },
       'JOURNAL.md': {
         fallback: `# Development Journal
 
