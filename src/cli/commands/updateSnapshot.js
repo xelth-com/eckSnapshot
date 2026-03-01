@@ -115,7 +115,7 @@ async function generateSnapshotContent(repoPath, changedFiles, anchor, config, g
 
     try {
       const fullPath = path.join(repoPath, filePath);
-      
+
       // Explicitly check if file was deleted
       try {
         await fs.access(fullPath);
