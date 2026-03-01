@@ -42,6 +42,7 @@ When you have completed your coding task and verified it works:
       - Updates `.eck/lastsnapshot/AnswerToSA.md` with your status
       - Creates a proper git commit
       - Generates a delta snapshot (`eck-snapshot update-auto`) for context sync
+   - **WARNING: USE ONLY ONCE.** Do not use `eck_finish_task` or `eck-snapshot update` for intermediate testing or debugging. It will spam snapshot history.
 4. If you are entirely blocked, use the `eck_fail_task` tool.
 
 ## 5. SWARM ERROR RECOVERY & THE RALPH LOOP

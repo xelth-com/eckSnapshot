@@ -39,7 +39,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       },
       {
         name: "eck_finish_task",
-        description: "Completes the current coding task. 1) Overwrites AnswerToSA.md with status for the Architect. 2) Stages all changes. 3) Commits with the provided message. 4) Automatically updates the context snapshot. Use this instead of manual git commands.",
+        description: "Completes the current coding task. 1) Overwrites AnswerToSA.md with status for the Architect. 2) Stages all changes. 3) Commits with the provided message. 4) Automatically updates the context snapshot. WARNING: USE ONLY ONCE PER TASK WHEN 100% FINISHED. Do NOT use this for intermediate saves or testing during your debugging loop.",
         inputSchema: {
           type: "object",
           properties: {

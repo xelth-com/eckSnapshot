@@ -183,6 +183,13 @@ scope: core
 
 
 
+
+## 2026-03-01 — Agent Report
+
+# Agent Report
+
+Implemented deleted file tracking with [FILE DELETED] marker, added Shannon Entropy calculation to SecretScanner for high-entropy secret detection (threshold > 4.5), and cleaned up .eck manifest files (ENVIRONMENT.md, TECH_DEBT.md, ROADMAP.md) to reflect completed and resolved items
+
 ## 2026-03-01 — Agent Report
 
 # Agent Report

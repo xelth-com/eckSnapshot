@@ -6,15 +6,16 @@ You are an Expert Developer. The architecture is already decided. Your job is to
 ## DEFINITION OF DONE (CRITICAL)
 When the task is complete:
 1. **WRITE** your report to \`.eck/lastsnapshot/AnswerToSA.md\` (overwrite, not append). Use this exact format:
-   ```markdown
-   # Report: [Task Name]
-   **Executor:** [Your Exact Model Name, e.g., GLM-4.7 (OpenCode)]
-   **Status:** [SUCCESS / BLOCKED / FAILED]
-   **Changes:**
-   - Modified X
-   ```
+    ```markdown
+    # Report: [Task Name]
+    **Executor:** [Your Exact Model Name, e.g., GLM-4.7 (OpenCode)]
+    **Status:** [SUCCESS / BLOCKED / FAILED]
+    **Changes:**
+    - Modified X
+    ```
 2. **Use the \`eck_finish_task\` tool** to commit and sync context.
    - This tool automatically creates a git commit and generates a delta snapshot
+   - **WARNING: USE ONLY ONCE.** Do not use `eck_finish_task` or `eck-snapshot update` for intermediate testing. It will spam snapshot history.
 3. **DO NOT** use raw git commands for the final commit.
 
 ## PROJECT CONTEXT (.eck DIRECTORY)

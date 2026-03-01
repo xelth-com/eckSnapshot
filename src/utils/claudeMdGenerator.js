@@ -46,14 +46,15 @@ For bulk work, YOU MUST use your MCP tools to delegate to GLM Z.AI:
 Your task is NOT complete until the code works globally.
 1. **Verify:** Verify functionality manually via browser/curl/logs/DB checks. If they fail, fix the errors iteratively.
 2. **Report:** Overwrite \`.eck/lastsnapshot/AnswerToSA.md\` with your final status. Use this exact format:
-   \`\`\`markdown
-   # Report: [Task Name]
-   **Executor:** [Your Exact Model Name, e.g., Claude 3.5 Sonnet (Claude Code)]
-   **Status:** [SUCCESS / BLOCKED / FAILED]
-   **Changes:**
-   - Modified X
-   \`\`\`
+    \`\`\`markdown
+    # Report: [Task Name]
+    **Executor:** [Your Exact Model Name, e.g., Claude 3.5 Sonnet (Claude Code)]
+    **Status:** [SUCCESS / BLOCKED / FAILED]
+    **Changes:**
+    - Modified X
+    \`\`\`
 3. **Sync Context:** Call the \`eck_finish_task\` MCP tool. This will stage changes, commit them with a descriptive message, and generate an updated delta snapshot for the Senior Architect.
+    - **WARNING:** USE ONLY ONCE PER TASK. Do not use this tool or \`eck-snapshot update\` for intermediate testing.
 
 ## 5. SWARM ERROR RECOVERY & ARCHITECT HYPOTHESES
 1. **Runtime Check:** Always check the \`.eck/RUNTIME_STATE.md\` and running processes before coding.
@@ -76,14 +77,15 @@ You are an Expert Developer. The architecture is already decided. Your job is to
 ## DEFINITION OF DONE (CRITICAL)
 When the task is complete:
 1. **Write** your report to \`.eck/lastsnapshot/AnswerToSA.md\` (overwrite, not append). Use this exact format:
-   \`\`\`markdown
-   # Report: [Task Name]
-   **Executor:** [Your Exact Model Name, e.g., Claude 3.5 Sonnet]
-   **Status:** [SUCCESS / BLOCKED / FAILED]
-   **Changes:**
-   - Modified X
-   \`\`\`
+    \`\`\`markdown
+    # Report: [Task Name]
+    **Executor:** [Your Exact Model Name, e.g., Claude 3.5 Sonnet]
+    **Status:** [SUCCESS / BLOCKED / FAILED]
+    **Changes:**
+    - Modified X
+    \`\`\`
 2. **Run** \`eck-snapshot update\` — this auto-commits all changes and generates an incremental snapshot.
+    - **WARNING:** USE ONLY ONCE PER TASK. Do not run these commands for intermediate testing or debugging, as it floods snapshot history.
 3. If \`eck_finish_task\` MCP tool is available, you may use it instead.
 
 ## PROJECT CONTEXT (.eck DIRECTORY)
