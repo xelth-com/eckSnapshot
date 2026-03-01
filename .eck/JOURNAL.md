@@ -185,11 +185,25 @@ scope: core
 
 
 
+
+## 2026-03-01 — Agent Report
+
+# Agent Report
+
+Updated `initializeEckManifest()` function in `src/utils/fileUtils.js` to use data from `setup.json` (specifically `projectContext` block) when generating fallback STUB templates for `ENVIRONMENT.md` and `CONTEXT.md`. This resolves the TECH_DEBT issue where these files were manually maintained with generic placeholders. Templates now use actual project name, type, stack, and AI integration info from setup.json configuration.
+
 ## 2026-03-01 — Agent Report
 
 # Agent Report
 
 Updated MCP tool descriptions and agent templates to strictly prohibit using snapshot-generating commands (`eck_finish_task`, `update-auto`, `update`) for intermediate testing. All templates now include warnings that these tools must only be used once at the very end of a task to prevent snapshot history spam.
+ 
+## 2026-03-01 — Fix AnswerToSA.md write failures by directing agents to use eck_finish_task status argument
+
+Updated MCP tool description and all agent templates (coder.template.md, junior-architect.template.md, claudeMdGenerator.js) to provide clear instructions about using `eck_finish_task` tool instead of manually writing to AnswerToSA.md. The templates now explicitly state that:
+1. The tool will automatically write the report to AnswerToSA.md
+2. Agents should NOT manually write to AnswerToSA.md (it will fail safety checks)
+3. Fallback instructions are provided for manual CLI usage if MCP tool is unavailable
 
 ## 2026-03-01 — Agent Report
 

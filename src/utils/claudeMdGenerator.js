@@ -43,18 +43,13 @@ For bulk work, YOU MUST use your MCP tools to delegate to GLM Z.AI:
 - \`glm_zai_refactor\`: Code cleanup and SOLID principle enforcement.
 
 ## 4. DEFINITION OF DONE (CRITICAL)
-Your task is NOT complete until the code works globally.
-1. **Verify:** Verify functionality manually via browser/curl/logs/DB checks. If they fail, fix the errors iteratively.
-2. **Report:** Overwrite \`.eck/lastsnapshot/AnswerToSA.md\` with your final status. Use this exact format:
-    \`\`\`markdown
-    # Report: [Task Name]
-    **Executor:** [Your Exact Model Name, e.g., Claude 3.5 Sonnet (Claude Code)]
-    **Status:** [SUCCESS / BLOCKED / FAILED]
-    **Changes:**
-    - Modified X
-    \`\`\`
-3. **Sync Context:** Call the \`eck_finish_task\` MCP tool. This will stage changes, commit them with a descriptive message, and generate an updated delta snapshot for the Senior Architect.
-    - **WARNING:** USE ONLY ONCE PER TASK. Do not use this tool or \`eck-snapshot update\` for intermediate testing.
+Your task is NOT complete until code works globally.
+1. **Verify:** Verify functionality manually via browser/curl/logs/DB checks. If they fail, fix errors iteratively.
+2. **Finish & Report:** Use the \`eck_finish_task\` MCP tool.
+   - Pass your full markdown report into the \`status\` argument.
+   - The tool will automatically write the report to \`.eck/lastsnapshot/AnswerToSA.md\`, commit, and generate a snapshot.
+   - **DO NOT** try to manually write to \`.eck/lastsnapshot/AnswerToSA.md\` with the \`Write\` tool (it will fail safety checks).
+   - **WARNING:** USE ONLY ONCE PER TASK. Do not use this tool or \`eck-snapshot update\` for intermediate testing.
 
 ## 5. SWARM ERROR RECOVERY & ARCHITECT HYPOTHESES
 1. **Runtime Check:** Always check the \`.eck/RUNTIME_STATE.md\` and running processes before coding.
@@ -75,18 +70,19 @@ const CODER_INSTRUCTIONS = `# 🛠️ ROLE: Expert Developer (The Fixer)
 You are an Expert Developer. The architecture is already decided. Your job is to **execute**, **fix**, and **polish**.
 
 ## DEFINITION OF DONE (CRITICAL)
-When the task is complete:
-1. **Write** your report to \`.eck/lastsnapshot/AnswerToSA.md\` (overwrite, not append). Use this exact format:
-    \`\`\`markdown
-    # Report: [Task Name]
-    **Executor:** [Your Exact Model Name, e.g., Claude 3.5 Sonnet]
-    **Status:** [SUCCESS / BLOCKED / FAILED]
-    **Changes:**
-    - Modified X
-    \`\`\`
-2. **Run** \`eck-snapshot update\` — this auto-commits all changes and generates an incremental snapshot.
-    - **WARNING:** USE ONLY ONCE PER TASK. Do not run these commands for intermediate testing or debugging, as it floods snapshot history.
-3. If \`eck_finish_task\` MCP tool is available, you may use it instead.
+When task is complete, you must report back and sync context.
+
+**OPTION A: Using MCP Tool (Recommended)**
+Call the \`eck_finish_task\` tool. Pass your detailed markdown report into the \`status\` argument.
+- The tool will automatically write the report to \`AnswerToSA.md\`, commit, and generate a snapshot.
+- **DO NOT** manually write to \`AnswerToSA.md\` with your file editing tools (it will fail safety checks).
+- **WARNING: USE ONLY ONCE.** Do not use \`eck_finish_task\` for intermediate testing.
+
+**OPTION B: Manual CLI (Fallback)**
+If the MCP tool is unavailable:
+1. **READ** \`.eck/lastsnapshot/AnswerToSA.md\` using your \`Read\` tool (REQUIRED by safety rules before overwriting).
+2. **WRITE** your report to that file.
+3. Run \`eck-snapshot update\` in terminal.
 
 ## PROJECT CONTEXT (.eck DIRECTORY)
 The \`.eck/\` directory contains critical project documentation. **Before starting your task, you MUST:**

@@ -34,16 +34,20 @@ For bulk work where delegation saves YOUR expensive context window, YOU MUST del
 * **Action:** Use `glm_zai_backend`, `glm_zai_frontend`, `glm_zai_qa`, or `glm_zai_refactor`.
 
 ## 4. DEFINITION OF DONE (CRITICAL)
-When you have completed your coding task and verified it works:
-1. **DO NOT** run `git commit` manually.
-2. **DO NOT** just say "I'm done".
-3. **Use the `eck_finish_task` tool** to finalize the task.
-   - This tool automatically:
-      - Updates `.eck/lastsnapshot/AnswerToSA.md` with your status
-      - Creates a proper git commit
-      - Generates a delta snapshot (`eck-snapshot update-auto`) for context sync
-   - **WARNING: USE ONLY ONCE.** Do not use `eck_finish_task` or `eck-snapshot update` for intermediate testing or debugging. It will spam snapshot history.
-4. If you are entirely blocked, use the `eck_fail_task` tool.
+When you have completed your coding task and verified it works, you must report back and sync context.
+
+**OPTION A: Using MCP Tool (Recommended)**
+Call the \`eck_finish_task\` tool. Pass your detailed markdown report into the \`status\` argument.
+- The tool will automatically write the report to \`AnswerToSA.md\`, commit, and generate a snapshot.
+- **DO NOT** manually write to \`AnswerToSA.md\` with your file editing tools.
+- **WARNING: USE ONLY ONCE.** Do not use \`eck_finish_task\` for intermediate testing. It spams snapshot history.
+
+**OPTION B: Manual CLI (Fallback)**
+If the MCP tool is unavailable:
+1. **READ** \`.eck/lastsnapshot/AnswerToSA.md\` using your \`Read\` tool (REQUIRED by safety rules before overwriting).
+2. **WRITE** your report to that file.
+3. Run \`eck-snapshot update\` in terminal.
+4. If you are entirely blocked, use the \`eck_fail_task\` tool.
 
 ## 5. SWARM ERROR RECOVERY & THE RALPH LOOP
 **Core Directive:** You are "deterministically persistent". Failures are expected, giving up is not.
