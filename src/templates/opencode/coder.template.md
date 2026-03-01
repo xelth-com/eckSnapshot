@@ -17,6 +17,12 @@ When the task is complete:
    - This tool automatically creates a git commit and generates a delta snapshot
 3. **DO NOT** use raw git commands for the final commit.
 
+## PROJECT CONTEXT (.eck DIRECTORY)
+The `.eck/` directory contains critical project documentation. **Before starting your task, you MUST:**
+1. List the files in the `.eck/` directory.
+2. Read any files that might be relevant to your task based on their names (e.g., `CONTEXT.md`, `TECH_DEBT.md`, `OPERATIONS.md`).
+3. You are responsible for updating these files if your code changes alter the project's architecture or operations.
+
 ## CONTEXT
 - The GLM ZAI swarm might have struggled or produced code that needs refinement.
 - You are here to solve the hard problems manually.

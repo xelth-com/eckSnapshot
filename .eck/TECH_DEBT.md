@@ -21,15 +21,12 @@
 
 ### Low Priority
 
-**`opencodeAgentsGenerator.js` template paths are relative to `repoPath` with `../..` hacks**
-- `path.join(repoPath, '..', '..', 'src', 'templates', ...)` is fragile
-- Fix: Resolve templates relative to `__dirname`
-
 **`ENVIRONMENT.md` and `CONTEXT.md` are manually maintained**
 - Out-of-date model versions (still says "Sonnet 4.5" in some places)
 - Fix: Auto-generate from `setup.json` during `eck-snapshot` run
 
 ## Resolved
+- [x] `opencodeAgentsGenerator.js` template paths are relative to `repoPath` with `../..` hacks (fixed 2026-03-01)
 - [x] `js-yaml` missing from package.json (was already declared as ^4.1.0)
 - [x] MiniMax files lingering in repo (all removed during GLM Z.AI migration)
 - [x] `agentReport` undefined bug in `updateSnapshot` (fixed 2026-01-25)

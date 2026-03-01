@@ -1,5 +1,9 @@
 import fs from 'fs/promises';
 import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 /**
  * Generates AGENTS.md for OpenCode integration (GLM Z.AI ecosystem only)
@@ -30,11 +34,12 @@ export async function generateOpenCodeAgents(repoPath, mode, tree, confidentialF
       color: '#10a37f'
     };
 
-    const templatePath = path.join(repoPath, '..', '..', 'src', 'templates', 'opencode', 'junior-architect.template.md');
+    const templatePath = path.join(__dirname, '..', 'templates', 'opencode', 'junior-architect.template.md');
     try {
       let templateContent = await fs.readFile(templatePath, 'utf-8');
       body = templateContent.replace('{{tree}}', tree);
     } catch (error) {
+      console.warn(`⚠️ Could not load JAZ template from ${templatePath}: ${error.message}`);
       body = `# 🧠 ROLE: Swarm Orchestrator (GLM-4.7)\n\nDirectory:\n\`\`\`\n${tree}\n\`\`\``;
     }
   } else {
@@ -48,10 +53,11 @@ export async function generateOpenCodeAgents(repoPath, mode, tree, confidentialF
       color: '#44BA81'
     };
 
-    const templatePath = path.join(repoPath, '..', '..', 'src', 'templates', 'opencode', 'coder.template.md');
+    const templatePath = path.join(__dirname, '..', 'templates', 'opencode', 'coder.template.md');
     try {
       body = await fs.readFile(templatePath, 'utf-8');
     } catch (error) {
+      console.warn(`⚠️ Could not load Coder template from ${templatePath}: ${error.message}`);
       body = `# 🛠️ ROLE: Expert Developer`;
     }
   }
