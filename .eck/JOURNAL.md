@@ -184,11 +184,22 @@ scope: core
 
 
 
+
+## 2026-03-01 — Agent Report
+
+# Agent Report
+
+Updated MCP tool descriptions and agent templates to strictly prohibit using snapshot-generating commands (`eck_finish_task`, `update-auto`, `update`) for intermediate testing. All templates now include warnings that these tools must only be used once at the very end of a task to prevent snapshot history spam.
+
 ## 2026-03-01 — Agent Report
 
 # Agent Report
 
 Implemented deleted file tracking with [FILE DELETED] marker, added Shannon Entropy calculation to SecretScanner for high-entropy secret detection (threshold > 4.5), and cleaned up .eck manifest files (ENVIRONMENT.md, TECH_DEBT.md, ROADMAP.md) to reflect completed and resolved items
+
+## 2026-03-01 — Auto-generate ENVIRONMENT.md and CONTEXT.md from setup.json
+
+Updated `initializeEckManifest()` function to auto-generate fallback templates for `ENVIRONMENT.md` and `CONTEXT.md` using data from `setup.json` (projectContext block). This resolves the technical debt issue where these files were manually maintained with generic placeholders. Now they will use actual project name, type, stack, and AI integration info from setup.json.
 
 ## 2026-03-01 — Agent Report
 

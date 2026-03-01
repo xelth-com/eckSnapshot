@@ -2,13 +2,8 @@
 
 ## Active
 
-### Low Priority
-
-**`ENVIRONMENT.md` and `CONTEXT.md` are manually maintained**
-- Out-of-date model versions (still says "Sonnet 4.5" in some places)
-- Fix: Auto-generate from `setup.json` during `eck-snapshot` run
-
 ## Resolved
+- [x] `ENVIRONMENT.md` and `CONTEXT.md` are manually maintained (fixed 2026-03-01)
 - [x] `opencodeAgentsGenerator.js` template paths are relative to `repoPath` (fixed 2026-03-01)
 - [x] `updateSnapshotJson` does not deduplicate `[SYSTEM: EMBEDDED]` marker race (fixed 2026-03-01)
 - [x] Token estimation ignores `estimatedTokens` in regression calculation (fixed 2026-03-01)

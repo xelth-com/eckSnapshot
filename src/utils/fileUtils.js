@@ -868,10 +868,11 @@ export async function applyProfileFilter(allFiles, profileString, repoPath) {
 export async function initializeEckManifest(projectPath) {
   const eckDir = path.join(projectPath, '.eck');
 
-  // Load setup configuration to check AI generation settings
+  // Load setup configuration to check AI generation settings and project context
   let aiGenerationEnabled = false;
+  let setupConfig = null;
   try {
-    const setupConfig = await loadSetupConfig();
+    setupConfig = await loadSetupConfig();
     aiGenerationEnabled = setupConfig?.aiInstructions?.manifestInitialization?.aiGenerationEnabled ?? false;
   } catch (error) {
     // If setup config fails to load, default to disabled
@@ -926,31 +927,36 @@ export async function initializeEckManifest(projectPath) {
     
     const staticFactsJson = JSON.stringify(staticFacts, null, 2);
     // --- END NEW LOGIC ---
+
+    // Extract Context from setup.json if available
+    const projName = setupConfig?.projectContext?.name || staticFacts.type || 'project';
+    const projType = setupConfig?.projectContext?.type || staticFacts.type || 'unknown';
+    const projStack = setupConfig?.projectContext?.architecture?.stack?.join(', ') || 'TBD';
+    const projAi = setupConfig?.projectContext?.architecture?.aiIntegration || 'None';
     
-    // 3. Define smarter templates and prompts with "STUB NOTICES"
+    // 3. Define smarter templates and prompts using setup.json context
     const templateConfigs = {
       'ENVIRONMENT.md': {
         prompt: `Generate raw YAML for .eck/ENVIRONMENT.md based on these project facts:\n${staticFactsJson}\nInclude project_type, runtime, and agent_id: local_dev. NO markdown fences.`,
-        fallback: `project_type: ${staticFacts.type || 'unknown'}
-# [STUB: ENVIRONMENT.MD]
-# ARCHITECT: Task Coder to verify environment variables.
-# CODER: Scan project for .env files or config files and fill this. Remove this stub notice.
+        fallback: `project_type: ${projType}
 agent_id: local_dev
+# Generated from setup.json
 `
       },
       'CONTEXT.md': {
         prompt: `Analyze these project files and dependencies:\n${staticFactsJson}\nGenerate a professional # Project Overview in Markdown. Describe the actual architecture and purpose of this specific project. Be technical and concise. Start with '# Project Overview'.`,
-        fallback: `# [STUB: CONTEXT.MD]
-
-## 🚨 ATTENTION ARCHITECT & CODER
-**ARCHITECT:** This file is EMPTY. You MUST prioritize a task for the Coder to analyze the source code and define the Project Overview, Architecture, and Key Technologies.
-**CODER:** Use your tools to read the code, write the real content, and DELETE this entire stub header.
+        fallback: `# Project Overview
 
 ## Description
-(Placeholder: A ${staticFacts.type || 'project'} project)
+Project name: ${projName}
+Type: ${projType}
+AI Integration: ${projAi}
 
 ## Architecture
-(Placeholder: TBD)`
+Stack: ${projStack}
+
+*(Auto-generated from setup.json)*
+`
       },
       'OPERATIONS.md': {
         prompt: `Look at the dependencies and files:\n${staticFactsJson}\nGenerate a Markdown guide for common operations (Setup, Run, Test, Build) using the correct commands for this tech stack. Start with '# Common Operations'.`,
