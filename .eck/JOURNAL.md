@@ -178,3 +178,23 @@ scope: core
 - Added tree-sitter-rust and tree-sitter-go dependencies
 - Implemented Rust/Go function body stripping in skeletonizer.js
 - Updated file extension mapping for .rs and .go files
+
+
+## 2026-03-01 — Agent Report
+
+# Agent Report
+
+# Report: Architectural Improvements — Fail Flag, Auto-Journaling, RUNTIME_STATE
+**Executor:** Claude Opus 4.6 (Claude Code)
+**Status:** SUCCESS
+**Changes:**
+- **cli.js**: Added `-f, --fail` option to both `update` and `update-auto` commands
+- **gitUtils.js**: Modified `getChangedFiles` to accept `includeWorkingTree` param — omits `HEAD` from git diff when true, capturing uncommitted changes
+- **updateSnapshot.js**: `updateSnapshot()` and `updateSnapshotJson()` now respect `--fail` flag (skip autoCommit, pass flag to getChangedFiles). Added Auto-Journaling logic in `generateSnapshotContent` to prepend AnswerToSA.md content into JOURNAL.md before marking as embedded
+- **mcp-eck-core.js**: Added new `eck_fail_task` MCP tool that writes BLOCKED/FAILED report to AnswerToSA.md and runs `update-auto --fail` for emergency snapshot without git commit
+- **fileUtils.js**: Added `RUNTIME_STATE.md` to manifest templates with prompt and fallback content
+- **claudeMdGenerator.js**: Updated architect instructions — replaced "Run tests" with manual verification, added runtime state checks, added "Challenge the Architect" guidance, added eck_fail_task to workflow
+- **coder.template.md**: Updated workflow to include RUNTIME_STATE checks, hypothesis challenging, manual verification, and eck_fail_task
+- **junior-architect.template.md**: Added runtime context & critical thinking step, eck_fail_task reference
+**Verification:** CLI help output confirms --fail flag on both commands
+
