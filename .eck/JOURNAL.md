@@ -181,6 +181,17 @@ scope: core
 
 
 
+
+## 2026-03-01 — Agent Report
+
+# Agent Report
+
+Updated CLAUDE.md templates in src/utils/claudeMdGenerator.js to include explicit instructions for both Architect and Coder agents to read .eck/ directory manifests (CONTEXT.md, ROADMAP.md, TECH_DEBT.md, etc.) before starting tasks. This ensures agents don't rely solely on internal memory to discover project context. Changes include:
+
+- Added "## 2. PROJECT CONTEXT (.eck DIRECTORY)" section to getArchitectInstructions() with directive to read .eck files before taking action
+- Added "## PROJECT CONTEXT (.eck DIRECTORY)" section to CODER_INSTRUCTIONS with explicit steps to list .eck files and read relevant manifests
+- Renumbered subsequent sections in Architect template accordingly
+
 ## 2026-03-01 — Agent Report
 
 # Agent Report
