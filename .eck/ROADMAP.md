@@ -1,16 +1,16 @@
 # Project Roadmap
 
 ## Current Sprint
-- [ ] Improved Incremental Snapshots (tracking deleted files)
-- [ ] Shannon Entropy check in SecretScanner for better credential detection
 - [ ] Deploy `eck-telemetry` Rust service to production (`deploy_telemetry.sh`)
+- [ ] Auto-generate ENVIRONMENT.md and CONTEXT.md out of setup.json
 
 ## Next Phase
 - [ ] Web-based snapshot explorer
-- [ ] `telemetry sync-weights` auto-trigger on `eck-snapshot update` (after server has enough data)
 - [ ] Per-project telemetry isolation (project_id in reports)
 
 ## Completed
+- [x] Improved Incremental Snapshots (tracking deleted files)
+- [x] Shannon Entropy check in SecretScanner for better credential detection
 - [x] Project initialization
 - [x] Royal Court Architecture (Senior Architect → Junior Architects → GLM Z.AI Workers)
 - [x] GLM Z.AI Worker Swarm via MCP (frontend/backend/qa/refactor/general specialists)

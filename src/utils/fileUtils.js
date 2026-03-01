@@ -30,6 +30,21 @@ export const SecretScanner = {
   ],
 
   /**
+   * Calculates Shannon Entropy of a string
+   */
+  calculateEntropy(str) {
+    const len = str.length;
+    const frequencies = Array.from(str).reduce((freq, c) => {
+      freq[c] = (freq[c] || 0) + 1;
+      return freq;
+    }, {});
+    return Object.values(frequencies).reduce((sum, f) => {
+      const p = f / len;
+      return sum - (p * Math.log2(p));
+    }, 0);
+  },
+
+  /**
    * Scans content and replaces detected secrets with a placeholder
    * @param {string} content - File content to scan
    * @param {string} filePath - Path for logging context
@@ -52,6 +67,21 @@ export const SecretScanner = {
           redactedContent = redactedContent.replace(secretValue, placeholder);
           foundSecrets.push(pattern.name);
         }
+      }
+    }
+
+    // Second pass: Shannon Entropy check for arbitrary hardcoded secrets
+    // Look for long strings assigned to variable names that might be keys
+    const entropyRegex = /(?:const|let|var|set|export|define)\s+([A-Za-z0-9_]*(?:KEY|TOKEN|SECRET|PASSWORD)[A-Za-z0-9_]*)\s*=\s*["']([a-zA-Z0-9+/=_-]{20,128})["']/gi;
+    const entropyMatches = [...redactedContent.matchAll(entropyRegex)];
+    
+    for (const match of entropyMatches) {
+      const secretValue = match[2];
+      // Check entropy - random base64 usually has entropy > 4.5
+      if (this.calculateEntropy(secretValue) > 4.5 && !secretValue.includes('REDACTED')) {
+        const placeholder = `[REDACTED_HIGH_ENTROPY_SECRET]`;
+        redactedContent = redactedContent.replace(secretValue, placeholder);
+        foundSecrets.push('High Entropy Secret');
       }
     }
 

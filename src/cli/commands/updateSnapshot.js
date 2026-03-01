@@ -115,9 +115,20 @@ async function generateSnapshotContent(repoPath, changedFiles, anchor, config, g
 
     try {
       const fullPath = path.join(repoPath, filePath);
+      
+      // Explicitly check if file was deleted
+      try {
+        await fs.access(fullPath);
+      } catch (accessErr) {
+        contentOutput += `--- File: /${normalizedPath} ---\n\n[FILE DELETED]\n\n`;
+        fileList.push(`- ${normalizedPath} (Deleted)`);
+        includedCount++;
+        continue;
+      }
+
       const content = await readFileWithSizeCheck(fullPath, parseSize(config.maxFileSize));
       contentOutput += `--- File: /${normalizedPath} ---\n\n${content}\n\n`;
-      fileList.push(`- ${normalizedPath}`);
+      fileList.push(`- ${normalizedPath} (Modified/Added)`);
       includedCount++;
     } catch (e) { /* Skip */ }
   }
