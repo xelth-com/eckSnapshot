@@ -516,10 +516,11 @@ Use \`apply_code_changes\` for simple, direct tasks where you provide all detail
   "agent_environment": "Development environment with full GUI support and development tools",
   "command_for_agent": "apply_code_changes",
   "task_id": "unique-task-id",
-  "payload": {
-    "objective": "Brief, clear task description",
-    "context": "Why this change is needed - include relevant .eck manifest context",
-    "files_to_modify": [
+    "payload": {
+      "objective": "Brief, clear task description",
+      "context": "Why this change is needed - include relevant .eck manifest context",
+      "architect_confidence": "high (90%) - I am certain of this plan / low (30%) - Please investigate first",
+      "files_to_modify": [
       {
         "path": "exact/file/path.js",
         "action": "specific action (add, modify, replace, delete)",

@@ -45,10 +45,17 @@ async function generateSnapshotContent(repoPath, changedFiles, anchor, config, g
   // Include Agent Report if it exists and hasn't been embedded yet
   let agentReport = null;
   const reportPath = path.join(repoPath, '.eck', 'lastsnapshot', 'AnswerToSA.md');
+  const lockPath = path.join(repoPath, '.eck', 'lastsnapshot', 'AnswerToSA.lock');
   try {
+    // Use atomic directory creation as a lock to prevent race conditions
+    await fs.mkdir(lockPath);
     const reportContent = await fs.readFile(reportPath, 'utf-8');
+    
     if (!reportContent.includes('[SYSTEM: EMBEDDED]')) {
       agentReport = reportContent;
+
+      // Immediately mark as embedded to release the race window
+      await fs.appendFile(reportPath, '\n\n[SYSTEM: EMBEDDED]\n', 'utf-8');
 
       // Auto-Journaling: prepend agent report to JOURNAL.md
       const journalPath = path.join(repoPath, '.eck', 'JOURNAL.md');
@@ -71,10 +78,12 @@ async function generateSnapshotContent(repoPath, changedFiles, anchor, config, g
       } catch (je) {
         console.warn('Could not auto-update JOURNAL.md', je.message);
       }
-
-      await fs.appendFile(reportPath, '\n\n[SYSTEM: EMBEDDED]\n', 'utf-8');
     }
-  } catch (e) { /* File not found or unreadable */ }
+    await fs.rmdir(lockPath);
+  } catch (e) { 
+    // File not found or locked by another process
+    try { await fs.rmdir(lockPath); } catch (_) {} 
+  }
 
   const cleanDirsToIgnore = (config.dirsToIgnore || []).map(d => d.replace(/\/$/, ''));
 

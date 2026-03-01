@@ -944,6 +944,20 @@ ${staticFacts.type === 'nodejs' ? 'npm install' : 'TBD'}`
 
 **CODER:** Scan for TODOs/FIXMEs or structural issues and list them here. Remove this stub marker.`
       },
+      'DEPLOY_CHECKLIST.md': {
+        prompt: `Based on the project type (${staticFacts.type}), generate a pre-deployment checklist. Start with '# Deployment Checklist'.`,
+        fallback: `# [STUB: DEPLOY_CHECKLIST.MD]
+
+## 🚨 ATTENTION CODER
+Verify required build steps before deployment.
+
+## Pre-Deployment Checklist
+- [ ] Verify all tests pass
+- [ ] Build assets (e.g., npm run build)
+- [ ] Check environment variables
+
+**CODER:** Update this checklist with actual build/deploy steps for this project.`
+      },
       'RUNTIME_STATE.md': {
         prompt: `Based on the project type (${staticFacts.type}), generate a template for RUNTIME_STATE.md. Start with '# Runtime State'.`,
         fallback: `# Runtime State
