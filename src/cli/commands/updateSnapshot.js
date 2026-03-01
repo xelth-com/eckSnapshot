@@ -10,6 +10,7 @@ import { detectProjectType, getProjectSpecificFiltering } from '../../utils/proj
 import { execa } from 'execa';
 import { fileURLToPath } from 'url';
 import { pushTelemetry } from '../../utils/telemetry.js';
+import { syncTokenWeights } from '../../utils/tokenEstimator.js';
 
 // Mirror the same hidden-path guard used in createSnapshot.js
 function isHiddenPath(filePath) {
@@ -340,8 +341,9 @@ export async function updateSnapshotJson(repoPath, options = {}) {
       timestamp: timestamp
     }));
 
-    // Auto-push telemetry (fire and forget so it doesn't break JSON output)
+    // Auto-push telemetry and sync weights (fire and forget so it doesn't break JSON output)
     pushTelemetry(repoPath, true).catch(() => {});
+    syncTokenWeights(true).catch(() => {});
 
   } catch (error) {
     console.log(JSON.stringify({ status: "error", message: error.message }));

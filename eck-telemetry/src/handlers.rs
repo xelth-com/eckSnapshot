@@ -2,11 +2,37 @@ use axum::{extract::State, http::StatusCode, Json};
 use serde::Serialize;
 use sqlx::PgPool;
 use std::collections::HashMap;
+use std::sync::Arc;
+use tokio::sync::RwLock;
+use std::time::{Instant, Duration};
 use uuid::Uuid;
 
 use crate::models::{
     HealthResponse, ReportRequest, ReportResponse, TokenTrainRequest, TokenTrainResponse,
 };
+
+#[derive(Clone)]
+pub struct AppState {
+    pub pool: PgPool,
+    pub cache: Arc<RwLock<CacheData>>,
+}
+
+pub struct CacheData {
+    pub weights: Option<HashMap<String, [f64; 4]>>,
+    pub last_updated: Option<Instant>,
+}
+
+impl AppState {
+    pub fn new(pool: PgPool) -> Self {
+        Self {
+            pool,
+            cache: Arc::new(RwLock::new(CacheData {
+                weights: None,
+                last_updated: None,
+            })),
+        }
+    }
+}
 
 #[derive(sqlx::FromRow)]
 struct TokenRow {
@@ -15,7 +41,7 @@ struct TokenRow {
     actual_tokens: i64,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Clone)]
 pub struct WeightsResponse {
     pub coefficients: HashMap<String, [f64; 4]>,
 }
@@ -28,7 +54,7 @@ pub async fn health() -> Json<HealthResponse> {
 }
 
 pub async fn submit_report(
-    State(pool): State<PgPool>,
+    State(state): State<AppState>,
     Json(req): Json<ReportRequest>,
 ) -> Result<Json<ReportResponse>, StatusCode> {
     let id = Uuid::new_v4();
@@ -46,7 +72,7 @@ pub async fn submit_report(
     .bind(&req.status)
     .bind(req.duration_sec)
     .bind(&req.error_summary)
-    .execute(&pool)
+    .execute(&state.pool)
     .await
     .map_err(|e| {
         tracing::error!("Failed to insert report: {e}");
@@ -58,7 +84,7 @@ pub async fn submit_report(
 }
 
 pub async fn submit_token_data(
-    State(pool): State<PgPool>,
+    State(state): State<AppState>,
     Json(req): Json<TokenTrainRequest>,
 ) -> Result<Json<TokenTrainResponse>, StatusCode> {
     sqlx::query(
@@ -70,22 +96,40 @@ pub async fn submit_token_data(
     .bind(&req.project_type)
     .bind(req.file_size_bytes)
     .bind(req.actual_tokens)
-    .execute(&pool)
+    .execute(&state.pool)
     .await
     .map_err(|e| {
         tracing::error!("Failed to insert token data: {e}");
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
 
+    // Invalidate the weights cache since new training data arrived
+    {
+        let mut cache = state.cache.write().await;
+        cache.weights = None;
+        cache.last_updated = None;
+    }
+
     tracing::info!("Token training data saved for {}", req.project_type);
     Ok(Json(TokenTrainResponse { ok: true }))
 }
 
-pub async fn get_weights(State(pool): State<PgPool>) -> Result<Json<WeightsResponse>, StatusCode> {
+pub async fn get_weights(State(state): State<AppState>) -> Result<Json<WeightsResponse>, StatusCode> {
+    // 1. Check valid cache (5-minute TTL)
+    {
+        let cache = state.cache.read().await;
+        if let (Some(weights), Some(last_updated)) = (&cache.weights, cache.last_updated) {
+            if last_updated.elapsed() < Duration::from_secs(300) {
+                return Ok(Json(WeightsResponse { coefficients: weights.clone() }));
+            }
+        }
+    }
+
+    // 2. Cache miss or expired: Fetch from DB and recalculate
     let rows = sqlx::query_as::<_, TokenRow>(
         "SELECT project_type, file_size_bytes, actual_tokens FROM token_training",
     )
-    .fetch_all(&pool)
+    .fetch_all(&state.pool)
     .await
     .map_err(|e| {
         tracing::error!("Failed to fetch token data: {e}");
@@ -124,6 +168,13 @@ pub async fn get_weights(State(pool): State<PgPool>) -> Result<Json<WeightsRespo
                 coefficients.insert(ptype, [intercept.max(0.0), slope.max(0.0), 0.0, 0.0]);
             }
         }
+    }
+
+    // 3. Update cache
+    {
+        let mut cache = state.cache.write().await;
+        cache.weights = Some(coefficients.clone());
+        cache.last_updated = Some(Instant::now());
     }
 
     Ok(Json(WeightsResponse { coefficients }))

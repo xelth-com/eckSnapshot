@@ -140,9 +140,9 @@ export async function addTrainingPoint(projectType, fileSizeInBytes, estimatedTo
 /**
  * Fetch global token weights from Telemetry Hub and merge them into local training data
  */
-export async function syncTokenWeights() {
+export async function syncTokenWeights(silent = false) {
   try {
-    console.log('Fetching global token weights from Telemetry Hub...');
+    if (!silent) console.log('Fetching global token weights from Telemetry Hub...');
     const res = await fetch('https://xelth.com/T/tokens/weights');
     if (!res.ok) throw new Error(res.statusText);
     const data = await res.json();
@@ -152,12 +152,12 @@ export async function syncTokenWeights() {
       // Global coefficients override local ones
       localData.coefficients = { ...localData.coefficients, ...data.coefficients };
       await saveTrainingData(localData);
-      console.log('Global token weights synchronized successfully.');
+      if (!silent) console.log('Global token weights synchronized successfully.');
     } else {
-      console.log('No global weights available yet.');
+      if (!silent) console.log('No global weights available yet.');
     }
   } catch (e) {
-    console.log('Failed to sync token weights: ' + e.message);
+    if (!silent) console.log('Failed to sync token weights: ' + e.message);
   }
 }
 
@@ -233,7 +233,11 @@ export async function showEstimationStats() {
     console.log(`   Training points: ${points.length}`);
     
     if (points.length > 0) {
-      const errors = points.map(p => Math.abs(p.actualTokens - p.estimatedTokens));
+      // Recalculate error against current coefficients, ignoring old stored estimate
+      const errors = points.map(p => {
+        const currentEstimate = evaluatePolynomial(coefficients, p.fileSizeInBytes);
+        return Math.abs(p.actualTokens - currentEstimate);
+      });
       const avgError = errors.reduce((a, b) => a + b, 0) / errors.length;
       console.log(`   Average error: ${Math.round(avgError)} tokens`);
     }

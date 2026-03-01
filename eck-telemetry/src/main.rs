@@ -6,6 +6,7 @@ use axum::{routing::{get, post}, Router};
 use std::net::SocketAddr;
 use tower_http::cors::{Any, CorsLayer};
 use tracing_subscriber::EnvFilter;
+use handlers::AppState;
 
 #[tokio::main]
 async fn main() {
@@ -20,6 +21,9 @@ async fn main() {
         .await
         .expect("Failed to initialize database");
 
+    // Initialize state with cache
+    let state = AppState::new(pool);
+
     // Allow CORS from anywhere (CLI tools will report here)
     let cors = CorsLayer::new()
         .allow_origin(Any)
@@ -32,7 +36,7 @@ async fn main() {
         .route("/T/tokens/train", post(handlers::submit_token_data))
         .route("/T/tokens/weights", get(handlers::get_weights))
         .layer(cors)
-        .with_state(pool);
+        .with_state(state);
 
     let port: u16 = std::env::var("PORT")
         .ok()
