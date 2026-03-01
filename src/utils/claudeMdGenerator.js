@@ -21,7 +21,12 @@ You are operating in **Project Mode**. You are not just editing a single file; y
 ${tree}
 \`\`\`
 
-## 2. SWARM DELEGATION PROTOCOL (GLM Z.AI)
+## 2. PROJECT CONTEXT (.eck DIRECTORY)
+The \`.eck/\` directory is your brain externalized. **Before taking action:**
+- Read the files in \`.eck/\` (like \`CONTEXT.md\`, \`ROADMAP.md\`, \`TECH_DEBT.md\`) to understand the rules and current state.
+- Update these manifests if the architecture or roadmap changes.
+
+## 3. SWARM DELEGATION PROTOCOL (GLM Z.AI)
 You command a fleet of specialist agents (Swarm). Your primary job is to break down the user's request into sub-tasks and delegate the heavy lifting.
 ${behaviorFocus}
 
@@ -37,7 +42,7 @@ For bulk work, YOU MUST use your MCP tools to delegate to GLM Z.AI:
 - \`glm_zai_qa\`: Writing comprehensive test suites (E2E, unit tests).
 - \`glm_zai_refactor\`: Code cleanup and SOLID principle enforcement.
 
-## 3. DEFINITION OF DONE (CRITICAL)
+## 4. DEFINITION OF DONE (CRITICAL)
 Your task is NOT complete until the code works globally.
 1. **Verify:** Verify functionality manually via browser/curl/logs/DB checks. If they fail, fix the errors iteratively.
 2. **Report:** Overwrite \`.eck/lastsnapshot/AnswerToSA.md\` with your final status. Use this exact format:
@@ -50,7 +55,7 @@ Your task is NOT complete until the code works globally.
    \`\`\`
 3. **Sync Context:** Call the \`eck_finish_task\` MCP tool. This will stage changes, commit them with a descriptive message, and generate an updated delta snapshot for the Senior Architect.
 
-## 4. SWARM ERROR RECOVERY & ARCHITECT HYPOTHESES
+## 5. SWARM ERROR RECOVERY & ARCHITECT HYPOTHESES
 1. **Runtime Check:** Always check the \`.eck/RUNTIME_STATE.md\` and running processes before coding.
 2. **Challenge the Architect:** If the Architect's hypothesis is not confirmed during verification, discard it and look for the real root cause in the runtime.
 3. If a GLM Z.AI worker returns bad code, do NOT repeat the exact same prompt.
@@ -58,7 +63,7 @@ Your task is NOT complete until the code works globally.
 5. Call the tool again with corrective guidance: *"Previous attempt failed because of X. Try again using pattern Y."*
 6. If the worker fails twice, take over and implement the fix yourself.
 
-## 5. OPERATIONAL RULES
+## 6. OPERATIONAL RULES
 - **Manifests:** If you see [STUB] in .eck/ files, update them.
 `;
 }
@@ -81,10 +86,11 @@ When the task is complete:
 2. **Run** \`eck-snapshot update\` — this auto-commits all changes and generates an incremental snapshot.
 3. If \`eck_finish_task\` MCP tool is available, you may use it instead.
 
-## CONTEXT
-- The GLM Z.AI worker might have struggled or produced code that needs refinement.
-- You are here to solve the hard problems manually.
-- You have full permission to edit files directly.
+## PROJECT CONTEXT (.eck DIRECTORY)
+The \`.eck/\` directory contains critical project documentation. **Before starting your task, you MUST:**
+1. List the files in the \`.eck/\` directory.
+2. Read any files that might be relevant to your task based on their names (e.g., \`CONTEXT.md\`, \`TECH_DEBT.md\`, \`OPERATIONS.md\`).
+3. You are responsible for updating these files if your code changes alter the project's architecture or operations.
 
 ## WORKFLOW
 1.  Check the \`.eck/RUNTIME_STATE.md\` and verify actual running processes.
