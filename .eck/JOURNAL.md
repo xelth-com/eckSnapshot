@@ -182,6 +182,13 @@ scope: core
 
 
 
+
+## 2026-03-01 — Agent Report
+
+# Agent Report
+
+Fixed AGENTS.md template path resolution using `__dirname` instead of fragile relative paths, added explicit `.eck/` directory reading instructions to both Coder and Junior Architect templates, and updated TECH_DEBT.md to mark issue as resolved
+
 ## 2026-03-01 — Agent Report
 
 # Agent Report
