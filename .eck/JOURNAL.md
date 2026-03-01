@@ -180,6 +180,25 @@ scope: core
 - Updated file extension mapping for .rs and .go files
 
 
+
+## 2026-03-01 — Agent Report
+
+# Agent Report
+
+Implemented all 3 tasks from roadmap and tech debt:
+
+1. Fixed `showEstimationStats` (tokenEstimator.js:236-242) to dynamically calculate errors using current polynomial coefficients instead of old stored estimates
+
+2. Added `silent` parameter to `syncTokenWeights` (tokenEstimator.js:143) and integrated fire-and-forget `syncTokenWeights(true)` into the silent `update-auto` agent command (updateSnapshot.js:12,346)
+
+3. Introduced in-memory caching with 5-minute TTL using `Arc<RwLock>` in Rust telemetry service:
+   - Added `AppState` struct with `cache` field containing `weights` and `last_updated` (handlers.rs:14-23)
+   - Implemented cache validation in `get_weights` (handlers.rs:104-107)
+   - Cache invalidation on new training data in `submit_token_data` (handlers.rs:85-90)
+   - Updated main.rs to use `AppState::new(pool)` instead of direct `pool` (main.rs:23,35)
+
+All tests passing (18/18).
+
 ## 2026-03-01 — Agent Report
 
 # Agent Report
