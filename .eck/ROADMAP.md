@@ -1,21 +1,32 @@
 # Project Roadmap
 
 ## Current Sprint
-- [x] Manifest Maintenance Protocol implementation.
-- [x] Rust and Go support in Skeletonizer.
-- [x] Built-in Secret Scanner.
+- [ ] Improved Incremental Snapshots (tracking deleted files)
+- [ ] Shannon Entropy check in SecretScanner for better credential detection
+- [ ] Deploy `eck-telemetry` Rust service to production (`deploy_telemetry.sh`)
 
 ## Next Phase
-- [ ] Improved Incremental Snapshots (tracking deleted files).
-- [ ] Shannon Entropy check in SecretScanner for better credential detection.
-
-## Long-term
-- [ ] Web-based snapshot explorer.
+- [ ] Web-based snapshot explorer
+- [ ] `telemetry sync-weights` auto-trigger on `eck-snapshot update` (after server has enough data)
+- [ ] Per-project telemetry isolation (project_id in reports)
 
 ## Completed
 - [x] Project initialization
-- [x] Royal Court Architecture implementation (Gemini 3 Pro → Claude 4.5 → MiniMax)
-- [x] Smart Delegation Protocol with intelligent retry (2-4 attempts based on progress)
-- [x] MiniMax Worker Swarm via MCP (frontend/backend/qa/refactor specialists)
-- [x] JAG/JAS/JAO snapshot modes
-- [x] MCP (Model Context Protocol) Server integration for direct IDE tool-use.
+- [x] Royal Court Architecture (Senior Architect → Junior Architects → GLM Z.AI Workers)
+- [x] GLM Z.AI Worker Swarm via MCP (frontend/backend/qa/refactor/general specialists)
+- [x] MiniMax → GLM Z.AI migration (v5.1.0)
+- [x] JAZ mode (OpenCode + GLM-4.7 environment)
+- [x] JAS/JAO snapshot modes (Claude Code environments)
+- [x] MCP integration (eck-core + glm-zai servers)
+- [x] Smart Delegation Protocol with intelligent retry
+- [x] Skeleton Mode (Babel + Tree-sitter function body stripping)
+- [x] Delta Updates with Git anchors and sequential numbering
+- [x] Built-in SecretScanner (automatic API key redaction)
+- [x] Rust, Go, C, Python, Java, Kotlin support in Skeletonizer
+- [x] Agent Report embedding in snapshots (AnswerToSA.md)
+- [x] Identity Trace Protocol (Executor field in all reports)
+- [x] eck-telemetry Rust microservice (agent_runs + token_training tables)
+- [x] Telemetry push client (auto-push on `update` and `update-auto`)
+- [x] Global token weights sync (`GET /T/tokens/weights` with linear regression)
+- [x] `eck-snapshot telemetry push` and `sync-weights` commands
+- [x] Claude Code + OpenCode environment isolation
