@@ -187,6 +187,13 @@ scope: core
 
 
 
+
+## 2026-03-02 — Agent Report
+
+# Agent Report
+
+SUCCESS — Released v6.0.0. Changes: (1) Bumped version in package.json from 5.9.0 to 6.0.0, updated description. (2) Completely rewrote README.md to reflect Royal Court architecture, GLM Z.AI Swarm, Shannon Entropy SecretScanner, Rust Telemetry Hub, and improved Delta Snapshots.
+
 ## 2026-03-01 — Agent Report
 
 # Agent Report

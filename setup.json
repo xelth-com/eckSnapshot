@@ -188,6 +188,19 @@
           "lib"
         ],
         "priority": 6
+      },
+      "postgresql": {
+        "files": [
+          "postgresql.conf",
+          "pg_hba.conf",
+          "PG_VERSION"
+        ],
+        "directories": [
+          "data/base",
+          "data/global",
+          "data/pg_wal"
+        ],
+        "priority": 10
       }
     }
   },
@@ -531,6 +544,38 @@
           ".a",
           ".so",
           ".out"
+        ]
+      },
+      "postgresql": {
+        "filesToIgnore": [
+          "PG_VERSION",
+          "postmaster.pid",
+          "postmaster.opts",
+          "pg_ident.conf",
+          "*.log"
+        ],
+        "dirsToIgnore": [
+          "base/",
+          "global/",
+          "pg_wal/",
+          "pg_xact/",
+          "pg_commit_ts/",
+          "pg_dynshmem/",
+          "pg_logical/",
+          "pg_multixact/",
+          "pg_notify/",
+          "pg_replslot/",
+          "pg_serial/",
+          "pg_snapshots/",
+          "pg_stat/",
+          "pg_stat_tmp/",
+          "pg_subtrans/",
+          "pg_tblspc/",
+          "pg_twophase/"
+        ],
+        "extensionsToIgnore": [
+          ".fsm",
+          ".vm"
         ]
       }
     }
