@@ -186,6 +186,13 @@ scope: core
 
 
 
+
+## 2026-03-01 — Agent Report
+
+# Agent Report
+
+Updated MCP tool description and all agent templates to clarify that `eck_finish_task` automatically writes to AnswerToSA.md. Templates now provide clear instructions: Option A (MCP tool - use status parameter) and Option B (Manual CLI fallback - read first, then write, then run update). This prevents AnswerToSA.md write failures caused by safety checks.
+
 ## 2026-03-01 — Agent Report
 
 # Agent Report

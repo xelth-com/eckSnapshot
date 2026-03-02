@@ -1,190 +1,71 @@
-# eck-snapshot
+# 📸 eckSnapshot v6.0
 
-A CLI tool that packs your entire Git repository into a single text file optimized for LLMs. Give any AI full project context in one copy-paste.
+A specialized, AI-native CLI tool designed to create and restore single-file text snapshots of Git repositories. Optimized for providing full project context to Large Language Models (LLMs) and serving as the coordination hub for Multi-Agent AI Architectures.
 
+## 🌟 Key Features
+
+* **🧠 Multi-Agent Protocol (Royal Court):** Built-in support for the "Royal Court" architecture. Delegate tasks from a Senior Architect (Claude/Gemini) to Junior Managers, who orchestrate a swarm of specialized GLM-4.7 workers.
+* **☠️ Skeleton Mode:** Uses `Tree-sitter` and `Babel` to strip function bodies, drastically reducing token count while preserving structural context. Supports JS/TS, Rust, Go, Python, C, Java, and Kotlin.
+* **🔄 Smart Delta Updates:** Tracks incremental changes via Git anchors with sequential numbering. Now accurately tracks and reports deleted files to prevent LLM hallucinations.
+* **🛡️ Security (SecretScanner):** Automatically redacts API keys and credentials before sending context to LLMs. Features both Regex matching and **Shannon Entropy** analysis for catching non-standard hardcoded secrets.
+* **📊 Telemetry Hub:** Integrated with a Rust-based microservice (`eck-telemetry`) for tracking agent execution metrics, auto-syncing token estimation weights via linear regression, and in-memory caching.
+* **🔌 Native MCP Integration:** Instantly spins up Model Context Protocol (MCP) servers (`eck-core` for context sync and `glm-zai` for worker swarms) for Claude Code and OpenCode.
+
+## 🚀 Quick Start
+
+### Installation
 ```bash
 npm install -g @xelth/eck-snapshot
 ```
 
-## Recommended AI Setup
-
-For best results, we recommend splitting roles between models:
-
-- **Architect** (large context window): Gemini, Grok Fast, ChatGPT — upload the full snapshot, design the architecture, plan tasks
-- **Coder** (execution): Claude (via Claude Code), GLM (via OpenCode) — receive tasks from the architect, write and fix code
-
-eck-snapshot generates tailored instructions (`CLAUDE.md`, `AGENTS.md`) for each role automatically.
-
-## Core Workflow
-
-### 1. Full Snapshot
-
-Run `eck-snapshot` in your project root. It scans every tracked file, filters out noise (lock files, build artifacts, secrets), and produces a single `.md` file ready for an AI chat.
-
+### Basic Usage
 ```bash
-eck-snapshot
-# -> .eck/snapshots/eckMyProject_26-02-15_12-00_abc1234.md
-```
+# Create a standard full snapshot
+eck-snapshot snapshot
 
-Upload the file to your architect AI and start working.
+# Create a highly compressed skeleton snapshot
+eck-snapshot snapshot --skeleton
 
-### 2. Incremental Update
-
-After you make changes, don't re-send the entire project. Send only what changed since the last full snapshot:
-
-```bash
+# Create an incremental update (only changed/deleted files)
 eck-snapshot update
-# -> .eck/snapshots/eckMyProject_26-02-15_14-30_abc1234_up1_42kb.md
 ```
 
-This uses a Git anchor (saved automatically during full snapshot) to detect all modified files and includes their full content. No redundant diffs, no wasted tokens.
+## 🤖 AI Swarm Setup (GLM Z.AI)
 
-Notice the `_42kb` suffix in the filename — this is the **Anti-Truncation Guard** (see below).
+eckSnapshot v6 acts as the bridge between your primary AI IDE (Claude Code or OpenCode) and a cost-effective GLM-4.7 worker swarm.
 
-## Context Profiles
+1. **Get an API Key:** Register at [Z.AI](https://z.ai) and set `export ZAI_API_KEY="your-key"`.
+2. **Setup MCP Servers:**
+   ```bash
+   eck-snapshot setup-mcp --both
+   ```
+3. **Initialize Project Manifests:**
+   ```bash
+   # Generates smart instructions (CLAUDE.md / AGENTS.md)
+   eck-snapshot snapshot --jas  # For Claude Code (Sonnet 4.5)
+   eck-snapshot snapshot --jaz  # For OpenCode (GLM-4.7)
+   ```
 
-Large repositories waste tokens on irrelevant code. Profiles let you partition the codebase so the AI only sees what matters.
+## 📁 The `.eck/` Manifest Directory
 
-### Auto-Detection
+eckSnapshot automatically maintains a `.eck/` directory in your project to provide deep context to AI agents:
+- `CONTEXT.md` - High-level architecture (Auto-generated)
+- `ENVIRONMENT.md` - Runtime specifics (Auto-generated)
+- `ROADMAP.md` & `TECH_DEBT.md` - Strategic planning
+- `RUNTIME_STATE.md` - Live port/process status
 
-Let AI scan your directory tree and generate profiles automatically:
+*Note: The tool automatically filters confidential files like `SERVER_ACCESS.md` from snapshots to ensure security.*
 
+## 📈 Token Estimation
+
+Train the local estimator to perfectly predict token counts for your specific project:
 ```bash
-eck-snapshot profile-detect
-# -> Saves profiles to .eck/profiles.json
+# Manually push agent telemetry
+eck-snapshot telemetry push
+
+# Sync global token weights from the Telemetry Hub
+eck-snapshot telemetry sync-weights
 ```
-
-### Manual Guide
-
-For very large repos where auto-detection is too slow, generate a prompt guide, paste it into a powerful Web LLM (Gemini, ChatGPT), and save the resulting JSON:
-
-```bash
-eck-snapshot generate-profile-guide
-# -> .eck/profile_generation_guide.md (paste into AI, get profiles back)
-```
-
-### Using Profiles
-
-```bash
-eck-snapshot --profile                            # List all available profiles
-eck-snapshot --profile backend                    # Use a named profile
-eck-snapshot --profile backend --skeleton         # Profile + skeleton mode
-eck-snapshot --profile "src/**/*.rs,-**/test_*"   # Ad-hoc glob filtering
-```
-
-Profiles work with both full snapshots and incremental updates.
-
-## Anti-Truncation Guard
-
-Web AI interfaces (Gemini, ChatGPT) sometimes silently drop the content of large uploaded files, replacing them with a small JSON metadata stub like `{"fileName": "...", "contentFetchId": "..."}`. The AI then hallucinates code it never actually received.
-
-eck-snapshot counters this with two mechanisms:
-
-**1. Size-stamped filenames.** Every snapshot — full and incremental — embeds its exact size in kilobytes directly in the filename:
-
-```
-eckMyProject_26-02-15_12-00_abc1234_1250kb.md      ← full snapshot
-eckMyProject_26-02-15_14-30_abc1234_up1_42kb.md    ← incremental update
-```
-
-**2. AI instructions baked into the snapshot.** The snapshot header instructs the AI to cross-check the `kb` value in the filename against the actual payload it received. If there is a mismatch, the AI is required to stop and alert you instead of hallucinating:
-
-> 🚨 **System Error:** The web interface truncated the file `eckMyProject_..._1250kb.md`. I only received the metadata/JSON stub, not the actual 1250 kb of code. Please split the snapshot or paste the text directly.
-
-This protection works on any web interface that embeds the filename (Gemini, ChatGPT, Grok, etc.).
-
-## Smart Filtering
-
-eck-snapshot automatically detects your project type (Rust, Node.js, Android, Python, etc.) and excludes language-specific noise:
-
-- **Rust**: `Cargo.lock`, `target/`
-- **Node.js**: `package-lock.json`, `node_modules/`
-- **Android**: build artifacts, generated code
-- **All projects**: `.git/`, IDE configs, binary files
-
-The built-in `SecretScanner` also redacts API keys, tokens, and credentials before they reach the AI.
-
-## Multi-Agent Architecture
-
-eck-snapshot generates tailored `CLAUDE.md` instructions for different AI agent roles:
-
-```bash
-eck-snapshot --jas    # Junior Architect Sonnet - fast, standard features
-eck-snapshot --jao    # Junior Architect Opus - deep, critical architecture
-eck-snapshot --jag    # Junior Architect Gemini - massive context tasks
-```
-
-### Chinese Delegation (`--zh`)
-
-For GLM Z.AI workers (trained on Chinese data), the `--zh` flag instructs the architect to formulate all worker tasks in Chinese, improving output quality:
-
-```bash
-eck-snapshot --jas --zh    # Claude Code: delegate to GLM workers in Chinese
-eck-snapshot --zh          # OpenCode/GLM: generate AGENTS.md with Chinese protocol
-```
-
-The architect still communicates with you in your language. Only the `instruction` parameter sent to GLM workers switches to Chinese. Code, variable names, and commit messages stay in English.
-
-### MCP Server Integration
-
-Delegate coding tasks to the GLM Z.AI Worker Fleet via MCP:
-
-```bash
-export ZAI_API_KEY="your-key"
-eck-snapshot setup-mcp --both    # Setup for Claude Code + OpenCode
-```
-
-This gives your AI access to specialized workers: `glm_zai_frontend`, `glm_zai_backend`, `glm_zai_qa`, `glm_zai_refactor`, and the `eck_finish_task` commit tool.
-
-## Skeleton Mode & Lazy Loading
-
-For extremely large projects, skeleton mode strips function bodies and keeps only signatures, types, and structure:
-
-```bash
-eck-snapshot --skeleton
-```
-
-When using skeleton mode, the AI can request full content of specific files on demand:
-
-```bash
-eck-snapshot show src/auth.rs src/handlers/sync.rs
-```
-
-Useful for initial orientation in massive codebases, but full snapshots with profiles are usually more practical.
-
-## Other Commands
-
-```bash
-eck-snapshot restore <snapshot>    # Restore files from a snapshot to disk
-eck-snapshot prune <snapshot>      # AI-powered snapshot size reduction
-eck-snapshot doctor                # Check project health
-eck-snapshot env push              # Encrypt and sync .eck/ config between machines
-eck-snapshot env pull              # Restore .eck/ config on another machine
-```
-
-## Changelog
-
-### v5.8.6
-- **Anti-Truncation Guard:** Every snapshot filename now includes its size in KB (e.g., `_1250kb.md`). The snapshot header instructs the AI to verify the payload size matches the filename and alert the user if the web UI truncated the file instead of hallucinating missing code.
-- **Incremental snapshot filtering parity:** `eck-snapshot update` now applies the same file guards as full snapshots — hidden paths (`.idea/`, `.vscode/`), binary files, and glob patterns in `filesToIgnore` are all properly filtered out, preventing IDE config files or committed binaries from bloating update snapshots.
-
-### v5.8.5
-- Re-publish to fix missing README on npmjs.com.
-
-### v5.8.4
-- Fixed directory filtering in incremental snapshots. Paths like `web/build/app.js` are now correctly ignored when `build/` is in the ignore list.
-
-### v5.8.3
-- Optimized agent report formatting with clean Markdown to improve token efficiency.
-- Fixed report injection order so it appears correctly after system instructions.
-
-### v5.8.2
-- Fixed agent report injection in incremental snapshots. The `AnswerToSA.md` file is now preserved on disk for manual debugging and uses an internal `[SYSTEM: EMBEDDED]` marker to prevent duplicate injections into future snapshots.
-
-### v5.8.1
-- Improved Android project parsing by ignoring boilerplate and vector graphics.
-- Removed duplicate `ecksnapshot` MCP server and fixed JSON parsing in `update-auto`.
 
 ## License
-
-MIT
+MIT © xelth-com
