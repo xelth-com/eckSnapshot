@@ -193,6 +193,22 @@ scope: core
 
 
 
+
+## 2026-03-07 — Agent Report
+
+# Agent Report
+
+# Task Complete: Update AI Model Recommendations
+
+## Changes Made (5 files)
+
+1. **`README.md`** — Updated Royal Court description to list Claude/Gemini/Grok as primary, with a note that ChatGPT works but is slower.
+2. **`src/cli/cli.js`** (2 edits) — Updated help guide header from "Gemini/ChatGPT" to "Claude/Gemini/Grok" with a ChatGPT note. Updated profile guide suggestion from "Gemini 1.5 Pro" to "Gemini, Claude, or Grok".
+3. **`src/cli/commands/createSnapshot.js`** — Changed prompt suggestion header to "Crucial for ChatGPT, helpful for others" and added a yellow tip line recommending Claude/Gemini/Grok.
+4. **`src/cli/commands/generateProfileGuide.js`** — Updated AI recommendation from "Gemini 1.5 Pro, Claude Opus, ChatGPT" to "Gemini, Claude, Grok".
+
+## No Issues
+
 ## 2026-03-07 — Agent Report
 
 # Agent Report

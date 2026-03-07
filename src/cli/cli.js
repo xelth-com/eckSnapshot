@@ -109,25 +109,18 @@ export function run() {
 --- 🚀 Core Workflow: Optimized for Web LLMs (Claude/Gemini/Grok) ---
 💡 Note: ChatGPT is supported but can be slow. Use the suggested prompt at the end of the snapshot.
 
-1. Initial Context (Maximum Compression)
-   Create a lightweight map of your entire project. Bodies of functions are hidden.
-   This fits huge monoliths into the context window.
-   
-   $ eck-snapshot --skeleton
-   -> Generates: .eck/snapshots/<name>_sk.md (Upload this to AI)
+1. Initial Context (Full Snapshot)
+   Create a complete map of your project to feed to the AI Architect.
+   $ eck-snapshot snapshot
 
-2. Lazy Loading (On-Demand Details)
-   If the AI needs to see the implementation of specific files, it will ask you.
-   You can display multiple files at once to copy-paste back to the chat.
-   
-   $ eck-snapshot show src/auth.js src/utils/hash.js
+   (For very large projects, use profiles: $ eck-snapshot --profile backend)
 
-3. Working & Updating
-   As you apply changes, the AI loses context. Instead of re-sending the full repo,
-   send only what changed since the last snapshot.
-   
+2. Working & Updating
+   As you or your local coders (Claude/OpenCode) apply changes, the Web AI loses context.
+   Instead of re-sending the full repo, send only what changed.
+
    $ eck-snapshot update
-   -> Generates: .eck/snapshots/update_<timestamp>.md (Contains changed files + git diff)
+   -> Generates: .eck/snapshots/update_<timestamp>.md (Contains changed/deleted files)
 
 --- 🛠️ Managing Context Profiles ---
 
@@ -156,6 +149,9 @@ Option C: Using Profiles
 - ask-claude:        Delegate tasks to Claude CLI agent.
 - setup-gemini:       Configure gemini-cli integration.
 - setup-mcp:          Setup/restore MCP servers (eck-core + glm-zai).
+
+--- 🧪 Experimental Features ---
+Run eck-snapshot snapshot --help to see experimental flags like --skeleton, --jas, --jaz.
 `;
 
   program
