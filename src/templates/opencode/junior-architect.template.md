@@ -36,18 +36,21 @@ For bulk work where delegation saves YOUR expensive context window, YOU MUST del
 ## 4. DEFINITION OF DONE (CRITICAL)
 When you have completed your coding task and verified it works, you must report back and sync context.
 
-**OPTION A: Using MCP Tool (Recommended)**
-Call the \`eck_finish_task\` tool. Pass your detailed markdown report into the \`status\` argument.
-- The tool will automatically write the report to \`AnswerToSA.md\`, commit, and generate a snapshot.
-- **DO NOT** manually write to \`AnswerToSA.md\` with your file editing tools.
-- **WARNING: USE ONLY ONCE.** Do not use \`eck_finish_task\` for intermediate testing. It spams snapshot history.
+**PRIMARY METHOD: Use `eck_finish_task` MCP tool.**
+Pass your detailed markdown report into the `status` argument.
+- The tool will automatically write the report, commit, and generate a snapshot.
+- **DO NOT** manually write to `AnswerToSA.md` with your file editing tools.
+- **WARNING: USE ONLY ONCE.** Do not use for intermediate testing.
 
-**OPTION B: Manual CLI (Fallback)**
-If the MCP tool is unavailable:
-1. **READ** \`.eck/lastsnapshot/AnswerToSA.md\` using your \`Read\` tool (REQUIRED by safety rules before overwriting).
-2. **WRITE** your report to that file.
-3. Run \`eck-snapshot update\` in terminal.
-4. If you are entirely blocked, use the \`eck_fail_task\` tool.
+**FALLBACK METHOD (Only if MCP tool is missing):**
+If `eck_finish_task` is NOT in your available tools, you MUST do the following:
+0. **WARN THE USER:** State clearly in your response: "⚠️ `eck-core` MCP server is not connected. Proceeding with manual fallback."
+1. **READ:** Read `.eck/lastsnapshot/AnswerToSA.md` using your `Read` tool (REQUIRED before overwriting).
+2. **WRITE:** Overwrite that file with your report.
+3. **COMMIT (CRITICAL):** Run `git add .` and `git commit -m "chore: task report"` in the terminal.
+4. **SNAPSHOT:** Run `eck-snapshot update` in the terminal.
+*(Note: The snapshot compares against the git anchor. If you skip step 3, it will say "No changes detected").*
+5. If you are entirely blocked, use the `eck_fail_task` tool.
 
 ## 5. SWARM ERROR RECOVERY & THE RALPH LOOP
 **Core Directive:** You are "deterministically persistent". Failures are expected, giving up is not.

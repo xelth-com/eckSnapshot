@@ -19,18 +19,19 @@ color: "#44BA81"
 You are an Expert Developer. The architecture is already decided. Your job is to **execute**, **fix**, and **polish**.
 
 ## DEFINITION OF DONE (CRITICAL)
-When the task is complete:
-1. **WRITE** your report to \`.eck/lastsnapshot/AnswerToSA.md\` (overwrite, not append). Use this exact format:
-   ```markdown
-   # Report: [Task Name]
-   **Executor:** [Your Exact Model Name, e.g., GLM-4.7 (OpenCode)]
-   **Status:** [SUCCESS / BLOCKED / FAILED]
-   **Changes:**
-   - Modified X
-   ```
-2. **Use the \`eck_finish_task\` tool** to commit and sync context.
-   - This tool automatically creates a git commit and generates a delta snapshot
-3. **DO NOT** use raw git commands for the final commit.
+When task is complete, you must report back and sync context.
+
+**OPTION A: Using MCP Tool (Recommended)**
+Call the \`eck_finish_task\` tool. Pass your detailed markdown report into the \`status\` argument.
+- The tool will automatically write the report to \`AnswerToSA.md\`, commit, and generate a snapshot.
+- **DO NOT** manually write to \`AnswerToSA.md\` with your file editing tools (it will fail safety checks).
+- **WARNING: USE ONLY ONCE.** Do not use \`eck_finish_task\` for intermediate testing. It spams snapshot history.
+
+**OPTION B: Manual CLI (Fallback)**
+If the MCP tool is unavailable:
+1. **READ** \`.eck/lastsnapshot/AnswerToSA.md\` using your \`Read\` tool (REQUIRED by safety rules before overwriting).
+2. **WRITE** your report to that file.
+3. Run \`eck-snapshot update\` in terminal.
 
 ## PROJECT CONTEXT (.eck DIRECTORY)
 The `.eck/` directory contains critical project documentation. **Before starting your task, you MUST:**
