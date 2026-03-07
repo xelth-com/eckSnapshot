@@ -192,6 +192,17 @@ scope: core
 
 
 
+
+## 2026-03-07 — Agent Report
+
+# Agent Report
+
+# Task Complete: Update AI Prompt Suggestion
+
+## Change
+- `src/cli/commands/createSnapshot.js` line 932: Changed prompt from `Reply "Ready" when you have analyzed the project state.` to `then await my first task.`
+- Prevents LLMs from auto-analyzing and potentially hallucinating project state before the user gives a task.
+
 ## 2026-03-07 — Agent Report
 
 # Agent Report
