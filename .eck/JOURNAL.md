@@ -191,6 +191,23 @@ scope: core
 
 
 
+
+## 2026-03-07 — Agent Report
+
+# Agent Report
+
+# Task Complete: AI Prompt Suggestion in CLI Output
+
+## Changes Made
+
+### `src/cli/commands/createSnapshot.js` (line ~927)
+- Added a new output block after the token training command section
+- Displays a copy-pasteable prompt in cyan bold that users can paste into ChatGPT/Gemini alongside the snapshot file
+- Prompt text: *"Read the SYSTEM DIRECTIVE at the very beginning of the attached file. Immediately assume the role of Senior Architect as instructed. Reply 'Ready' when you have analyzed the project state."*
+- Uses already-imported `chalk` for styling
+
+## No Issues
+
 ## 2026-03-07 — Agent Report
 
 # Agent Report
