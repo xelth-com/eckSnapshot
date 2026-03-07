@@ -188,6 +188,16 @@ scope: core
 
 
 
+
+## 2026-03-02 — Agent Report
+
+# Agent Report
+
+SUCCESS — Added PostgreSQL support to eckSnapshot filtering system:
+1. Added PostgreSQL project detection pattern (postgresql.conf, pg_hba.conf, PG_VERSION, data/base, data/global, data/pg_wal) with priority 10
+2. Added PostgreSQL-specific file filtering: ignores all PG internal dirs (base/, global/, pg_wal/, pg_xact/, pg_notify/, etc.), PG system files (PG_VERSION, postmaster.pid), and PG-specific extensions (.fsm, .vm)
+3. Also fixed eckasser project: added data/pg_pos/ to .gitignore and removed 974 PG data files from git tracking
+
 ## 2026-03-02 — Agent Report
 
 # Agent Report
