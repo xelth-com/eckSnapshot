@@ -196,6 +196,17 @@ scope: core
 
 
 
+
+## 2026-03-07 — Agent Report
+
+# Agent Report
+
+# Task Complete: Refine AI Prompt Suggestion
+
+## Changes
+- `src/cli/commands/createSnapshot.js` line 930: Removed "Claude" from large file tip (200k context too small for full snapshots)
+- Line 932: Changed "copy and paste this exact prompt along with your snapshot file" → "copy and paste this exact text as your FIRST prompt along with the snapshot file"
+
 ## 2026-03-07 — Agent Report
 
 # Agent Report
