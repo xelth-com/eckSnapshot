@@ -190,6 +190,31 @@ scope: core
 
 
 
+
+## 2026-03-07 — Agent Report
+
+# Agent Report
+
+# Task Complete: Aggressive System Directive in Snapshot Headers
+
+## Changes Made
+
+### 1. `src/templates/multiAgent.md`
+- Replaced passive `# AI Instructions` header with `# SYSTEM DIRECTIVE FOR THE ACTIVE AI AGENT`
+- Added **CRITICAL** directive forcing any LLM reading the file to immediately assume the Senior Architect role
+- Added new "Your Role & Identity" section (Section 1) explicitly defining the role
+- Renamed "How to Read This Snapshot" to Section 2, "Core Operational Workflow" to Section 3
+- Removed emoji from section headers (🛠️ MANIFEST → MANIFEST, 🛡️ ANTI-TRUNCATION → ANTI-TRUNCATION) for cleaner parsing
+- Preserved all functional content (manifest protocol, journal workflow, command formats, agents, etc.)
+
+### 2. `src/utils/aiHeader.js` (line ~690)
+- Updated the fallback header (used when `setup.json` fails to load) to include the System Directive preamble
+- Fallback now reads: `# SYSTEM DIRECTIVE FOR THE ACTIVE AI AGENT` + CRITICAL instruction before the snapshot info
+
+## Impact
+- Any LLM (ChatGPT, Claude, Gemini) receiving a snapshot will be prompted to assume the Architect role immediately instead of acting as a passive observer
+- No breaking changes — template variables (`{{repoName}}`, `{{projectOverview}}`, etc.) are unchanged
+
 ## 2026-03-07 — Agent Report
 
 # Agent Report
