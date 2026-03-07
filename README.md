@@ -4,7 +4,7 @@ A specialized, AI-native CLI tool designed to create and restore single-file tex
 
 ## 🌟 Key Features
 
-* **🧠 Multi-Agent Protocol (Royal Court):** Built-in support for the "Royal Court" architecture. Delegate tasks from a Senior Architect (Claude/Gemini) to Junior Managers, who orchestrate a swarm of specialized GLM-4.7 workers.
+* **🧠 Multi-Agent Protocol (Royal Court):** Built-in support for the "Royal Court" architecture. Delegate tasks from a Senior Architect (Claude/Gemini/Grok. *Note: ChatGPT works but is slower with large context and requires a specific prompt*) to Junior Managers, who orchestrate a swarm of specialized GLM-4.7 workers.
 * **☠️ Skeleton Mode:** Uses `Tree-sitter` and `Babel` to strip function bodies, drastically reducing token count while preserving structural context. Supports JS/TS, Rust, Go, Python, C, Java, and Kotlin.
 * **🔄 Smart Delta Updates:** Tracks incremental changes via Git anchors with sequential numbering. Now accurately tracks and reports deleted files to prevent LLM hallucinations.
 * **🛡️ Security (SecretScanner):** Automatically redacts API keys and credentials before sending context to LLMs. Features both Regex matching and **Shannon Entropy** analysis for catching non-standard hardcoded secrets.

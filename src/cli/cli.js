@@ -106,7 +106,8 @@ export function run() {
   const pkg = createRequire(import.meta.url)('../../package.json');
   const helpGuide = `eck-snapshot (v${pkg.version}) - AI-Native Repository Context Tool.
 
---- 🚀 Core Workflow: Optimized for Web LLMs (Gemini/ChatGPT) ---
+--- 🚀 Core Workflow: Optimized for Web LLMs (Claude/Gemini/Grok) ---
+💡 Note: ChatGPT is supported but can be slow. Use the suggested prompt at the end of the snapshot.
 
 1. Initial Context (Maximum Compression)
    Create a lightweight map of your entire project. Bodies of functions are hidden.
@@ -136,7 +137,7 @@ Option A: Auto-Detection (Best for start)
 
 Option B: Manual Guide (Best for large repos)
    If the project is too big for auto-detection, this generates a prompt text file
-   that you can paste into a powerful Web LLM (like Gemini 1.5 Pro) to design profiles manually.
+   that you can paste into a powerful Web LLM (like Gemini, Claude, or Grok) to design profiles manually.
    
    1. Run:  $ eck-snapshot generate-profile-guide
    2. Open: .eck/profile_generation_guide.md

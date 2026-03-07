@@ -133,7 +133,7 @@ export async function generateProfileGuide(repoPath = process.cwd(), options = {
     // 3. Print clear instructions
     console.log(chalk.cyan('\n📋 Next Steps (Workflow):'));
     console.log(`1. Open: ${chalk.bold('.eck/profile_generation_guide.md')}`);
-    console.log('2. Copy the PROMPT + TREE content and paste it into an AI (Gemini 1.5 Pro, Claude Opus, ChatGPT).');
+    console.log('2. Copy the PROMPT + TREE content and paste it into an AI (Gemini, Claude, Grok).');
     console.log('3. Copy the JSON response from the AI.');
     console.log(`4. Paste the JSON into: ${chalk.bold('.eck/profiles.json')} ${profilesCreated ? '(I created this file for you)' : '(File exists)'}`);
     console.log('\n✅ Once saved, run: ' + chalk.green('eck-snapshot --profile <profile_name>'));
