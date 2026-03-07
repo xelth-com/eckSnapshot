@@ -12,7 +12,7 @@ npm install -g @xelth/eck-snapshot
 ```
 
 ### 2. Initial Context (Full Snapshots)
-Take a full snapshot and feed it to a powerful Web LLM (Senior Architect like **Gemini** or **Grok**).
+Take a full snapshot and feed it to a powerful Web LLM (Senior Architect like **Gemini** or **Grok**). *(Note: **ChatGPT** also works, but you MUST paste the specific prompt provided at the end of the snapshot output as your first prompt).*
 ```bash
 eck-snapshot snapshot
 ```

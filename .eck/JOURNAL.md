@@ -195,6 +195,25 @@ scope: core
 
 
 
+
+## 2026-03-07 — Agent Report
+
+# Agent Report
+
+# Task Complete: Merge Workflow Sections, Clarify Auto-Updates, Remove Version Numbers
+
+## Changes Made
+
+### 1. `README.md`
+- Merged "Battle-Tested Workflow" and "Quick Start" into a single unified section with numbered steps (Install → Snapshot → Execute → Updates)
+- Clarified that local coders auto-sync via `eck_finish_task` MCP tool; manual `eck-snapshot update` is optional for human-made changes
+- Removed model version numbers: "Gemini 1.5 Pro" → "Gemini", "Grok 3" → "Grok", "GLM-4.7" → "GLM"
+
+### 2. `src/cli/cli.js`
+- Updated "Working & Updating" help text to explain that local coders auto-sync via MCP, manual update is for human changes only
+
+## No Issues
+
 ## 2026-03-07 — Agent Report
 
 # Agent Report
