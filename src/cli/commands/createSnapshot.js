@@ -927,9 +927,9 @@ export async function createRepoSnapshot(repoPath, options) {
       // Output AI Prompt Suggestion for stubborn LLMs
       console.log('\n🤖 AI PROMPT SUGGESTION (Crucial for ChatGPT, helpful for others):');
       console.log('---------------------------------------------------');
-      console.log(chalk.yellow('💡 Tip: Claude, Gemini, and Grok handle large files best. ChatGPT works but can be slow.'));
+      console.log(chalk.yellow('💡 Tip: Gemini and Grok handle large files best. ChatGPT works but can be slow.'));
       console.log('If your AI ignores the file instructions and acts as an external reviewer,');
-      console.log('copy and paste this exact prompt along with your snapshot file:\n');
+      console.log('copy and paste this exact text as your FIRST prompt along with the snapshot file:\n');
       console.log(chalk.cyan.bold('Read the SYSTEM DIRECTIVE at the very beginning of the attached file. Immediately assume the role of Senior Architect as instructed, then await my first task.\n'));
 
     } finally {
