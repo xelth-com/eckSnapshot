@@ -929,7 +929,7 @@ export async function createRepoSnapshot(repoPath, options) {
       console.log('---------------------------------------------------');
       console.log('If your AI ignores the file instructions and acts as an external reviewer,');
       console.log('copy and paste this exact prompt along with your snapshot file:\n');
-      console.log(chalk.cyan.bold('Read the SYSTEM DIRECTIVE at the very beginning of the attached file. Immediately assume the role of Senior Architect as instructed. Reply "Ready" when you have analyzed the project state.\n'));
+      console.log(chalk.cyan.bold('Read the SYSTEM DIRECTIVE at the very beginning of the attached file. Immediately assume the role of Senior Architect as instructed, then await my first task.\n'));
 
     } finally {
       process.chdir(originalCwd); // Final reset back to original CWD
