@@ -2,35 +2,34 @@
 
 A specialized, AI-native CLI tool designed to create and restore single-file text snapshots of Git repositories. Optimized for providing full project context to Large Language Models (LLMs) and serving as the coordination hub for AI Coders.
 
-## 🎯 The Battle-Tested Workflow (Author's Note)
+## 🎯 The Battle-Tested Workflow & Quick Start
 
-I personally use this tool daily with both **Claude Code** and **OpenCode**. My reliable, heavily-tested workflow is:
+I personally use this tool daily with local AI coding agents (**Claude Code** using Claude, and **OpenCode** using GLM). My reliable, heavily-tested workflow is:
 
-1. **Full Snapshots:** I take a full snapshot (`eck-snapshot snapshot`) and feed it to a powerful Web LLM (Senior Architect like Gemini 1.5 Pro or Grok 3).
-2. **Context Profiles:** If the project is huge, I use context profiles (`--profile frontend`) to slice it into manageable pieces.
-3. **Direct Execution:** I write code directly using the Senior Architect's guidance and execute tasks via local Coders (Claude/OpenCode).
-4. **Incremental Updates:** After changes are made, I use delta updates (`eck-snapshot update`) to keep the Architect's context perfectly synced without resending the whole repo.
-
-This core loop is highly polished, actively maintained, and works exceptionally well.
-
-## 🚀 Quick Start
-
-### Installation
+### 1. Installation
 ```bash
 npm install -g @xelth/eck-snapshot
 ```
 
-### Basic Usage
+### 2. Initial Context (Full Snapshots)
+Take a full snapshot and feed it to a powerful Web LLM (Senior Architect like **Gemini** or **Grok**).
 ```bash
-# 1. Create a standard full snapshot (Core Workflow)
 eck-snapshot snapshot
+```
+*(For massive monorepos, slice the context using profiles: `eck-snapshot snapshot --profile frontend`)*
 
-# 2. Use profiles for large monorepos
-eck-snapshot snapshot --profile backend
+### 3. Direct Execution
+Pass the Architect's technical plan to your local Coder agent (Claude Code / OpenCode). The Coder will implement the changes directly in your repository.
 
-# 3. Create an incremental update (only changed/deleted files)
+### 4. Auto-Updates vs Manual Updates
+When the Coder agent finishes a task, it automatically calls the built-in MCP tool (`eck_finish_task`), which commits the code and automatically generates an incremental delta update snapshot.
+
+**Optional Manual Update:**
+If you make manual changes yourself (without the agent), use this command to create a delta snapshot to sync your Web AI:
+```bash
 eck-snapshot update
 ```
+This core loop is highly polished, actively maintained, and works exceptionally well.
 
 ## 🌟 Core Features
 
@@ -45,7 +44,7 @@ eck-snapshot update
 
 *The following features are included in the tool, but I am not actively using them in my daily workflow right now. They are available for power users, but might have edge cases. If you use them and find issues, please open an issue on GitHub, or better yet, try fixing it yourself (you have the ultimate AI coding tool in your hands now!)*
 
-* **🧠 Multi-Agent Protocol (Royal Court):** Built-in support for delegating tasks from a Senior Architect to Junior Managers (`--jas`, `--jao`, `--jaz`), who orchestrate a swarm of specialized GLM-4.7 workers via MCP.
+* **🧠 Multi-Agent Protocol (Royal Court):** Built-in support for delegating tasks from a Senior Architect to Junior Managers (`--jas`, `--jao`, `--jaz`), who orchestrate a swarm of specialized GLM workers via MCP.
 * **☠️ Skeleton Mode:** Uses `Tree-sitter` and `Babel` to strip function bodies (`--skeleton`), drastically reducing token count.
 * **📊 Telemetry Hub:** Integrated with a Rust-based microservice for tracking agent execution metrics and auto-syncing token estimation weights.
 

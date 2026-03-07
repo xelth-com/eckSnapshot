@@ -194,6 +194,28 @@ scope: core
 
 
 
+
+## 2026-03-07 — Agent Report
+
+# Agent Report
+
+# Task Complete: Refocus Documentation on Battle-Tested Workflow
+
+## Changes Made
+
+### 1. `README.md` (full rewrite)
+- Replaced generic feature list with "Battle-Tested Workflow" author's note section
+- Core Features now highlight: Delta Updates, SecretScanner, MCP Integration, .eck Manifest
+- Moved Royal Court, Skeleton Mode, and Telemetry Hub to "Experimental / Advanced Features" section with community call-to-action
+- Removed AI Swarm Setup and Token Estimation sections (moved to experimental context)
+
+### 2. `src/cli/cli.js` (2 edits)
+- Replaced Skeleton Mode-first workflow (steps 1-3) with Full Snapshot workflow (steps 1-2)
+- Removed "Lazy Loading" step (show command still available but not featured)
+- Added "Experimental Features" note at the bottom of help text pointing to `--help` for advanced flags
+
+## No Issues
+
 ## 2026-03-07 — Agent Report
 
 # Agent Report

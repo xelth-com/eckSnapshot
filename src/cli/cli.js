@@ -116,8 +116,8 @@ export function run() {
    (For very large projects, use profiles: $ eck-snapshot --profile backend)
 
 2. Working & Updating
-   As you or your local coders (Claude/OpenCode) apply changes, the Web AI loses context.
-   Instead of re-sending the full repo, send only what changed.
+   Local coders (Claude Code / OpenCode) will automatically sync context using MCP tools when they finish a task.
+   If YOU make manual changes, send an incremental update to the Web AI:
 
    $ eck-snapshot update
    -> Generates: .eck/snapshots/update_<timestamp>.md (Contains changed/deleted files)
