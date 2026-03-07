@@ -189,6 +189,26 @@ scope: core
 
 
 
+
+## 2026-03-07 — Agent Report
+
+# Agent Report
+
+# Report: Update DEFINITION OF DONE blocks across all agent templates
+
+**Status:** SUCCESS
+
+**Changes:**
+- `src/templates/opencode/coder.template.md` — replaced OPTION A/B with PRIMARY/FALLBACK, added commit step and user warning
+- `src/templates/opencode/junior-architect.template.md` — same replacement, preserved `eck_fail_task` as step 5
+- `src/utils/claudeMdGenerator.js` — updated both `getArchitectInstructions()` (architect role) and `CODER_INSTRUCTIONS` constant with new DEFINITION OF DONE
+- `CLAUDE.md` (repo root) — updated to match new pattern for current session consistency
+
+**Key improvements:**
+1. Fallback now requires `git commit` before `eck-snapshot update` (step 3), preventing "No changes detected" error
+2. Agents must warn the user when MCP tool is missing (step 0)
+3. Clearer naming: "PRIMARY METHOD" / "FALLBACK METHOD" instead of "OPTION A" / "OPTION B"
+
 ## 2026-03-02 — Agent Report
 
 # Agent Report
