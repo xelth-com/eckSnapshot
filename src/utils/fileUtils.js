@@ -929,9 +929,11 @@ export async function initializeEckManifest(projectPath) {
     // --- END NEW LOGIC ---
 
     // Extract Context from setup.json if available
-    const projName = setupConfig?.projectContext?.name || staticFacts.type || 'project';
+    const projName = setupConfig?.projectContext?.name || path.basename(projectPath) || staticFacts.type || 'project';
     const projType = setupConfig?.projectContext?.type || staticFacts.type || 'unknown';
-    const projStack = setupConfig?.projectContext?.architecture?.stack?.join(', ') || 'TBD';
+    const projStack = (setupConfig?.projectContext?.architecture?.stack?.length > 0)
+      ? setupConfig.projectContext.architecture.stack.join(', ')
+      : 'TBD';
     const projAi = setupConfig?.projectContext?.architecture?.aiIntegration || 'None';
     
     // 3. Define smarter templates and prompts using setup.json context

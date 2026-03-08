@@ -1,23 +1,12 @@
 {
   "_comment": "Central configuration file for eck-snapshot. ALL settings are configured here.",
   "projectContext": {
-    "name": "eckasse",
-    "type": "monorepo",
+    "name": "",
+    "type": "",
     "architecture": {
-      "workspaces": [
-        "@eckasse/core",
-        "@eckasse/desktop",
-        "@eckasse/adapters",
-        "@eckasse/shared-frontend"
-      ],
-      "stack": [
-        "Node.js",
-        "Express",
-        "Electron",
-        "PostgreSQL",
-        "WebSocket"
-      ],
-      "aiIntegration": "Google Gemini for POS natural language control"
+      "workspaces": [],
+      "stack": [],
+      "aiIntegration": ""
     }
   },
   "projectDetection": {
