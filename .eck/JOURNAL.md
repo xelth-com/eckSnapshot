@@ -199,6 +199,26 @@ scope: core
 
 
 
+
+## 2026-03-08 — Agent Report
+
+# Agent Report
+
+# Fix: Remove hardcoded "eckasse" ghost context from setup.json
+
+## Changes Made
+
+### 1. `setup.json` — Cleared hardcoded `projectContext`
+- **Before:** `name: "eckasse"`, `type: "monorepo"`, hardcoded workspaces/stack/aiIntegration from a specific project
+- **After:** All fields empty (`""`, `[]`) so they don't override dynamic detection for new projects
+
+### 2. `src/utils/fileUtils.js` — Improved fallback logic (lines 932-935)
+- **`projName`**: Now falls back to `path.basename(projectPath)` (actual folder name) before `staticFacts.type`, preventing generic type labels like "nodejs" from being used as project names
+- **`projStack`**: Now checks `stack.length > 0` before `.join()`, so an empty array correctly falls back to `'TBD'` instead of producing an empty string
+
+## Result
+New projects initialized with `eck-snapshot` will no longer inherit stale "eckasse" context. Dynamic detection and folder-name inference now work correctly as the primary source of truth.
+
 ## 2026-03-08 — Agent Report
 
 # Agent Report
