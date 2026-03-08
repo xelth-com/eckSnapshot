@@ -197,6 +197,19 @@ scope: core
 
 
 
+
+## 2026-03-08 — Agent Report
+
+# Agent Report
+
+# Task Complete: README Additions
+
+## Changes
+- **`README.md`**: Added three new sections before License:
+  1. **Roadmap** — NotebookLM optimization planned
+  2. **Ethical Automation Policy** — strict ban on Playwright/Puppeteer browser spoofing
+  3. **Footer** — "made in Eschborn" centered at bottom
+
 ## 2026-03-07 — Agent Report
 
 # Agent Report

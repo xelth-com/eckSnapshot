@@ -70,8 +70,4 @@ This project strictly respects the Terms of Service of AI providers. We will **n
 
 ## License
 MIT © xelth-com
-
-<br>
-<div align="center">
-  <sup>made in Eschborn</sup>
-</div>
+<div align="right"><sup>made in Eschborn</sup></div>
