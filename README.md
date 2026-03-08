@@ -60,5 +60,18 @@ Think of AI models like human engineers. Imagine a person standing next to a mas
 
 LLMs work the exact same way. Giving an AI a "file search" tool is like putting a beginner next to the bookshelf. Forcing a complete project snapshot into the LLM's massive context window is like giving it a university degree in your specific codebase. That is what `eck-snapshot` does.
 
+## 🗺️ Roadmap
+
+* **NotebookLM Optimization:** Our generated snapshots already work exceptionally well with Google NotebookLM. In the near future, we plan to introduce specific adaptations and context profiles tailored specifically for NotebookLM's document architecture, alongside our support for standard Web LLMs.
+
+## 🛑 Ethical Automation Policy
+
+This project strictly respects the Terms of Service of AI providers. We will **never** implement browser automation tools (like Playwright, Puppeteer, etc.) to spoof human behavior, scrape, or exploit web chat interfaces that are subsidized and intended solely for human use. We explicitly forbid the integration of such deceptive API-bypassing techniques in any official branches of this project.
+
 ## License
 MIT © xelth-com
+
+<br>
+<div align="center">
+  <sup>made in Eschborn</sup>
+</div>
