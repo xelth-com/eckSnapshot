@@ -51,9 +51,14 @@ Your task is NOT complete until code works globally.
    - **DO NOT** try to manually write to \`.eck/lastsnapshot/AnswerToSA.md\` with the \`Write\` tool.
    - **WARNING:** USE ONLY ONCE PER TASK. Do not use this tool or \`eck-snapshot update\` for intermediate testing.
 
-**FALLBACK METHOD (Only if MCP tool is missing):**
-If \`eck_finish_task\` is NOT in your available tools, you MUST do the following:
-0. **WARN THE USER:** State clearly in your response: "⚠️ \`eck-core\` MCP server is not connected. Proceeding with manual fallback."
+**IF \`eck_finish_task\` IS NOT VISIBLE in your tool list:**
+The tool may be registered as a **deferred tool**. Before falling back, you MUST try:
+1. **Search:** Call \`ToolSearch\` with query \`"select:mcp__eck-core__eck_finish_task,mcp__eck-core__eck_fail_task"\` to load deferred MCP tools.
+2. If ToolSearch returns the tools — use them normally.
+3. If ToolSearch confirms they don't exist — run \`eck-snapshot setup-mcp\` in the terminal, then retry ToolSearch.
+
+**MANUAL FALLBACK (Only if ToolSearch AND setup-mcp both fail):**
+0. **WARN THE USER:** State clearly: "⚠️ \`eck-core\` MCP server is not connected. Proceeding with manual fallback."
 1. **READ:** Read \`.eck/lastsnapshot/AnswerToSA.md\` using your \`Read\` tool (REQUIRED before overwriting).
 2. **WRITE:** Overwrite that file with your report.
 3. **COMMIT (CRITICAL):** Run \`git add .\` and \`git commit -m "chore: task report"\` in the terminal.
@@ -87,9 +92,14 @@ Pass your detailed markdown report into the \`status\` argument.
 - **DO NOT** manually write to \`AnswerToSA.md\` with your file editing tools.
 - **WARNING: USE ONLY ONCE.** Do not use for intermediate testing.
 
-**FALLBACK METHOD (Only if MCP tool is missing):**
-If \`eck_finish_task\` is NOT in your available tools, you MUST do the following:
-0. **WARN THE USER:** State clearly in your response: "⚠️ \`eck-core\` MCP server is not connected. Proceeding with manual fallback."
+**IF \`eck_finish_task\` IS NOT VISIBLE in your tool list:**
+The tool may be registered as a **deferred tool**. Before falling back, you MUST try:
+1. **Search:** Call \`ToolSearch\` with query \`"select:mcp__eck-core__eck_finish_task,mcp__eck-core__eck_fail_task"\` to load deferred MCP tools.
+2. If ToolSearch returns the tools — use them normally.
+3. If ToolSearch confirms they don't exist — run \`eck-snapshot setup-mcp\` in the terminal, then retry ToolSearch.
+
+**MANUAL FALLBACK (Only if ToolSearch AND setup-mcp both fail):**
+0. **WARN THE USER:** State clearly: "⚠️ \`eck-core\` MCP server is not connected. Proceeding with manual fallback."
 1. **READ:** Read \`.eck/lastsnapshot/AnswerToSA.md\` using your \`Read\` tool (REQUIRED before overwriting).
 2. **WRITE:** Overwrite that file with your report.
 3. **COMMIT (CRITICAL):** Run \`git add .\` and \`git commit -m "chore: task report"\` in the terminal.

@@ -25,6 +25,7 @@ import { saveGitAnchor } from '../../utils/gitUtils.js';
 import { skeletonize } from '../../core/skeletonizer.js';
 import { updateClaudeMd } from '../../utils/claudeMdGenerator.js';
 import { generateOpenCodeAgents } from '../../utils/opencodeAgentsGenerator.js';
+import { ensureProjectMcpConfig } from './setupMcp.js';
 
 /**
  * Creates dynamic project context based on detection results
@@ -824,6 +825,15 @@ export async function createRepoSnapshot(repoPath, options) {
       // Claude Code exclusively uses CLAUDE.md
       if (isJas || isJao || (!isJaz && !options.withJa)) {
         await updateClaudeMd(processedRepoPath, claudeMode, directoryTree, confidentialFiles, { zh: options.zh });
+        // Ensure .mcp.json with eck-core is present so Claude Code agents have MCP tools
+        try {
+          const mcpCreated = await ensureProjectMcpConfig(processedRepoPath);
+          if (mcpCreated) {
+            console.log(chalk.green('🔌 Created .mcp.json with eck-core MCP server'));
+          }
+        } catch (e) {
+          // Non-critical — agent can still use manual fallback
+        }
       }
 
       // OpenCode exclusively uses AGENTS.md

@@ -262,3 +262,55 @@ async function setupForOpenCode(packageRoot, eckCorePath, glmZaiPath, options) {
   console.log(chalk.gray('\n  OpenCode will read MCP servers from opencode.json on next start.'));
   console.log(chalk.gray('  Use `eck-snapshot --jas` or `--jao` to generate AGENTS.md for OpenCode.\n'));
 }
+
+/**
+ * Silently ensure .mcp.json exists in the target project root with eck-core configured.
+ * Called automatically during snapshot creation so any Claude Code session
+ * in that project will have eck_finish_task / eck_fail_task available.
+ *
+ * @param {string} repoPath - Target project root
+ * @returns {boolean} true if file was created/updated, false if already OK
+ */
+export async function ensureProjectMcpConfig(repoPath) {
+  const packageRoot = path.resolve(__dirname, '../../..');
+  const eckCorePath = path.join(packageRoot, 'scripts', 'mcp-eck-core.js');
+  const mcpJsonPath = path.join(repoPath, '.mcp.json');
+
+  // Read existing .mcp.json if present
+  let config = {};
+  try {
+    const content = await fs.readFile(mcpJsonPath, 'utf-8');
+    config = JSON.parse(content);
+  } catch { /* doesn't exist yet */ }
+
+  // Check if eck-core is already configured with correct path
+  if (config['eck-core'] &&
+      config['eck-core'].command === 'node' &&
+      config['eck-core'].args?.[0] === eckCorePath) {
+    return false; // Already up to date
+  }
+
+  // Add/update eck-core
+  config['eck-core'] = {
+    command: 'node',
+    args: [eckCorePath]
+  };
+
+  await fs.writeFile(mcpJsonPath, JSON.stringify(config, null, 2) + '\n', 'utf-8');
+
+  // Ensure .mcp.json is in .gitignore (it contains absolute paths)
+  try {
+    const gitignorePath = path.join(repoPath, '.gitignore');
+    let gitignore = '';
+    try {
+      gitignore = await fs.readFile(gitignorePath, 'utf-8');
+    } catch { /* no .gitignore */ }
+
+    if (!gitignore.includes('.mcp.json')) {
+      const suffix = gitignore.endsWith('\n') || gitignore === '' ? '' : '\n';
+      await fs.writeFile(gitignorePath, gitignore + suffix + '.mcp.json\n', 'utf-8');
+    }
+  } catch { /* non-critical */ }
+
+  return true;
+}
