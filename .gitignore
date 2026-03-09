@@ -60,3 +60,4 @@ CLAUDE.md
 # Root documentation is tracked normally
 # MiniMax Debugging logs
 minimax_debug.json
+.mcp.json
