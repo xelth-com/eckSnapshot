@@ -283,15 +283,20 @@ export async function ensureProjectMcpConfig(repoPath) {
     config = JSON.parse(content);
   } catch { /* doesn't exist yet */ }
 
+  // Ensure root mcpServers key exists (required by Claude Code schema)
+  if (!config.mcpServers) {
+    config.mcpServers = {};
+  }
+
   // Check if eck-core is already configured with correct path
-  if (config['eck-core'] &&
-      config['eck-core'].command === 'node' &&
-      config['eck-core'].args?.[0] === eckCorePath) {
+  if (config.mcpServers['eck-core'] &&
+      config.mcpServers['eck-core'].command === 'node' &&
+      config.mcpServers['eck-core'].args?.[0] === eckCorePath) {
     return false; // Already up to date
   }
 
-  // Add/update eck-core
-  config['eck-core'] = {
+  // Add/update eck-core inside mcpServers
+  config.mcpServers['eck-core'] = {
     command: 'node',
     args: [eckCorePath]
   };
