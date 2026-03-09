@@ -200,6 +200,34 @@ scope: core
 
 
 
+
+## 2026-03-09 — Agent Report
+
+# Agent Report
+
+## Fix: `.mcp.json` schema compliance
+
+### Problem
+`ensureProjectMcpConfig()` in `src/cli/commands/setupMcp.js` was writing MCP server entries directly to the JSON root instead of wrapping them in the required `mcpServers` key. This caused Claude Code `/doctor` to report: `Does not adhere to MCP server configuration schema`.
+
+### Fix
+Updated `ensureProjectMcpConfig()` to:
+1. Ensure `config.mcpServers` root key exists
+2. Read/write `eck-core` config under `config.mcpServers['eck-core']` instead of `config['eck-core']`
+
+### Result
+`.mcp.json` now produces the correct schema:
+```json
+{
+  "mcpServers": {
+    "eck-core": { "command": "node", "args": ["..."] }
+  }
+}
+```
+
+### Verified
+- Deleted old broken `.mcp.json`, re-ran `ensureProjectMcpConfig()` — correct format generated.
+
 ## 2026-03-08 — Agent Report
 
 # Agent Report
