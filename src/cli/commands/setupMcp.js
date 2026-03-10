@@ -264,7 +264,7 @@ async function setupForOpenCode(packageRoot, eckCorePath, glmZaiPath, options) {
 }
 
 /**
- * Silently ensure .mcp.json exists in the target project root with eck-core configured.
+ * Silently ensure .mcp.json exists in target project root with eck-core configured.
  * Called automatically during snapshot creation so any Claude Code session
  * in that project will have eck_finish_task / eck_fail_task available.
  *
@@ -316,6 +316,54 @@ export async function ensureProjectMcpConfig(repoPath) {
       await fs.writeFile(gitignorePath, gitignore + suffix + '.mcp.json\n', 'utf-8');
     }
   } catch { /* non-critical */ }
+
+  return true;
+}
+
+/**
+ * Silently ensure OpenCode global config has eck-core MCP server configured.
+ * Called automatically during snapshot creation for OpenCode so any OpenCode session
+ * will have eck_finish_task / eck_fail_task available globally.
+ *
+ * @returns {boolean} true if config was created/updated, false if already OK
+ */
+export async function ensureOpenCodeGlobalMcp() {
+  const packageRoot = path.resolve(__dirname, '../../..');
+  const eckCorePath = path.join(packageRoot, 'scripts', 'mcp-eck-core.js');
+
+  const homeDir = os.homedir();
+  const configPath = path.join(homeDir, '.config', 'opencode', 'opencode.json');
+
+  // Read existing config or create new
+  let config = {};
+  try {
+    const content = await fs.readFile(configPath, 'utf-8');
+    config = JSON.parse(content);
+  } catch { /* new config */ }
+
+  // Ensure mcp key exists
+  if (!config.mcp) {
+    config.mcp = {};
+  }
+
+  // Check if eck-core is already configured with correct path
+  if (config.mcp['eck-core'] &&
+      config.mcp['eck-core'].type === 'local' &&
+      config.mcp['eck-core'].command?.[0] === 'node' &&
+      config.mcp['eck-core'].command?.[1] === eckCorePath) {
+    return false; // Already up to date
+  }
+
+  // Add/update eck-core in global config
+  config.mcp['eck-core'] = {
+    type: 'local',
+    command: ['node', eckCorePath],
+    enabled: true,
+    timeout: 30000,
+  };
+
+  await fs.mkdir(path.dirname(configPath), { recursive: true });
+  await fs.writeFile(configPath, JSON.stringify(config, null, 2));
 
   return true;
 }
