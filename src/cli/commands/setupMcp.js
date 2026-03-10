@@ -321,18 +321,17 @@ export async function ensureProjectMcpConfig(repoPath) {
 }
 
 /**
- * Silently ensure OpenCode global config has eck-core MCP server configured.
- * Called automatically during snapshot creation for OpenCode so any OpenCode session
- * will have eck_finish_task / eck_fail_task available globally.
+ * Silently ensure local opencode.json exists in target project root with eck-core configured.
+ * Called automatically during snapshot creation so any OpenCode session
+ * in that project will have eck_finish_task / eck_fail_task available.
  *
+ * @param {string} repoPath - Target project root
  * @returns {boolean} true if config was created/updated, false if already OK
  */
-export async function ensureOpenCodeGlobalMcp() {
+export async function ensureProjectOpenCodeConfig(repoPath) {
   const packageRoot = path.resolve(__dirname, '../../..');
   const eckCorePath = path.join(packageRoot, 'scripts', 'mcp-eck-core.js');
-
-  const homeDir = os.homedir();
-  const configPath = path.join(homeDir, '.config', 'opencode', 'opencode.json');
+  const configPath = path.join(repoPath, 'opencode.json');
 
   // Read existing config or create new
   let config = {};
@@ -351,19 +350,28 @@ export async function ensureOpenCodeGlobalMcp() {
       config.mcp['eck-core'].type === 'local' &&
       config.mcp['eck-core'].command?.[0] === 'node' &&
       config.mcp['eck-core'].command?.[1] === eckCorePath) {
-    return false; // Already up to date
+    // Still need to check instructions
+    if (config.instructions && config.instructions.includes('AGENTS.md')) {
+      return false; // Already up to date
+    }
+  } else {
+    // Add/update eck-core
+    config.mcp['eck-core'] = {
+      type: 'local',
+      command: ['node', eckCorePath],
+      enabled: true,
+      timeout: 30000,
+    };
   }
 
-  // Add/update eck-core in global config
-  config.mcp['eck-core'] = {
-    type: 'local',
-    command: ['node', eckCorePath],
-    enabled: true,
-    timeout: 30000,
-  };
+  // Ensure AGENTS.md is in instructions
+  if (!config.instructions) {
+    config.instructions = ['AGENTS.md'];
+  } else if (!config.instructions.includes('AGENTS.md')) {
+    config.instructions.push('AGENTS.md');
+  }
 
-  await fs.mkdir(path.dirname(configPath), { recursive: true });
-  await fs.writeFile(configPath, JSON.stringify(config, null, 2));
+  await fs.writeFile(configPath, JSON.stringify(config, null, 2) + '\n', 'utf-8');
 
   return true;
 }
