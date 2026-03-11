@@ -201,6 +201,32 @@ scope: core
 
 
 
+
+## 2026-03-10 — Agent Report
+
+# Agent Report
+
+## Task: Switch OpenCode MCP config from global to project-local
+
+### Changes Made
+
+**`src/cli/commands/setupMcp.js`:**
+- Renamed `ensureOpenCodeGlobalMcp()` → `ensureProjectOpenCodeConfig(repoPath)`
+- Changed config path from `~/.config/opencode/opencode.json` (global) to `path.join(repoPath, 'opencode.json')` (local)
+- Added logic to ensure `config.instructions` includes `'AGENTS.md'`
+- Removed `fs.mkdir` for parent directory (no longer needed since repoPath already exists)
+- Added newline at end of written file (consistent with `ensureProjectMcpConfig`)
+
+**`src/cli/commands/createSnapshot.js`:**
+- Updated import: `ensureOpenCodeGlobalMcp` → `ensureProjectOpenCodeConfig`
+- Updated call: `await ensureProjectOpenCodeConfig(processedRepoPath)`
+- Updated log message: "Added eck-core to local opencode.json"
+
+### Verification
+- Confirmed new export exists and old export is `undefined`
+- No stale references to `ensureOpenCodeGlobalMcp` anywhere in the codebase
+- Module loads without errors
+
 ## 2026-03-09 — Agent Report
 
 # Agent Report
