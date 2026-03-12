@@ -202,6 +202,32 @@ scope: core
 
 
 
+
+## 2026-03-12 — Agent Report
+
+# Agent Report
+
+## Task Complete: Dynamic `.eck/` Directory Parsing
+
+### Changes Made
+
+**`src/utils/fileUtils.js` — `loadProjectEckManifest()`**
+- Replaced hardcoded file list with dynamic `fs.readdir()` scan of the `.eck/` directory
+- All `.md` files are now loaded automatically
+- Well-known files (`CONTEXT.md`, `OPERATIONS.md`, `JOURNAL.md`, `ROADMAP.md`, `TECH_DEBT.md`, `ENVIRONMENT.md`) still map to their dedicated manifest keys for backward compatibility
+- All other `.md` files (e.g., `ARCHITECTURE.md`, `RUNTIME_STATE.md`, `DEPLOY_CHECKLIST.md`) are collected into a new `manifest.dynamicFiles` dictionary
+- Secret/credential files are still filtered out (`secret`, `credential`, `server_access` in filename)
+
+**`src/utils/aiHeader.js` — 3 changes:**
+1. **`normalizeManifest()`** — passes through `dynamicFiles` from the raw manifest
+2. **`buildEckManifestSection()`** — dynamically lists any extra files in the `.eck Directory` section
+3. **`generateEnhancedAIHeader()`** — new `dynamicSection` block injects content from all dynamic files into the `projectOverview` template string, with `[STUB]` markers stripped
+
+### Verification
+- Both modules import cleanly (`node -e "import(...)"` — no errors)
+- Fully backward compatible: existing 6 well-known files behave identically
+- New files are additive only — no existing behavior changed
+
 ## 2026-03-10 — Agent Report
 
 # Agent Report

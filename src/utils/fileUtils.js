@@ -691,9 +691,14 @@ export async function loadProjectEckManifest(repoPath) {
         continue;
       }
 
-      // Ignore secret/credential files
+      // Ignore secret/credential files AND internal tool files
       const lower = entry.name.toLowerCase();
-      if (lower.includes('secret') || lower.includes('credential') || lower.includes('server_access')) {
+      if (
+        lower.includes('secret') ||
+        lower.includes('credential') ||
+        lower.includes('server_access') ||
+        entry.name === 'profile_generation_guide.md'
+      ) {
         continue;
       }
 
