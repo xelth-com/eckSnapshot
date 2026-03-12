@@ -233,7 +233,15 @@ function buildEckManifestSection(eckManifest) {
   section += '- `JOURNAL.md` - Development history\n';
   section += '- `ROADMAP.md` - Planned features\n';
   section += '- `TECH_DEBT.md` - Known issues and refactoring needs\n';
-  section += '- `ENVIRONMENT.md` - Environment-specific settings\n\n';
+  section += '- `ENVIRONMENT.md` - Environment-specific settings\n';
+
+  if (eckManifest.dynamicFiles) {
+    for (const fileName of Object.keys(eckManifest.dynamicFiles)) {
+      const label = fileName.replace('.md', '').replace(/_/g, ' ');
+      section += `- \`${fileName}\` - ${label}\n`;
+    }
+  }
+  section += '\n';
 
   // Add journal summary (compact view for architect)
   if (eckManifest.journal) {
@@ -355,15 +363,17 @@ export async function generateEnhancedAIHeader(context, isGitRepo = false) {
       // Handle `setup.json` structure (e.g., `projectContext.name`)
       if (raw.projectContext) {
         out.context = raw.projectContext.description || JSON.stringify(raw.projectContext, null, 2);
-        out.operations = raw.operations || raw.projectContext.operations || ''; // Assuming .eck/OPERATIONS.md is separate
-        out.journal = raw.journal || raw.projectContext.journal || ''; // Assuming .eck/JOURNAL.md is separate
-        out.environment = raw.environment || raw.projectContext.environment || {}; // Assuming .eck/ENVIRONMENT.md is separate
+        out.operations = raw.operations || raw.projectContext.operations || '';
+        out.journal = raw.journal || raw.projectContext.journal || '';
+        out.environment = raw.environment || raw.projectContext.environment || {};
+        out.dynamicFiles = raw.dynamicFiles || {};
       } else {
         // Handle direct .eck file structure (e.g., raw.context from CONTEXT.md)
         out.context = raw.context || '';
         out.operations = raw.operations || '';
         out.journal = raw.journal || '';
         out.environment = raw.environment || {};
+        out.dynamicFiles = raw.dynamicFiles || {};
       }
       // Add fallback text if still empty
       if (!out.context) out.context = 'No project context provided.';
@@ -413,6 +423,17 @@ export async function generateEnhancedAIHeader(context, isGitRepo = false) {
       }
     }
 
+    // 4. Dynamic Context Files (ARCHITECTURE, RUNTIME_STATE, DEPLOY_CHECKLIST, etc.)
+    let dynamicSection = '';
+    const dynFiles = context.eckManifest?.dynamicFiles || {};
+    for (const [fileName, fileContent] of Object.entries(dynFiles)) {
+      const cleanContent = fileContent.replace(/^# \[STUB:.*?\]\r?\n?/g, '').trim();
+      if (cleanContent) {
+        const sectionName = fileName.replace('.md', '').replace(/_/g, ' ');
+        dynamicSection += `\n### 📄 ${sectionName}\n${cleanContent}\n`;
+      }
+    }
+
     // Combine into the master PROJECT OVERVIEW variable
     // This injects it right at the top of the prompt
     const projectOverview = `### PROJECT OVERVIEW
@@ -422,6 +443,7 @@ export async function generateEnhancedAIHeader(context, isGitRepo = false) {
 ${projectContextBody}
 ${strategicSection}
 ${operationsSection}
+${dynamicSection}
 `;
 
     const normalizedEck = normalizeManifest(context.eckManifest);

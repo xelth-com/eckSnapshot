@@ -665,48 +665,78 @@ function parseEnvironmentYaml(content) {
  */
 export async function loadProjectEckManifest(repoPath) {
   const eckDir = path.join(repoPath, '.eck');
-  
+
   try {
-    // Check if .eck directory exists
     const eckStats = await fs.stat(eckDir);
     if (!eckStats.isDirectory()) {
       return null;
     }
-    
-    console.log('📋 Found .eck directory - loading project manifest...');
-    
+
+    console.log('📋 Found .eck directory - dynamically loading project manifest...');
+
     const manifest = {
       environment: {},
       context: '',
       operations: '',
       journal: '',
       roadmap: '',
-      techDebt: ''
+      techDebt: '',
+      dynamicFiles: {}
     };
 
-    // Define the files to check
-    const files = [
-      { name: 'ENVIRONMENT.md', key: 'environment', parser: parseEnvironmentYaml },
-      { name: 'CONTEXT.md', key: 'context', parser: content => content },
-      { name: 'OPERATIONS.md', key: 'operations', parser: content => content },
-      { name: 'JOURNAL.md', key: 'journal', parser: content => content },
-      { name: 'ROADMAP.md', key: 'roadmap', parser: content => content },
-      { name: 'TECH_DEBT.md', key: 'techDebt', parser: content => content }
-    ];
-    
-    // Process each file
-    for (const file of files) {
-      const filePath = path.join(eckDir, file.name);
+    const entries = await fs.readdir(eckDir, { withFileTypes: true });
+
+    for (const entry of entries) {
+      if (!entry.isFile() || !entry.name.endsWith('.md')) {
+        continue;
+      }
+
+      // Ignore secret/credential files
+      const lower = entry.name.toLowerCase();
+      if (lower.includes('secret') || lower.includes('credential') || lower.includes('server_access')) {
+        continue;
+      }
+
+      const filePath = path.join(eckDir, entry.name);
       try {
         const content = await fs.readFile(filePath, 'utf-8');
-        manifest[file.key] = file.parser(content.trim());
-        console.log(`   ✅ Loaded ${file.name}`);
+        const cleanContent = content.trim();
+
+        // Map well-known files to their dedicated manifest keys
+        switch (entry.name) {
+          case 'ENVIRONMENT.md':
+            try {
+              manifest.environment = parseEnvironmentYaml(cleanContent);
+            } catch (e) {
+              manifest.dynamicFiles[entry.name] = cleanContent;
+            }
+            break;
+          case 'CONTEXT.md':
+            manifest.context = cleanContent;
+            break;
+          case 'OPERATIONS.md':
+            manifest.operations = cleanContent;
+            break;
+          case 'JOURNAL.md':
+            manifest.journal = cleanContent;
+            break;
+          case 'ROADMAP.md':
+            manifest.roadmap = cleanContent;
+            break;
+          case 'TECH_DEBT.md':
+            manifest.techDebt = cleanContent;
+            break;
+          default:
+            // All other .md files (ARCHITECTURE, RUNTIME_STATE, DEPLOY_CHECKLIST, etc.)
+            manifest.dynamicFiles[entry.name] = cleanContent;
+            break;
+        }
+        console.log(`   ✅ Loaded ${entry.name}`);
       } catch (error) {
-        // File doesn't exist or can't be read - that's okay, use default
-        console.log(`   ⚠️  ${file.name} not found or unreadable`);
+        console.log(`   ⚠️  ${entry.name} not found or unreadable`);
       }
     }
-    
+
     return manifest;
   } catch (error) {
     // .eck directory doesn't exist - that's normal
