@@ -2,7 +2,7 @@
 
 ## Current Sprint
 - [ ] Deploy `eck-telemetry` Rust service to production (`deploy_telemetry.sh`)
-- [ ] Auto-generate ENVIRONMENT.md and CONTEXT.md out of setup.json
+- [ ] NotebookLM-optimized snapshot profiles
 
 ## Next Phase
 - [ ] Web-based snapshot explorer
@@ -30,3 +30,6 @@
 - [x] Global token weights sync (`GET /T/tokens/weights` with linear regression)
 - [x] `eck-snapshot telemetry push` and `sync-weights` commands
 - [x] Claude Code + OpenCode environment isolation
+- [x] Dynamic `.eck/` manifest loading (v6.0.11) — all `.md` files auto-discovered
+- [x] Interactive Knowledge Distillation protocol for all agent roles
+- [x] Auto-generate ENVIRONMENT.md and CONTEXT.md out of setup.json

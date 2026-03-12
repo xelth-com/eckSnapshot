@@ -205,6 +205,31 @@ scope: core
 
 
 
+
+## 2026-03-12 — Agent Report
+
+# Agent Report
+
+## Task Complete: Interactive Knowledge Distillation Protocol
+
+### Changes Made
+
+**`src/utils/claudeMdGenerator.js`** — 2 edits:
+1. **Architect instructions** (`getArchitectInstructions`): Added section 6 "Knowledge Distillation" before operational rules (renumbered to §7). Instructs JA to ask user before updating `.eck/` manifests.
+2. **Coder instructions** (`CODER_INSTRUCTIONS`): Added Knowledge Distillation section before WORKFLOW. Same prompt — ask before documenting.
+
+**`src/templates/opencode/junior-architect.template.md`**:
+- Added §6 "Knowledge Distillation" before Reporting Protocol (renumbered to §7).
+
+**`src/templates/opencode/coder.template.md`**:
+- Added Knowledge Distillation section before WORKFLOW.
+
+### Behavior
+All agent roles (JA-Sonnet, JA-Opus, Coder in Claude Code, JA in OpenCode, Coder in OpenCode) will now ask the user:
+> "I have deep context of the codebase right now. Should I update the `.eck/` manifests (like ARCHITECTURE.md or TECH_DEBT.md) with what I've learned before we finish?"
+
+Code completion is always prioritized. Documentation is opt-in.
+
 ## 2026-03-12 — Agent Report
 
 # Agent Report

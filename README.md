@@ -1,6 +1,8 @@
 # 📸 eckSnapshot v6.0
 
-A specialized, AI-native CLI tool designed to create and restore single-file text snapshots of Git repositories. Optimized for providing full project context to Large Language Models (LLMs) and serving as the coordination hub for AI Coders.
+A specialized, AI-native CLI tool that creates single-file text snapshots of entire Git repositories and feeds them directly into LLM context windows. Instead of letting AI agents guess which files to read, eckSnapshot force-feeds the complete project into the model's context — giving it a "university degree" in your codebase from the very first prompt.
+
+It also serves as the coordination hub for multi-agent AI coding workflows: generating role-specific instructions (`CLAUDE.md`, `AGENTS.md`), maintaining project manifests (`.eck/` directory), and providing MCP integration for automatic context sync after every code change.
 
 
 ## 🎯 The Battle-Tested Workflow & Quick Start
@@ -37,7 +39,8 @@ This core loop is highly polished, actively maintained, and works exceptionally 
 * **🔄 Smart Delta Updates:** Tracks incremental changes via Git anchors with sequential numbering. Accurately tracks and reports deleted files to prevent LLM hallucinations.
 * **🛡️ Security (SecretScanner):** Automatically redacts API keys and credentials before sending context to LLMs. Features both Regex matching and **Shannon Entropy** analysis.
 * **🔌 Native MCP Integration:** Instantly spins up Model Context Protocol (MCP) servers (`eck-core` for context sync) for Claude Code and OpenCode.
-* **📁 The `.eck/` Manifest:** Automatically maintains project context files (`CONTEXT.md`, `ROADMAP.md`, `TECH_DEBT.md`) to onboard AI agents instantly.
+* **📁 The `.eck/` Manifest:** Automatically maintains project context files (`CONTEXT.md`, `ROADMAP.md`, `TECH_DEBT.md`, etc.) to onboard AI agents instantly. Dynamic scanning — any `.md` file you add to `.eck/` is automatically included in snapshots.
+* **🧠 Knowledge Distillation:** Agents are prompted to ask the user before updating project manifests, ensuring code completion is always prioritized over documentation.
 
 ---
 
@@ -64,9 +67,9 @@ LLMs work the exact same way. Giving an AI a "file search" tool is like putting 
 
 * **NotebookLM Optimization:** Our generated snapshots already work exceptionally well with Google NotebookLM. In the near future, we plan to introduce specific adaptations and context profiles tailored specifically for NotebookLM's document architecture, alongside our support for standard Web LLMs.
 
-## 🛑 Ethical Automation Policy
+## Ethical Automation Policy
 
-This project strictly respects the Terms of Service of AI providers. We will **never** implement browser automation tools (like Playwright, Puppeteer, etc.) to spoof human behavior, scrape, or exploit web chat interfaces that are subsidized and intended solely for human use. We explicitly forbid the integration of such deceptive API-bypassing techniques in any official branches of this project.
+This project respects the Terms of Service of AI providers. We do not implement browser automation to bypass or spoof web chat interfaces intended for human use. All AI integrations use official APIs.
 
 ## License
 MIT © xelth-com

@@ -46,6 +46,14 @@ GLM Z.AI Worker Fleet (MCP: glm-zai server)
 | **OpenCode** | GLM-4.7 (Z.AI Coding Plan) | Alternative coding agent (JAZ) |
 | **GLM Z.AI Worker** | GLM-4.7 via MCP | Cost-effective worker for heavy coding tasks |
 
+### Dynamic .eck/ Manifest Loading
+As of v6.0.11, `loadProjectEckManifest` dynamically scans the `.eck/` directory for all `.md` files instead of using a hardcoded list. Well-known files (CONTEXT, OPERATIONS, JOURNAL, ROADMAP, TECH_DEBT, ENVIRONMENT) map to dedicated keys; any additional `.md` files are collected into `dynamicFiles` and rendered into the AI header automatically.
+
+Excluded from scanning: files containing `secret`, `credential`, `server_access` in the name, and `profile_generation_guide.md`.
+
+### Knowledge Distillation Protocol
+All agent roles (JA and Coder, both in Claude Code and OpenCode) include an interactive Knowledge Distillation prompt. After completing a complex task, the agent asks the user for permission before updating `.eck/` manifests — code completion is always prioritized over documentation.
+
 ### Snapshot Modes
 | Flag | Purpose | Output |
 |------|---------|--------|
