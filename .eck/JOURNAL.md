@@ -203,6 +203,19 @@ scope: core
 
 
 
+
+## 2026-03-12 — Agent Report
+
+# Agent Report
+
+## Task Complete: Exclude `profile_generation_guide.md` from dynamic snapshot
+
+### Change
+- **`src/utils/fileUtils.js`** (`loadProjectEckManifest`): Added `entry.name === 'profile_generation_guide.md'` to the exclusion filter so this internal tool file is skipped during dynamic `.eck/` scanning and doesn't waste Architect context tokens.
+
+### Verification
+- Module imports cleanly, no errors.
+
 ## 2026-03-12 — Agent Report
 
 # Agent Report
