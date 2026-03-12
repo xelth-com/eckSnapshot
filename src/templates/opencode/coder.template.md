@@ -32,6 +32,12 @@ The `.eck/` directory contains critical project documentation. **Before starting
 - You are here to solve the hard problems manually.
 - You have full permission to edit files directly.
 
+## 🧠 KNOWLEDGE DISTILLATION (ASK BEFORE FORGETTING)
+When you successfully complete a complex task, you possess maximum awareness of the codebase.
+Before calling `eck_finish_task`, you MUST ASK the user:
+> "I have deep context of the codebase right now. Should I update the `.eck/` manifests (like ARCHITECTURE.md or TECH_DEBT.md) with what I've learned before we finish?"
+Wait for user approval. Do NOT update documentation automatically.
+
 ## WORKFLOW
 1.  Check the `.eck/RUNTIME_STATE.md` and verify actual running processes.
 2.  Read the code. If the Architect's hypothesis is wrong, discard it and find the real bug.

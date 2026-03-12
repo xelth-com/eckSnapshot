@@ -204,6 +204,87 @@ scope: core
 
 
 
+
+## 2026-03-12 — Agent Report
+
+# Agent Report
+
+## Research Complete: Claude Code Context Window Tracking
+
+### Key Findings
+
+**No source code available.** Claude Code is distributed as a compiled Bun binary (`claude.exe`, ~228MB). There is no JS source to grep. All findings are from CHANGELOG and official documentation.
+
+---
+
+### 1. Status Line Input — Context Window Fields
+
+The status line script receives JSON via stdin with these fields:
+
+```json
+{
+  "context_window": {
+    "total_input_tokens": 12345,
+    "total_output_tokens": 6789,
+    "current_usage": {
+      "input_tokens": 5000,
+      "output_tokens": 2000,
+      "cache_creation_input_tokens": 1000,
+      "cache_read_input_tokens": 3000
+    },
+    "used_percentage": 75,
+    "remaining_percentage": 25,
+    "context_window_size": 200000
+  },
+  "exceeds_200k_tokens": false
+}
+```
+
+- `used_percentage` — pre-calculated, based on input tokens only (input + cache_creation + cache_read, excludes output)
+- `exceeds_200k_tokens` — boolean, true when combined tokens from last API response exceed 200k
+
+### 2. Auto-Compact Behavior
+
+- **Threshold:** Was 60%, now **80%** (changed in CHANGELOG). Exact config key not documented publicly.
+- **Mechanism:** Clears older tool outputs first, then summarizes conversation. User requests and key code are preserved. CLAUDE.md content persists across compactions.
+- Auto-compact was made "instant" in a recent version.
+
+### 3. PreCompact Hook (Our Best Hook Point)
+
+```json
+{
+  "hook_event_name": "PreCompact",
+  "trigger": "manual|auto",
+  "custom_instructions": "",
+  "session_id": "...",
+  "transcript_path": "/path/to/session.jsonl",
+  "cwd": "..."
+}
+```
+
+- Fires before compaction starts
+- Matcher values: `manual` (from `/compact`) or `auto` (threshold reached)
+- **Cannot block compaction** — only side-effects (logging, re-injecting context via `systemMessage`)
+- Hook type: command only
+
+### 4. Recommended Hook Strategy for Knowledge Distillation
+
+**Option A — PreCompact hook (reactive):**
+- Trigger: `auto` matcher
+- Action: Run a script that dumps current task state / distilled knowledge into a file, then returns `{ "systemMessage": "..." }` to re-inject critical context post-compaction
+
+**Option B — Status line polling (proactive):**
+- Monitor `context_window.used_percentage` in a status line script
+- When it crosses a threshold (e.g., 70%), write a warning file or trigger a side-effect
+- Cannot inject messages, only display in status line
+
+**Option C — Hybrid (recommended):**
+- Status line monitors `used_percentage` and displays warning at 70%
+- PreCompact hook fires at 80%, captures distilled knowledge, injects it as `systemMessage`
+
+### No Code Changes Made
+This was a research-only task.
+
 ## 2026-03-12 — Agent Report
 
 # Agent Report
