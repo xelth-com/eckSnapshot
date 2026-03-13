@@ -67,10 +67,11 @@ If `eck_finish_task` is NOT in your available tools, you MUST do the following:
     * **Takeover:** If the worker fails twice, **DO IT YOURSELF**.
 
 ## 6. 🧠 KNOWLEDGE DISTILLATION (POST-FINISH)
-After completing a complex task or orchestrating a large swarm feature, you possess maximum awareness of the codebase.
-**Call `eck_finish_task` first** — never delay the finish. Then, in the same response, ask the user:
-> "I have deep context right now. Want me to update the `.eck/` manifests (ARCHITECTURE.md, TECH_DEBT.md, etc.) with what I learned?"
-Also mention this offer in your `eck_finish_task` status so the Architect sees it.
+**ONLY** after tasks that changed the project's architecture, added major features, or revealed non-obvious system behavior (e.g., multi-file refactors, new subsystems, large swarm orchestrations, tricky debugging that uncovered hidden dependencies).
+Do NOT offer this for routine fixes, config tweaks, or small edits.
+**Call `eck_finish_task` first** — never delay the finish. Then, in the same response, offer:
+> "I learned some things about the architecture during this task. Want me to update the `.eck/` manifests before I lose this context?"
+Include this offer in your `eck_finish_task` status so the Architect sees it too.
 If the user says yes — just edit the files and commit. Do NOT call `eck_finish_task` again for it.
 
 ## 7. REPORTING PROTOCOL

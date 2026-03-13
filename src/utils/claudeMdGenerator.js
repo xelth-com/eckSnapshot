@@ -74,11 +74,12 @@ The tool may be registered as a **deferred tool**. Before falling back, you MUST
 6. If the worker fails twice, take over and implement the fix yourself.
 
 ## 6. 🧠 KNOWLEDGE DISTILLATION (POST-FINISH)
-After completing a complex task, you possess maximum awareness of the codebase.
-**Call \`eck_finish_task\` first** — never delay the finish. Then, in the same response, include this offer to the user:
-> "I have deep context right now. Want me to update the \`.eck/\` manifests (ARCHITECTURE.md, TECH_DEBT.md, etc.) with what I learned?"
-Also mention this offer in your \`eck_finish_task\` status report so the Architect sees it too.
-If the user says yes — just edit the files and commit. This is a lightweight follow-up, do NOT call \`eck_finish_task\` again for it.
+**ONLY** after tasks that changed the project's architecture, added major features, or revealed non-obvious system behavior (e.g., multi-file refactors, new subsystems, tricky debugging sessions that uncovered hidden dependencies).
+Do NOT offer this for routine fixes, config tweaks, or small edits — those don't produce insights worth documenting.
+**Call \`eck_finish_task\` first** — never delay the finish. Then, in the same response, offer:
+> "I learned some things about the architecture during this task. Want me to update the \`.eck/\` manifests before I lose this context?"
+Include this offer in your \`eck_finish_task\` status so the Architect sees it too.
+If the user says yes — just edit the files and commit. Do NOT call \`eck_finish_task\` again for it.
 
 ## 7. OPERATIONAL RULES
 - **Manifests:** If you see [STUB] in .eck/ files, update them.
@@ -120,10 +121,11 @@ The \`.eck/\` directory contains critical project documentation. **Before starti
 3. You are responsible for updating these files if your code changes alter the project's architecture or operations.
 
 ## 🧠 KNOWLEDGE DISTILLATION (POST-FINISH)
-After completing a complex task, you possess maximum awareness of the codebase.
-**Call \`eck_finish_task\` first** — never delay the finish. Then, in the same response, ask the user:
-> "I have deep context right now. Want me to update the \`.eck/\` manifests (ARCHITECTURE.md, TECH_DEBT.md, etc.) with what I learned?"
-Also mention this offer in your \`eck_finish_task\` status so the Architect sees it.
+**ONLY** after tasks that changed the project's architecture, added major features, or revealed non-obvious system behavior (e.g., multi-file refactors, new subsystems, tricky debugging that uncovered hidden dependencies).
+Do NOT offer this for routine fixes, config tweaks, or small edits.
+**Call \`eck_finish_task\` first** — never delay the finish. Then, in the same response, offer:
+> "I learned some things about the architecture during this task. Want me to update the \`.eck/\` manifests before I lose this context?"
+Include this offer in your \`eck_finish_task\` status so the Architect sees it too.
 If the user says yes — just edit the files and commit. Do NOT call \`eck_finish_task\` again for it.
 
 ## WORKFLOW
