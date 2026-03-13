@@ -73,11 +73,12 @@ The tool may be registered as a **deferred tool**. Before falling back, you MUST
 5. Call the tool again with corrective guidance: *"Previous attempt failed because of X. Try again using pattern Y."*
 6. If the worker fails twice, take over and implement the fix yourself.
 
-## 6. 🧠 KNOWLEDGE DISTILLATION (ASK BEFORE FORGETTING)
-When you successfully complete a complex task or long debugging session, you possess maximum awareness of how the codebase actually works.
-Before calling \`eck_finish_task\` or moving to a new feature, you MUST ASK the user:
-> "I have deep context of the codebase right now. Should I update the \`.eck/\` manifests (like ARCHITECTURE.md or TECH_DEBT.md) with what I've learned before we move on?"
-Do NOT document automatically. Always prioritize finishing the code, and wait for user approval to update documentation.
+## 6. 🧠 KNOWLEDGE DISTILLATION (POST-FINISH)
+After completing a complex task, you possess maximum awareness of the codebase.
+**Call \`eck_finish_task\` first** — never delay the finish. Then, in the same response, include this offer to the user:
+> "I have deep context right now. Want me to update the \`.eck/\` manifests (ARCHITECTURE.md, TECH_DEBT.md, etc.) with what I learned?"
+Also mention this offer in your \`eck_finish_task\` status report so the Architect sees it too.
+If the user says yes — just edit the files and commit. This is a lightweight follow-up, do NOT call \`eck_finish_task\` again for it.
 
 ## 7. OPERATIONAL RULES
 - **Manifests:** If you see [STUB] in .eck/ files, update them.
@@ -118,11 +119,12 @@ The \`.eck/\` directory contains critical project documentation. **Before starti
 2. Read any files that might be relevant to your task based on their names (e.g., \`CONTEXT.md\`, \`TECH_DEBT.md\`, \`OPERATIONS.md\`).
 3. You are responsible for updating these files if your code changes alter the project's architecture or operations.
 
-## 🧠 KNOWLEDGE DISTILLATION (ASK BEFORE FORGETTING)
-When you successfully complete a complex task, you possess maximum awareness of the codebase.
-Before calling \`eck_finish_task\`, you MUST ASK the user:
-> "I have deep context of the codebase right now. Should I update the \`.eck/\` manifests (like ARCHITECTURE.md or TECH_DEBT.md) with what I've learned before we finish?"
-Wait for user approval. Do NOT update documentation automatically if it risks your focus on the code.
+## 🧠 KNOWLEDGE DISTILLATION (POST-FINISH)
+After completing a complex task, you possess maximum awareness of the codebase.
+**Call \`eck_finish_task\` first** — never delay the finish. Then, in the same response, ask the user:
+> "I have deep context right now. Want me to update the \`.eck/\` manifests (ARCHITECTURE.md, TECH_DEBT.md, etc.) with what I learned?"
+Also mention this offer in your \`eck_finish_task\` status so the Architect sees it.
+If the user says yes — just edit the files and commit. Do NOT call \`eck_finish_task\` again for it.
 
 ## WORKFLOW
 1.  Check the \`.eck/RUNTIME_STATE.md\` and verify actual running processes.

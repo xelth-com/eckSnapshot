@@ -32,11 +32,12 @@ The `.eck/` directory contains critical project documentation. **Before starting
 - You are here to solve the hard problems manually.
 - You have full permission to edit files directly.
 
-## 🧠 KNOWLEDGE DISTILLATION (ASK BEFORE FORGETTING)
-When you successfully complete a complex task, you possess maximum awareness of the codebase.
-Before calling `eck_finish_task`, you MUST ASK the user:
-> "I have deep context of the codebase right now. Should I update the `.eck/` manifests (like ARCHITECTURE.md or TECH_DEBT.md) with what I've learned before we finish?"
-Wait for user approval. Do NOT update documentation automatically.
+## 🧠 KNOWLEDGE DISTILLATION (POST-FINISH)
+After completing a complex task, you possess maximum awareness of the codebase.
+**Call `eck_finish_task` first** — never delay the finish. Then, in the same response, ask the user:
+> "I have deep context right now. Want me to update the `.eck/` manifests (ARCHITECTURE.md, TECH_DEBT.md, etc.) with what I learned?"
+Also mention this offer in your `eck_finish_task` status so the Architect sees it.
+If the user says yes — just edit the files and commit. Do NOT call `eck_finish_task` again for it.
 
 ## WORKFLOW
 1.  Check the `.eck/RUNTIME_STATE.md` and verify actual running processes.
