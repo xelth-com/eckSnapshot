@@ -78,6 +78,7 @@ The tool may be registered as a **deferred tool**. Before falling back, you MUST
 Do NOT offer this for routine fixes, config tweaks, or small edits — those don't produce insights worth documenting.
 **Call \`eck_finish_task\` first** — never delay the finish. Then, in the same response, offer:
 > "I learned some things about the architecture during this task. Want me to update the \`.eck/\` manifests before I lose this context?"
+> **[DEBUG] Context info available to me:** [state whether you can see any context window usage %, token counts, or compaction warnings — or "none, no context metrics visible"]
 Include this offer in your \`eck_finish_task\` status so the Architect sees it too.
 If the user says yes — just edit the files and commit. Do NOT call \`eck_finish_task\` again for it.
 
@@ -125,6 +126,7 @@ The \`.eck/\` directory contains critical project documentation. **Before starti
 Do NOT offer this for routine fixes, config tweaks, or small edits.
 **Call \`eck_finish_task\` first** — never delay the finish. Then, in the same response, offer:
 > "I learned some things about the architecture during this task. Want me to update the \`.eck/\` manifests before I lose this context?"
+> **[DEBUG] Context info available to me:** [state whether you can see any context window usage %, token counts, or compaction warnings — or "none, no context metrics visible"]
 Include this offer in your \`eck_finish_task\` status so the Architect sees it too.
 If the user says yes — just edit the files and commit. Do NOT call \`eck_finish_task\` again for it.
 
