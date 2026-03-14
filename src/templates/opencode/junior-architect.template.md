@@ -34,9 +34,8 @@ For bulk work where delegation saves YOUR expensive context window, YOU MUST del
 * **Action:** Use `glm_zai_backend`, `glm_zai_frontend`, `glm_zai_qa`, or `glm_zai_refactor`.
 
 ## 4. DEFINITION OF DONE (CRITICAL)
-When you have completed your coding task and verified it works, you must report back and sync context.
+When you have completed your coding task and verified it works, call `eck_finish_task` immediately. **Do NOT ask the user "should I finish?" or "should I make a report?" — just call it.**
 
-**PRIMARY METHOD: Use `eck_finish_task` MCP tool.**
 Pass your detailed markdown report into the `status` argument.
 - The tool will automatically write the report, commit, and generate a snapshot.
 - **DO NOT** manually write to `AnswerToSA.md` with your file editing tools.
