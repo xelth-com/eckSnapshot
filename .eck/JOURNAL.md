@@ -207,6 +207,32 @@ scope: core
 
 
 
+
+## 2026-03-15 — Agent Report
+
+# Agent Report
+
+# feat(mcp): Auto-detect and configure Codex MCP integration
+
+## Changes Made
+
+### `src/cli/commands/setupMcp.js`
+- Updated JSDoc to mention Codex support
+- Added auto-detection of `.codex/` directory in `setupMcp()` — triggers `setupForCodex()` automatically
+- Added `setupForCodex()` — interactive setup with spinner/progress feedback
+- Added `ensureProjectCodexConfig()` (exported) — silently injects `[mcp_servers.eck-core]` and `[mcp_servers.glm-zai]` TOML sections into `.codex/config.toml` using raw string manipulation (no TOML parser dependency)
+- Uses `string.includes()` check to avoid duplicate entries
+- Escapes backslashes in Windows paths for TOML compatibility
+
+### `src/cli/commands/createSnapshot.js`
+- Added `ensureProjectCodexConfig` to import
+- Hooked Codex config injection right after OpenCode config — runs during snapshot creation when AGENTS.md is generated
+- Non-critical: wrapped in try/catch so failures don't break snapshots
+
+## Verification
+- Both modules load without errors
+- All exports confirmed: `setupMcp`, `ensureProjectMcpConfig`, `ensureProjectOpenCodeConfig`, `ensureProjectCodexConfig`
+
 ## 2026-03-15 — Agent Report
 
 # Agent Report

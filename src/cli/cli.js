@@ -2,425 +2,118 @@ import { Command } from 'commander';
 import path from 'path';
 import fs from 'fs/promises';
 import { fileURLToPath } from 'url';
+import chalk from 'chalk';
+import { createRequire } from 'module';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// Import core logic (we bypass the CLI wrapper entirely)
 import { createRepoSnapshot } from './commands/createSnapshot.js';
 import { updateSnapshot, updateSnapshotJson } from './commands/updateSnapshot.js';
-import { restoreSnapshot } from './commands/restoreSnapshot.js';
-import { pruneSnapshot } from './commands/pruneSnapshot.js';
-import { generateConsilium } from './commands/consilium.js';
-import { detectProject, testFileParsing } from './commands/detectProject.js';
-import { trainTokens, showTokenStats } from './commands/trainTokens.js';
-import { executePrompt, executePromptWithSession } from '../services/claudeCliService.js';
-import { detectProfiles } from './commands/detectProfiles.js';
-import { generateProfileGuide } from './commands/generateProfileGuide.js';
-import { setupGemini } from './commands/setupGemini.js';
-import { pushTelemetry } from '../utils/telemetry.js';
-
-import { showFile } from './commands/showFile.js';
-import { runDoctor } from './commands/doctor.js';
 import { setupMcp } from './commands/setupMcp.js';
-import { envPush, envPull } from './commands/envSync.js';
-import inquirer from 'inquirer';
-import ora from 'ora';
-import { execa } from 'execa';
-import chalk from 'chalk';
-import { createRequire } from 'module';
-
-/**
- * Check code boundaries in a file
- */
-async function checkCodeBoundaries(filePath, agentId) {
-  try {
-    const content = await fs.readFile(filePath, 'utf-8');
-    const boundaryRegex = /\/\* AGENT_BOUNDARY:\[([^\]]+)\] START \*\/([\s\S]*?)\/\* AGENT_BOUNDARY:\[[^\]]+\] END \*\//g;
-
-    const boundaries = [];
-    let match;
-
-    while ((match = boundaryRegex.exec(content)) !== null) {
-      boundaries.push({
-        owner: match[1],
-        startIndex: match.index,
-        endIndex: match.index + match[0].length,
-        content: match[2]
-      });
-    }
-
-    return {
-      file: filePath,
-      hasBoundaries: boundaries.length > 0,
-      boundaries: boundaries,
-      canModify: boundaries.every(b => b.owner === agentId || b.owner === 'SHARED')
-    };
-  } catch (error) {
-    return {
-      file: filePath,
-      error: error.message,
-      canModify: true // If can't read, assume can modify (new file)
-    };
-  }
-}
-
-// Main run function that sets up the CLI
-// Check for newer version on npm (non-blocking)
-function checkForUpdates() {
-  const require = createRequire(import.meta.url);
-  const pkg = require('../../package.json');
-  const currentVersion = pkg.version;
-
-  // Fire and forget — result captured via closure
-  let updateMessage = null;
-
-  const check = execa('npm', ['view', '@xelth/eck-snapshot', 'version'], { timeout: 5000 })
-    .then(({ stdout }) => {
-      const latest = stdout.trim();
-      if (latest && latest !== currentVersion) {
-        const current = currentVersion.split('.').map(Number);
-        const remote = latest.split('.').map(Number);
-        const isNewer = remote[0] > current[0] ||
-          (remote[0] === current[0] && remote[1] > current[1]) ||
-          (remote[0] === current[0] && remote[1] === current[1] && remote[2] > current[2]);
-        if (isNewer) {
-          updateMessage = `\n${chalk.yellow(`⬆ Update available: ${currentVersion} → ${latest}`)}  run: ${chalk.cyan('npm i -g @xelth/eck-snapshot')}`;
-        }
-      }
-    })
-    .catch(() => { /* network error, skip silently */ });
-
-  process.on('exit', () => {
-    if (updateMessage) {
-      console.error(updateMessage);
-    }
-  });
-}
+import { detectProject } from './commands/detectProject.js';
+import { runDoctor } from './commands/doctor.js';
 
 export function run() {
-  // Start version check in background (non-blocking)
-  checkForUpdates();
-
   const program = new Command();
-
   const pkg = createRequire(import.meta.url)('../../package.json');
-  const helpGuide = `eck-snapshot (v${pkg.version}) - AI-Native Repository Context Tool.
 
---- 🚀 Core Workflow: Optimized for Web LLMs (Claude/Gemini/Grok) ---
-💡 Note: ChatGPT is supported but can be slow. Use the suggested prompt at the end of the snapshot.
+  const helpGuide = `
+eck-snapshot (v${pkg.version}) - AI-Native Repository Context Tool.
+===================================================================
+⚠️ PURE JSON/MCP INTERFACE ACTIVE ⚠️
 
-1. Initial Context (Full Snapshot)
-   Create a complete map of your project to feed to the AI Architect.
-   $ eck-snapshot snapshot
+This CLI is designed to be operated by AI agents using JSON payloads.
+Legacy command-line flags have been removed.
 
-   (For very large projects, use profiles: $ eck-snapshot --profile backend)
+USAGE:
+  eck-snapshot '<json_payload>'
 
-2. Working & Updating
-   Local coders (Claude Code / OpenCode) will automatically sync context using MCP tools when they finish a task.
-   If YOU make manual changes, send an incremental update to the Web AI:
+AVAILABLE TOOLS:
+  - eck_snapshot  : Create a full context snapshot.
+                    Args: { profile?: string, skeleton?: boolean, jas/jao/jaz?: boolean }
+  - eck_update    : Create a delta snapshot.
+  - eck_setup_mcp : Configure MCP. Args: { opencode?: boolean, both?: boolean }
+  - eck_detect    : Detect project type. Args: {}
+  - eck_doctor    : Run project health check. Args: {}
 
-   $ eck-snapshot update
-   -> Generates: .eck/snapshots/update_<timestamp>.md (Contains changed/deleted files)
-
---- 🛠️ Managing Context Profiles ---
-
-Option A: Auto-Detection (Best for start)
-   Uses AI to scan folders and suggest profiles (backend, frontend, etc).
-   $ eck-snapshot profile-detect
-
-Option B: Manual Guide (Best for large repos)
-   If the project is too big for auto-detection, this generates a prompt text file
-   that you can paste into a powerful Web LLM (like Gemini, Claude, or Grok) to design profiles manually.
-   
-   1. Run:  $ eck-snapshot generate-profile-guide
-   2. Open: .eck/profile_generation_guide.md
-   3. Copy: Paste the content into your AI chat.
-   4. Save: Take the JSON response and save it to .eck/profiles.json
-
-Option C: Using Profiles
-   $ eck-snapshot --profile                         (List all profiles)
-   $ eck-snapshot --profile backend                 (Use profile)
-   $ eck-snapshot --profile "frontend,-**/*.test.js" (Ad-hoc filtering)
-
---- 🧩 Auxiliary Commands ---
-
-- restore:            Restore files from a snapshot to disk.
-- prune:              Use AI to shrink a snapshot file by importance.
-- ask-claude:        Delegate tasks to Claude CLI agent.
-- setup-gemini:       Configure gemini-cli integration.
-- setup-mcp:          Setup/restore MCP servers (eck-core + glm-zai).
-
---- 🧪 Experimental Features ---
-Run eck-snapshot snapshot --help to see experimental flags like --skeleton, --jas, --jaz.
+EXAMPLES:
+  eck-snapshot '{"name": "eck_snapshot", "arguments": {"profile": "backend"}}'
+  eck-snapshot '{"name": "eck_update"}'
+  eck-snapshot '{"name": "eck_setup_mcp", "arguments": {"both": true}}'
 `;
 
   program
     .name('eck-snapshot')
-    .description('A lightweight, platform-independent CLI for creating project snapshots.')
     .version(pkg.version)
-    .addHelpText('before', helpGuide);
+    .addHelpText('before', helpGuide)
+    .argument('[payload]', 'JSON string representing the MCP tool call')
+    .action(async (payloadStr) => {
+      if (!payloadStr) {
+        program.help();
+        return;
+      }
 
-  // Main snapshot command
-  program
-    .command('snapshot', { isDefault: true })
-    .description('Create a multi-agent aware snapshot of a repository')
-    .argument('[repoPath]', 'Path to the repository', process.cwd())
-    .option('-o, --output <dir>', 'Output directory')
-    .option('--no-tree', 'Exclude directory tree')
-    .option('-v, --verbose', 'Show detailed processing')
-    .option('--max-file-size <size>', 'Maximum file size', '10MB')
-    .option('--max-total-size <size>', 'Maximum total size', '100MB')
-    .option('--max-depth <number>', 'Maximum tree depth', (val) => parseInt(val), 10)
-    .option('--config <path>', 'Configuration file path')
-    .option('--include-hidden', 'Include hidden files')
-    .option('--format <type>', 'Output format: md, json', 'md')
-    .option('--no-ai-header', 'Skip AI instructions')
-    .option('-d, --dir', 'Directory mode')
-    .option('--enhanced', 'Use enhanced multi-agent headers (default: true)', true)
-    .option('--profile [name]', 'Filter files using profiles and/or ad-hoc glob patterns. Run without argument to list available profiles.')
-    .option('--agent', 'Generate a snapshot optimized for a command-line agent')
-    .option('--jas', 'Enable Project Mode for Junior Architect Sonnet (Claude Code only)')
-    .option('--jao', 'Enable Project Mode for Junior Architect Opus (Claude Code only)')
-    .option('--jaz', 'Enable Project Mode for Junior Architect GLM (OpenCode Z.AI only)')
-    .option('--zh', 'Communicate with GLM Z.AI workers in Chinese for better quality')
-    .option('--skeleton', 'Enable skeleton mode: strip function bodies to save context window tokens')
-    .option('--max-lines-per-file <number>', 'Truncate files to max N lines (e.g., 200 for compact snapshots)', (val) => parseInt(val))
-    .action(createRepoSnapshot)
-    .addHelpText('after', `
-Quick --profile Examples:
-  --profile                              List all available profiles
-  --profile backend                      Use the 'backend' profile
-  --profile "backend,-**/tests/**"       Use backend, exclude tests
-  --profile "src/**/*.js,-**/*.test.js"  Ad-hoc: all JS, exclude tests
-
-  See "Managing Context Profiles" section above for profile setup.
-`);
-
-  // Update snapshot command
-  program
-    .command('update')
-    .description('Create a delta snapshot of changed files since the last full snapshot')
-    .argument('[repoPath]', 'Path to the repository', process.cwd())
-    .option('--config <path>', 'Configuration file path')
-    .option('-f, --fail', 'Create an emergency snapshot without git commit')
-    .action(updateSnapshot);
-
-  // Auto/Silent Update command for Agents
-  program
-    .command('update-auto')
-    .description('Silent update for AI agents (JSON output)')
-    .argument('[repoPath]', 'Path to the repository', process.cwd())
-    .option('-f, --fail', 'Create an emergency snapshot without git commit')
-    .action(updateSnapshotJson);
-
-  // Restore command
-  program
-    .command('restore')
-    .description('Restore files from a snapshot')
-    .argument('<snapshot_file>', 'Snapshot file path')
-    .argument('[target_directory]', 'Target directory', process.cwd())
-    .option('-f, --force', 'Skip confirmation')
-    .option('-v, --verbose', 'Show detailed progress')
-    .option('--dry-run', 'Preview without writing')
-    .option('--include <patterns...>', 'Include patterns')
-    .option('--exclude <patterns...>', 'Exclude patterns')
-    .option('--concurrency <number>', 'Concurrent operations', (val) => parseInt(val), 10)
-    .action(restoreSnapshot);
-
-  // Prune command
-  program
-    .command('prune')
-    .description('Intelligently reduce snapshot size using AI file ranking')
-    .argument('<snapshot_file>', 'Path to the snapshot file to prune')
-    .option('--target-size <size>', 'Target size (e.g., 500KB, 1MB)', '500KB')
-    .action(pruneSnapshot);
-
-  // Consilium command
-  program
-    .command('consilium')
-    .description('Generate a consilium request for complex decisions')
-    .option('--type <type>', 'Decision type', 'technical_decision')
-    .option('--title <title>', 'Decision title')
-    .option('--description <desc>', 'Detailed description')
-    .option('--complexity <num>', 'Complexity score (1-10)', (val) => parseInt(val), 7)
-    .option('--constraints <list>', 'Comma-separated constraints')
-    .option('--snapshot <file>', 'Include snapshot file')
-    .option('--agent <id>', 'Requesting agent ID')
-    .option('-o, --output <file>', 'Output file', 'consilium_request.json')
-    .action(generateConsilium);
-
-  // Check boundaries command
-  program
-    .command('check-boundaries')
-    .description('Check agent boundaries in a file')
-    .argument('<file>', 'File to check')
-    .option('--agent <id>', 'Your agent ID')
-    .action(async (file, options) => {
-      const result = await checkCodeBoundaries(file, options.agent || 'UNKNOWN');
-      console.log(JSON.stringify(result, null, 2));
-    });
-
-  // Project detection command
-  program
-    .command('detect')
-    .description('Detect and display project type and configuration')
-    .argument('[projectPath]', 'Path to the project', process.cwd())
-    .option('-v, --verbose', 'Show detailed detection results')
-    .action(detectProject);
-
-  // Android parsing test command
-  program
-    .command('test-android')
-    .description('Test Android file parsing capabilities')
-    .argument('<filePath>', 'Path to Android source file (.kt or .java)')
-    .option('--show-content', 'Show content preview of parsed segments')
-    .action(testFileParsing);
-
-  // Token training command
-  program
-    .command('train-tokens')
-    .description('Train token estimation with actual results')
-    .argument('<projectType>', 'Project type (android, nodejs, python, etc.)')
-    .argument('<fileSizeBytes>', 'File size in bytes')
-    .argument('<estimatedTokens>', 'Estimated token count')
-    .argument('<actualTokens>', 'Actual token count from LLM')
-    .action(trainTokens);
-
-  // Token statistics command
-  program
-    .command('token-stats')
-    .description('Show token estimation statistics and accuracy')
-    .action(showTokenStats);
-
-  // Profile detection command
-  program
-    .command('profile-detect')
-    .description('Use AI to scan the directory tree and auto-generate local context profiles (saves to .eck/profiles.json)')
-    .argument('[repoPath]', 'Path to the repository', process.cwd())
-    .action(detectProfiles);
-
-  program
-    .command('generate-profile-guide')
-    .description('Generate a markdown guide with a prompt and directory tree for manual profile creation')
-    .argument('[repoPath]', 'Path to the repository', process.cwd())
-    .option('--config <path>', 'Configuration file path')
-    .action((repoPath, options) => generateProfileGuide(repoPath, options));
-
-  // Ask Claude command
-  program
-    .command('ask-claude')
-    .description('Execute a prompt using claude-code CLI and return JSON response')
-    .argument('<prompt>', 'Prompt to send to Claude')
-    .option('-c, --continue', 'Continue the most recent conversation')
-    .action(async (prompt, options) => {
+      let payload;
       try {
-        const result = await executePrompt(prompt, options.continue);
-        console.log(JSON.stringify(result, null, 2));
-      } catch (error) {
-        console.error(`Failed to execute prompt: ${error.message}`);
+        payload = JSON.parse(payloadStr.trim());
+      } catch (e) {
+        console.error(chalk.red('❌ Error: Input must be a valid JSON string.'));
+        console.log(chalk.yellow(`Example: eck-snapshot '{"name": "eck_snapshot"}'`));
+        process.exit(1);
+      }
+
+      const toolName = payload.name;
+      const args = payload.arguments || {};
+      const cwd = process.cwd();
+
+      try {
+        switch (toolName) {
+          case 'eck_snapshot':
+            await createRepoSnapshot(cwd, args);
+            break;
+          case 'eck_update':
+            await updateSnapshot(cwd, args);
+            break;
+          case 'eck_update_auto':
+            await updateSnapshotJson(cwd, args);
+            break;
+          case 'eck_setup_mcp':
+            await setupMcp(args);
+            break;
+          case 'eck_detect':
+            await detectProject(cwd, args);
+            break;
+          case 'eck_doctor':
+            await runDoctor(cwd);
+            break;
+          default:
+            console.log(chalk.red(`❌ Unknown tool: "${toolName}"`));
+            console.log(chalk.yellow('Run `eck-snapshot -h` to see available JSON tools.'));
+            process.exit(1);
+        }
+      } catch (err) {
+        console.error(chalk.red(`❌ Execution failed for ${toolName}:`), err.message);
         process.exit(1);
       }
     });
 
-  // Ask Claude with specific session
-  program
-    .command('ask-claude-session')
-    .description('Execute a prompt using specific session ID')
-    .argument('<sessionId>', 'Session ID to resume')
-    .argument('<prompt>', 'Prompt to send to Claude')
-    .action(async (sessionId, prompt) => {
-      try {
-        // Directly use the provided session ID
-        const result = await executePromptWithSession(prompt, sessionId);
-        console.log(JSON.stringify(result, null, 2));
-      } catch (error) {
-        console.error('Failed to execute prompt:', error.message);
-        process.exit(1);
-      }
-    });
-
-
-
-
-  program
-    .command('generate-ai-prompt')
-    .description('Generate a specific AI prompt from a template.')
-    .option('--role <role>', 'The role for which to generate a prompt', 'architect')
-    .action(async (options) => {
-      try {
-        const templatePath = path.join(__dirname, '..', 'templates', `${options.role}-prompt.template.md`);
-        const template = await fs.readFile(templatePath, 'utf-8');
-        // In the future, we can inject dynamic data here from setup.json
-        console.log(template);
-      } catch (error) {
-        console.error(`Failed to generate prompt for role '${options.role}':`, error.message);
-        process.exit(1);
-      }
-    });
-
-  // Setup Gemini command
-  program
-    .command('setup-gemini')
-    .description('Generate claude.toml configuration for gemini-cli integration with dynamic paths')
-    .option('-v, --verbose', 'Show detailed output and error information')
-    .action(setupGemini);
-
-
-  // Show file command (for skeleton mode lazy loading)
-  program
-    .command('show')
-    .description('Output the full content of specific file(s) (for AI lazy loading)')
-    .argument('<filePaths...>', 'Space-separated paths to files')
-    .action(showFile);
-
-  // Doctor command (health check for manifests)
-  program
-    .command('doctor')
-    .description('Check project health and detect unfinished manifest stubs')
-    .argument('[repoPath]', 'Path to the repository', process.cwd())
-    .action(runDoctor);
-
-  // Setup MCP servers command (replaces setup-claude-mcp with unified approach)
-  program
-    .command('setup-mcp')
-    .description('Setup/restore MCP servers (eck-core + glm-zai) for Claude Code and/or OpenCode')
-    .option('--opencode', 'Setup for OpenCode only')
-    .option('--both', 'Setup for both Claude Code and OpenCode')
-    .option('-v, --verbose', 'Show detailed output')
-    .action(setupMcp);
-
-  // Environment sync commands (encrypted .eck/ transfer between machines)
-  const envCmd = program.command('env').description('Encrypted environment sync');
-  envCmd
-    .command('push')
-    .description('Pack and encrypt .eck/ config files into .eck-sync.enc')
-    .option('-v, --verbose', 'Show detailed output')
-    .action(envPush);
-  envCmd
-    .command('pull')
-    .description('Decrypt and restore .eck/ config files from .eck-sync.enc')
-    .option('-f, --force', 'Overwrite existing .eck/ files without prompting')
-    .option('-v, --verbose', 'Show detailed output')
-    .action(envPull);
-
-  // Telemetry commands
-  const telemetryCmd = program.command('telemetry').description('Manage Telemetry Hub synchronization');
-  telemetryCmd
-    .command('push')
-    .description('Manually push the latest AnswerToSA.md report to xelth.com/T/report')
-    .argument('[repoPath]', 'Path to the repository', process.cwd())
-    .action(async (repoPath) => {
-      console.log(chalk.blue('Pushing agent telemetry...'));
-      await pushTelemetry(repoPath, false);
-    });
-
-  telemetryCmd
-    .command('sync-weights')
-    .description('Fetch the latest global token estimation weights from Telemetry Hub')
-    .action(async () => {
-      const { syncTokenWeights } = await import('../utils/tokenEstimator.js');
-      await syncTokenWeights();
-    });
+  // Start version check in background (non-blocking)
+  checkForUpdates(pkg.version);
 
   program.parse(process.argv);
+}
+
+function checkForUpdates(currentVersion) {
+  import('execa').then(({ execa }) => {
+    execa('npm', ['view', '@xelth/eck-snapshot', 'version'], { timeout: 5000 })
+      .then(({ stdout }) => {
+        const latest = stdout.trim();
+        if (latest && latest !== currentVersion) {
+          console.error(`\n${chalk.yellow(`⬆ Update available: ${currentVersion} → ${latest}`)}`);
+        }
+      })
+      .catch(() => {});
+  });
 }
