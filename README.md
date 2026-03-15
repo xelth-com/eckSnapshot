@@ -1,4 +1,4 @@
-# 📸 eckSnapshot v6.1 (AI-Native Edition)
+# 📸 eckSnapshot v6.2 (AI-Native Edition)
 
 A specialized, AI-native CLI tool that creates single-file text snapshots of entire Git repositories and feeds them directly into LLM context windows. Instead of letting AI agents guess which files to read, eckSnapshot force-feeds the complete project into the model's context — giving it a "university degree" in your codebase from the very first prompt.
 
@@ -82,7 +82,32 @@ For humans typing in the terminal, short commands work too:
 - `eck-snapshot update` — Delta update
 - `eck-snapshot scout` — Recon tree generation
 - `eck-snapshot fetch "src/**/*.rs"` — Fetch specific files
+- `eck-snapshot link 4` — Generate a linked companion snapshot (depth 4)
 - `eck-snapshot setup-mcp` — Configure MCP servers
+
+---
+
+## 🔗 The Cross-Context Protocol (Linked Projects) — New in v6.2
+
+When your AI is working on **Project A** and needs deep awareness of **Project B** (e.g., a shared backend, a component library), use the Cross-Context Protocol.
+
+**Run inside the companion project:**
+```bash
+cd ../project-b
+eck-snapshot link 5
+```
+
+This generates a standalone `link_*.md` file with a read-only cross-context header. Upload it alongside your main project snapshot.
+
+### Depth Scale (0-10)
+| Depth | Mode | Use Case |
+|-------|------|----------|
+| **0** | Tree only | "Just show me the folder structure" |
+| **1-3** | Truncated (20/50/100 lines) | Quick API surface scan |
+| **4-6** | Skeleton (signatures only) | Architecture understanding |
+| **7-10** | Full content | Deep integration work |
+
+The AI will automatically receive instructions to **not edit** the linked project and will be given `eck_fetch` commands to drill deeper if needed.
 
 ---
 

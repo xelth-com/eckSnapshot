@@ -47,6 +47,29 @@ node index.js '{"name": "eck_snapshot", "arguments": {"jaz": true}}'
 node index.js '{"name": "eck_snapshot", "arguments": {"profile": "backend", "jas": true}}'
 ```
 
+## Cross-Context Protocol (Linked Projects)
+```bash
+# Generate a standalone linked snapshot of the current project
+# Run this INSIDE the target project directory
+eck-snapshot link        # Depth 0: tree only
+eck-snapshot link 3      # Depth 3: truncated (100 lines per file)
+eck-snapshot link 5      # Depth 5: skeleton mode
+eck-snapshot link 8      # Depth 8: full content
+
+# JSON equivalent:
+node index.js '{"name": "eck_snapshot", "arguments": {"isLinkedProject": true, "linkDepth": 5}}'
+```
+
+**Depth Scale (0-10):**
+| Depth | Mode | Description |
+|-------|------|-------------|
+| 0 | Tree only | Directory structure, no file contents |
+| 1-3 | Truncated | 20 / 50 / 100 lines per file |
+| 4-6 | Skeleton | Function signatures only (Babel + Tree-sitter) |
+| 7-10 | Full | Complete file contents |
+
+Output: `link_*.md` in the `snapshots/` directory. Upload alongside main project snapshot.
+
 ## Reconnaissance Protocol (Cross-Repo Exploration)
 ```bash
 # Scout: Generate directory tree of external repo

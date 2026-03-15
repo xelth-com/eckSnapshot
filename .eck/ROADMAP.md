@@ -9,6 +9,7 @@
 - [ ] Per-project telemetry isolation (project_id in reports)
 
 ## Completed
+- [x] **v6.2: Cross-Context Protocol** — `eck-snapshot link [depth]` generates standalone companion snapshots with 0-10 depth scale (tree-only → truncated → skeleton → full)
 - [x] **v6.1: 100% JSON-Native CLI migration** — all commands are JSON payloads
 - [x] **Reconnaissance Protocol** — `eck_scout` (tree) + `eck_fetch` (file extraction) for cross-repo exploration
 - [x] **Codex MCP integration** — auto-detect `.codex/` dir, inject TOML config

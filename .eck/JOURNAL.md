@@ -1,4 +1,27 @@
 ---
+task_id: cross-context-linked-projects
+date: 2026-03-15
+type: feat
+scope: cross-context,cli
+summary: Implement Cross-Context Protocol with linked projects and 0-10 depth scale
+---
+
+# Cross-Context Protocol (Linked Projects)
+
+- Added `eck-snapshot link [depth]` command — generates standalone `link_*.md` companion snapshots
+- Depth scale: 0=tree only, 1-3=truncated (20/50/100 lines), 4-6=skeleton, 7-10=full content
+- Custom cross-context header with dual fetch formats (Windows short + Linux JSON)
+- Added cross-context awareness to `multiAgent.md` and `architect-prompt.template.md` AI templates
+- Human-friendly `link` shim in `LEGACY_COMMANDS`
+
+**Modified Files**:
+- `src/cli/cli.js`: `link` legacy command shim, updated help text
+- `src/cli/commands/createSnapshot.js`: `isLinkedProject` depth mapping, standalone `link_` file output
+- `src/utils/aiHeader.js`: reverted inline injection (standalone file approach instead)
+- `src/templates/multiAgent.md`: cross-context awareness section
+- `src/templates/architect-prompt.template.md`: `link` in available commands
+
+---
 task_id: telemetry-token-weights-sync
 date: 2026-03-01
 type: feat
@@ -220,6 +243,29 @@ scope: core
 
 
 
+
+
+## 2026-03-15 — Agent Report
+
+# Agent Report
+
+## Dual Fetch Formats + Cross-Context Prompt Awareness
+
+### Changes Made
+
+**1. `src/cli/commands/createSnapshot.js`**
+- Updated `isLinkedProject` header to output both fetch formats:
+  - **Option A** (short format): `eck-snapshot fetch "path/to/file"` — best for Windows PowerShell/CMD
+  - **Option B** (JSON format): `eck-snapshot '{"name": "eck_fetch", ...}'` — best for Linux/Mac Bash/Zsh
+
+**2. `src/templates/multiAgent.md`**
+- Added `### CROSS-CONTEXT DEVELOPMENT (LINKED PROJECTS)` section before the anti-truncation protocol.
+- Instructs the AI to ask users to run `eck-snapshot link [depth 0-10]` in companion repos and upload the `link_*.md` file.
+
+**3. `src/templates/architect-prompt.template.md`**
+- Added `eck-snapshot link <depth>` to the Available Commands list.
+
+No issues.
 
 ## 2026-03-15 — Agent Report
 

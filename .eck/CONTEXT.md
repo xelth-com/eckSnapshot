@@ -1,9 +1,9 @@
 # Project Overview
 
 ## Description
-A specialized, AI-native CLI tool that creates single-file text snapshots of Git repositories for LLM context windows. As of v6.1, the CLI operates as a **100% JSON/MCP bridge** — all commands are JSON payloads, with human-friendly shims for convenience.
+A specialized, AI-native CLI tool that creates single-file text snapshots of Git repositories for LLM context windows. As of v6.2, the CLI operates as a **100% JSON/MCP bridge** — all commands are JSON payloads, with human-friendly shims for convenience.
 
-Also serves as the coordination hub for the Royal Court AI architecture and provides the Reconnaissance Protocol for cross-repo exploration.
+Also serves as the coordination hub for the Royal Court AI architecture and provides the Reconnaissance Protocol for cross-repo exploration and the Cross-Context Protocol for linked multi-project snapshots.
 
 ## Architecture
 - **Environment**: Node.js (ESM, `type: "module"`)
@@ -14,6 +14,7 @@ Also serves as the coordination hub for the Royal Court AI architecture and prov
   - **Skeleton Mode**: Strips function bodies using Tree-sitter and Babel to save tokens
   - **Delta Updates**: Tracks changes via Git anchors with sequential numbering (`_up1`, `_up2`, ...)
   - **Reconnaissance Protocol**: `eck_scout` (directory tree) + `eck_fetch` (file extraction) for cross-repo exploration
+  - **Cross-Context Protocol**: `eck-snapshot link [depth]` generates standalone `link_*.md` companion snapshots with 0-10 depth scale
   - **Security**: Built-in SecretScanner for automatic redaction of API keys (regex + Shannon entropy)
 
 ## Key Technologies
@@ -40,7 +41,7 @@ All tools are dispatched via a single JSON payload argument:
 | `eck_train_tokens` | Calibrate token estimator | `trainTokens.js` |
 | `eck_token_stats` | Show estimation accuracy | `trainTokens.js` |
 
-Legacy positional commands are intercepted via `LEGACY_COMMANDS` map in `cli.js` and translated to JSON before reaching the router.
+Legacy positional commands are intercepted via `LEGACY_COMMANDS` map in `cli.js` and translated to JSON before reaching the router. Includes `link` shim for cross-context snapshots.
 
 **Default behavior:** Running `eck-snapshot` without arguments defaults to a full snapshot (`eck_snapshot`).
 
@@ -81,6 +82,7 @@ Excluded from scanning: files containing `secret`, `credential`, `server_access`
 | `{"jas": true}` | Configure for JAS (Sonnet 4.6) | `CLAUDE.md` with tree + Smart Delegation Protocol |
 | `{"jao": true}` | Configure for JAO (Opus 4.6) | `CLAUDE.md` with Enhanced verification rules |
 | `{"jaz": true}` | Configure for JAZ (GLM-4.7) | `AGENTS.md` with YAML frontmatter + GLM swarm config |
+| `{"isLinkedProject": true, "linkDepth": N}` | Cross-context companion snapshot | Standalone `link_*.md` with depth-scaled content |
 | (none) | Standard coder snapshot | Standalone `.md` for any LLM |
 
 ## Important Notes
