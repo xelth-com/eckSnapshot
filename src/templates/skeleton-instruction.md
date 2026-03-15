@@ -11,6 +11,6 @@ If you need to see the code inside these blocks to perform your task, you **MUST
 
 **Command to request code:**
 ```bash
-eck-snapshot show path/to/file1.js path/to/file2.js
+eck-snapshot '{"name": "eck_fetch", "arguments": {"patterns": ["path/to/file1.js", "path/to/file2.js"]}}'
 ```
 **(Batch multiple files in one command!)**

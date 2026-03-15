@@ -271,7 +271,7 @@ async function setupForOpenCode(packageRoot, eckCorePath, glmZaiPath, options) {
   spinner.succeed(`OpenCode config updated: ${chalk.cyan(configPath)}`);
 
   console.log(chalk.gray('\n  OpenCode will read MCP servers from opencode.json on next start.'));
-  console.log(chalk.gray('  Use `eck-snapshot --jas` or `--jao` to generate AGENTS.md for OpenCode.\n'));
+  console.log(chalk.gray('  Use `eck-snapshot \'{"name": "eck_snapshot", "arguments": {"jas": true}}\'` to generate AGENTS.md.\n'));
 }
 
 /**

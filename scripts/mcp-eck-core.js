@@ -74,7 +74,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       );
 
       const cliPath = path.join(PROJECT_ROOT, "index.js");
-      const { stdout } = await execa("node", [cliPath, "update-auto", "--fail"], { cwd: workDir, timeout: 120000 });
+      const { stdout } = await execa("node", [cliPath, JSON.stringify({ name: "eck_update_auto", arguments: { fail: true } })], { cwd: workDir, timeout: 120000 });
 
       let result;
       try {
@@ -116,7 +116,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
       // 4. Auto Update Snapshot
       const cliPath = path.join(PROJECT_ROOT, "index.js");
-      const { stdout } = await execa("node", [cliPath, "update-auto"], { cwd: workDir, timeout: 120000 });
+      const { stdout } = await execa("node", [cliPath, JSON.stringify({ name: "eck_update_auto" })], { cwd: workDir, timeout: 120000 });
 
       let result;
       try {

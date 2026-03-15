@@ -209,6 +209,32 @@ scope: core
 
 
 
+
+## 2026-03-15 — Agent Report
+
+# Agent Report
+
+# feat(recon): Reinstate Reconnaissance protocol in JSON interface
+
+## What was done
+
+### Created `src/cli/commands/recon.js`
+- `runReconTool(payload)` — dispatcher for `eck_scout` and `eck_fetch`
+- `runScout()` — generates a deep directory tree (maxDepth 15) into `.eck/recon/recon_tree_*.md` with AI-safe instructions warning not to assume architect role for the external repo
+- `runFetch(patterns)` — uses `micromatch` to glob-match files, reads their content, saves to `.eck/recon/recon_data_*.md`
+
+### Updated `src/cli/cli.js`
+- Added `import { runReconTool } from './commands/recon.js'`
+- Added `eck_scout` and `eck_fetch` cases to the switch router
+- Added `scout` and `fetch` legacy shims to `LEGACY_COMMANDS`
+- Updated help text to list the two new recon tools with examples
+
+## Verification
+- `'{"name": "eck_scout"}'` — generates tree file successfully
+- `'{"name": "eck_fetch", "arguments": {"patterns": ["setup.json"]}}'` — fetches 1 file successfully
+- `scout` legacy shim — works
+- Both modules load cleanly
+
 ## 2026-03-15 — Agent Report
 
 # Agent Report

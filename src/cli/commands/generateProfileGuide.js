@@ -136,7 +136,7 @@ export async function generateProfileGuide(repoPath = process.cwd(), options = {
     console.log('2. Copy the PROMPT + TREE content and paste it into an AI (Gemini, Claude, Grok).');
     console.log('3. Copy the JSON response from the AI.');
     console.log(`4. Paste the JSON into: ${chalk.bold('.eck/profiles.json')} ${profilesCreated ? '(I created this file for you)' : '(File exists)'}`);
-    console.log('\n✅ Once saved, run: ' + chalk.green('eck-snapshot --profile <profile_name>'));
+    console.log('\n✅ Once saved, run: ' + chalk.green(`eck-snapshot '{"name": "eck_snapshot", "arguments": {"profile": "<profile_name>"}}'`));
   } catch (error) {
     spinner.fail(`Failed to generate profile guide: ${error.message}`);
     throw error;

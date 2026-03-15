@@ -17,7 +17,7 @@ If `eck_finish_task` is NOT in your available tools, you MUST do the following:
 1. **READ:** Read `.eck/lastsnapshot/AnswerToSA.md` using your `Read` tool (REQUIRED before overwriting).
 2. **WRITE:** Overwrite that file with your report.
 3. **COMMIT (CRITICAL):** Run `git add .` and `git commit -m "chore: task report"` in the terminal.
-4. **SNAPSHOT:** Run `eck-snapshot update` in the terminal.
+4. **SNAPSHOT:** Run `eck-snapshot '{"name": "eck_update"}'` in the terminal.
 *(Note: The snapshot compares against the git anchor. If you skip step 3, it will say "No changes detected").*
 
 ## PROJECT CONTEXT (.eck DIRECTORY)

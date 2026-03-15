@@ -372,7 +372,7 @@ async function processProjectFiles(repoPath, options, config, projectType = null
 
         if (filterResult.notFoundProfiles.length > 0) {
           errorMsg += `\n\n❌ Profile(s) not found: ${filterResult.notFoundProfiles.join(', ')}`;
-          errorMsg += `\n\n💡 Run 'eck-snapshot --profile' to see available profiles.`;
+          errorMsg += `\n\n💡 Run 'eck-snapshot snapshot --profile' to see available profiles.`;
           errorMsg += `\n   Or run 'eck-snapshot generate-profile-guide' to create profiles.`;
         } else if (filterResult.foundProfiles.length > 0) {
           errorMsg += `\n\n✓ Profile(s) found: ${filterResult.foundProfiles.join(', ')}`;
@@ -571,7 +571,7 @@ export async function createRepoSnapshot(repoPath, options) {
         // Generate ready-to-copy command with all profiles
         const allProfilesString = profileNames.join(',');
         console.log(chalk.cyan('📝 Ready-to-Copy Command (all profiles):'));
-        console.log(chalk.bold(`\neck-snapshot --profile "${allProfilesString}"\n`));
+        console.log(chalk.bold(`\neck-snapshot '{"name": "eck_snapshot", "arguments": {"profile": "${allProfilesString}"}}'\n`));
         console.log(chalk.gray('💡 Tip: Copy the command above and remove profiles you don\'t need'));
         process.exit(0);
       } catch (error) {

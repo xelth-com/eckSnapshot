@@ -83,7 +83,7 @@ export async function estimateTokensWithPolynomial(projectType, fileSizeInBytes)
 export function generateTrainingCommand(projectType, estimatedTokens, fileSizeInBytes, projectPath) {
   const projectName = path.basename(projectPath);
   
-  return `eck-snapshot train-tokens ${projectType} ${fileSizeInBytes} ${estimatedTokens} `;
+  return `eck-snapshot '{"name": "eck_train_tokens", "arguments": {"projectType": "${projectType}", "fileSizeBytes": ${fileSizeInBytes}, "estimatedTokens": ${estimatedTokens}, "actualTokens": `;
 }
 
 /**
