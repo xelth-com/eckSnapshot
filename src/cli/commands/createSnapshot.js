@@ -533,6 +533,24 @@ async function processProjectFiles(repoPath, options, config, projectType = null
 }
 
 export async function createRepoSnapshot(repoPath, options) {
+  // Handle linked project depth settings before processing
+  if (options.isLinkedProject) {
+    const depth = options.linkDepth !== undefined ? parseInt(options.linkDepth, 10) : 0;
+    if (depth === 0) {
+      options.skipContent = true;
+    } else if (depth >= 1 && depth <= 3) {
+      const linesMap = { 1: 20, 2: 50, 3: 100 };
+      options.maxLinesPerFile = linesMap[depth];
+      options.skeleton = false;
+    } else if (depth >= 4 && depth <= 6) {
+      options.skeleton = true;
+      options.maxLinesPerFile = 0;
+    } else {
+      options.skeleton = false;
+      options.maxLinesPerFile = 0;
+    }
+  }
+
   const spinner = ora('Analyzing project...').start();
   try {
     // Ensure snapshots/ is in .gitignore to prevent accidental commits
@@ -718,85 +736,36 @@ export async function createRepoSnapshot(repoPath, options) {
       let architectFilePath = null;
       let jaFilePath = null;
 
-      // File body always includes full content
-      let fileBody = (directoryTree ? `\n## Directory Structure\n\n\`\`\`\n${directoryTree}\`\`\`\n\n` : '') + contentArray.join('');
-
-      // --- PROCESS LINKED PROJECTS ---
-      let linkedBody = '';
-      if (options.link) {
-        const links = Array.isArray(options.link) ? options.link : [options.link];
-        const linkDepth = options.linkDepth !== undefined ? parseInt(options.linkDepth, 10) : 0;
-
-        for (const linkPath of links) {
-          const absLinkPath = path.resolve(originalCwd, linkPath);
-          const linkName = path.basename(absLinkPath);
-          console.log(chalk.magenta(`\n🔗 Processing Linked Project: ${linkName} (Depth: ${linkDepth})`));
-
-          // Configure options based on 0-10 scale
-          let linkOptions = { ...options, link: undefined, linkDepth: undefined, profile: undefined };
-          let skipContent = false;
-
-          if (linkDepth === 0) {
-            skipContent = true;
-          } else if (linkDepth >= 1 && linkDepth <= 3) {
-            const linesMap = { 1: 20, 2: 50, 3: 100 };
-            linkOptions.maxLinesPerFile = linesMap[linkDepth];
-            linkOptions.skeleton = false;
-          } else if (linkDepth >= 4 && linkDepth <= 6) {
-            linkOptions.skeleton = true;
-            linkOptions.maxLinesPerFile = 0;
-          } else {
-            linkOptions.skeleton = false;
-            linkOptions.maxLinesPerFile = 0;
-          }
-
-          try {
-            const linkDetection = await detectProjectType(absLinkPath);
-            const linkResult = await processProjectFiles(absLinkPath, linkOptions, config, linkDetection.type);
-
-            let linkTree = '';
-            if (config.tree && !options.noTree) {
-              linkTree = await generateDirectoryTree(absLinkPath, '', linkResult.allFiles, 0, config.maxDepth || 10, config);
-            }
-
-            linkedBody += `\n\n# 🔗 LINKED PROJECT: [${linkName}]\n\n`;
-            linkedBody += `**ABSOLUTE PATH:** \`${absLinkPath}\`\n`;
-            linkedBody += `**CROSS-CONTEXT MODE:** This is a linked companion project provided for reference. DO NOT generate code for it directly in your response unless explicitly asked. To inspect files inside this project, use your tool to run:\n`;
-            linkedBody += `\`eck-snapshot '{"name": "eck_fetch", "arguments": {"patterns": ["${absLinkPath.replace(/\\/g, '/')}/src/example.js"]}}'\`\n\n`;
-
-            if (linkTree) {
-              linkedBody += `## Linked Directory Structure\n\n\`\`\`\n${linkTree}\`\`\`\n\n`;
-            }
-
-            if (!skipContent && linkResult.contentArray) {
-              linkedBody += `## Linked Source Code (Depth Level ${linkDepth})\n\n`;
-              linkedBody += linkResult.contentArray.join('');
-            } else {
-              linkedBody += `*(Source code omitted due to linkDepth=${linkDepth})*\n`;
-            }
-
-          } catch (linkErr) {
-            console.warn(chalk.yellow(`⚠️ Failed to process linked project at ${absLinkPath}: ${linkErr.message}`));
-          }
-        }
+      let fileBody = '';
+      if (directoryTree) {
+        fileBody += `\n## Directory Structure\n\n\`\`\`\n${directoryTree}\`\`\`\n\n`;
       }
-
-      fileBody += linkedBody;
+      if (!options.skipContent) {
+        fileBody += contentArray.join('');
+      }
 
       // Helper to write snapshot file
       const writeSnapshot = async (suffix, isAgentMode) => {
-        // CHANGE: Force agent to FALSE for the main snapshot header.
-        // The snapshot is read by the Human/Senior Arch, not the Agent itself.
-        // The Agent reads CLAUDE.md.
-        const opts = { ...options, agent: false, jas: isJas, jao: isJao, jaz: isJaz };
-        const header = await generateEnhancedAIHeader({ stats, repoName, mode: 'file', eckManifest, options: opts, repoPath: processedRepoPath }, isGitRepo);
+        let header = '';
+        if (options.isLinkedProject) {
+          const absPath = processedRepoPath.replace(/\\/g, '/');
+          header = `# 🔗 LINKED PROJECT: [${repoName}]\n\n`;
+          header += `**ABSOLUTE PATH:** \`${absPath}\`\n`;
+          header += `**CROSS-CONTEXT MODE:** This is a linked companion project provided for reference. DO NOT generate code for it directly in your response unless explicitly asked. To inspect files inside this project, use your tool to run:\n`;
+          header += `\`eck-snapshot '{"name": "eck_fetch", "arguments": {"patterns": ["${absPath}/src/example.js"]}}'\`\n\n`;
+          if (options.skipContent) {
+            header += `*(Source code omitted due to linkDepth=0. Directory structure only.)*\n\n`;
+          }
+        } else {
+          const opts = { ...options, agent: false, jas: isJas, jao: isJao, jaz: isJaz };
+          header = await generateEnhancedAIHeader({ stats, repoName, mode: 'file', eckManifest, options: opts, repoPath: processedRepoPath }, isGitRepo);
+        }
 
-        // Compact filename format: eck{ShortName}{timestamp}_{hash}_{suffix}.md
-        // getShortRepoName ensures Capitalized Start/End (e.g. SnaOt)
+        // Compact filename format
         const shortHash = gitHash ? gitHash.substring(0, 7) : '';
         const shortRepoName = getShortRepoName(repoName);
 
-        let fname = `eck${shortRepoName}${timestamp}`;
+        let fname = options.isLinkedProject ? `link_${shortRepoName}${timestamp}` : `eck${shortRepoName}${timestamp}`;
         if (shortHash) fname += `_${shortHash}`;
 
         // Add mode suffix

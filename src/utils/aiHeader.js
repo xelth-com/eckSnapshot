@@ -676,12 +676,6 @@ const x = 1;
 
     let renderedTemplate = render(template, data);
 
-    // Inject Link-Dependency notice if linked projects exist
-    if (context.options && context.options.link) {
-      const linkNotice = "\n> **ℹ️ MULTI-PROJECT CONTEXT:** This snapshot contains Linked/Bound projects at the bottom of the file. You can use your `Bash` tool to run `eck-snapshot fetch` on their absolute paths if you need more details.\n";
-      renderedTemplate = renderedTemplate.replace(/### PROJECT OVERVIEW/, "### PROJECT OVERVIEW" + linkNotice);
-    }
-
     // Inject skeleton mode instructions if enabled
     if (context.options && context.options.skeleton) {
       try {

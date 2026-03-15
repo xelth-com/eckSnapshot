@@ -219,6 +219,20 @@ scope: core
 
 
 
+
+## 2026-03-15 — Agent Report
+
+# Agent Report
+
+## Added `link` Legacy Command Shim
+
+Added human-friendly shorthand to `LEGACY_COMMANDS` in `src/cli/cli.js`:
+- `eck-snapshot link ../other-project 4` → translates to `{"name": "eck_snapshot", "arguments": {"link": "../other-project", "linkDepth": 4}}`
+- Depth defaults to 0 if omitted.
+- Added `HUMAN SHORTHANDS` section to the help text.
+
+No issues.
+
 ## 2026-03-15 — Agent Report
 
 # Agent Report

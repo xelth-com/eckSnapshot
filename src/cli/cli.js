@@ -28,7 +28,7 @@ const LEGACY_COMMANDS = {
   'doctor':      () => ({ name: 'eck_doctor', arguments: {} }),
   'scout':       () => ({ name: 'eck_scout', arguments: {} }),
   'fetch':       (args) => ({ name: 'eck_fetch', arguments: { patterns: args } }),
-  'link':        (args) => ({ name: 'eck_snapshot', arguments: { link: args[0], linkDepth: args[1] ? parseInt(args[1], 10) : 0 } }),
+  'link':        (args) => ({ name: 'eck_snapshot', arguments: { isLinkedProject: true, linkDepth: args[0] ? parseInt(args[0], 10) : 0 } }),
 };
 
 export function run() {
@@ -74,7 +74,7 @@ EXAMPLES:
   eck-snapshot '{"name": "eck_fetch", "arguments": {"patterns": ["src/**/*.rs"]}}'
 
 HUMAN SHORTHANDS:
-  eck-snapshot link ../other-project 4  (Creates snapshot with linked project at depth 4)
+  eck-snapshot link 4  (Run inside the target project to create a standalone linked snapshot at depth 4)
 `;
 
   program
