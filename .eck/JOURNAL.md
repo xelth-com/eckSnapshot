@@ -210,6 +210,56 @@ scope: core
 
 
 
+
+## 2026-03-15 — Agent Report
+
+# Agent Report
+
+# refactor(core): Eliminate reliance on legacy command shim
+
+## Changes Made
+
+### `scripts/mcp-eck-core.js` (critical path)
+- `execa("node", [cliPath, "update-auto", "--fail"])` → `execa("node", [cliPath, JSON.stringify({ name: "eck_update_auto", arguments: { fail: true } })])`
+- `execa("node", [cliPath, "update-auto"])` → `execa("node", [cliPath, JSON.stringify({ name: "eck_update_auto" })])`
+
+### `src/utils/claudeMdGenerator.js`
+- All `eck-snapshot setup-mcp` → `eck-snapshot '{"name": "eck_setup_mcp"}'`
+- All `eck-snapshot update` → `eck-snapshot '{"name": "eck_update"}'`
+- Removed redundant "do not use eck-snapshot update" warning
+
+### `src/templates/opencode/coder.template.md`
+- `eck-snapshot update` → `eck-snapshot '{"name": "eck_update"}'`
+
+### `src/templates/opencode/junior-architect.template.md`
+- `eck-snapshot update` → `eck-snapshot '{"name": "eck_update"}'`
+
+### `src/templates/skeleton-instruction.md`
+- `eck-snapshot show path/to/file1.js` → `eck-snapshot '{"name": "eck_fetch", "arguments": {"patterns": [...]}}'`
+
+### `src/cli/commands/createSnapshot.js`
+- Profile listing command updated to JSON format
+- Error hint updated
+
+### `src/cli/commands/generateProfileGuide.js`
+- "Once saved, run" hint updated to JSON format
+
+### `src/cli/commands/setupMcp.js`
+- OpenCode hint updated to JSON format
+
+### `src/utils/tokenEstimator.js`
+- Training command updated to JSON format
+
+## Remaining legacy references (non-critical)
+- JSDoc comments in `setupMcp.js` (documentation only)
+- `README.md` in claude-code templates
+- Dead-code modules (`showFile.js`, `trainTokens.js`) — not wired into JSON router
+
+## Verification
+- `cli.js` loads cleanly
+- `mcp-eck-core.js` loads cleanly
+- All user-facing hints and internal subprocess calls now use native JSON format
+
 ## 2026-03-15 — Agent Report
 
 # Agent Report
