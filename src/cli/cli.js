@@ -15,7 +15,27 @@ import { setupMcp } from './commands/setupMcp.js';
 import { detectProject } from './commands/detectProject.js';
 import { runDoctor } from './commands/doctor.js';
 
+// Legacy command shims: translate old positional commands to JSON payloads
+// so internal callers (mcp-eck-core.js) keep working after the JSON migration.
+const LEGACY_COMMANDS = {
+  'update-auto': (args) => ({ name: 'eck_update_auto', arguments: { fail: args.includes('--fail') || args.includes('-f') } }),
+  'snapshot':    () => ({ name: 'eck_snapshot', arguments: {} }),
+  'update':      (args) => ({ name: 'eck_update', arguments: { fail: args.includes('--fail') || args.includes('-f') } }),
+  'setup-mcp':   (args) => ({ name: 'eck_setup_mcp', arguments: { opencode: args.includes('--opencode'), both: args.includes('--both') } }),
+  'detect':      () => ({ name: 'eck_detect', arguments: {} }),
+  'doctor':      () => ({ name: 'eck_doctor', arguments: {} }),
+};
+
 export function run() {
+  // Intercept legacy positional commands before commander parses them
+  const rawArgs = process.argv.slice(2);
+  const firstArg = rawArgs[0];
+  if (firstArg && LEGACY_COMMANDS[firstArg]) {
+    const payload = LEGACY_COMMANDS[firstArg](rawArgs.slice(1));
+    // Replace argv so commander sees the JSON payload
+    process.argv = [process.argv[0], process.argv[1], JSON.stringify(payload)];
+  }
+
   const program = new Command();
   const pkg = createRequire(import.meta.url)('../../package.json');
 
