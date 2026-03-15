@@ -751,7 +751,10 @@ export async function createRepoSnapshot(repoPath, options) {
           const absPath = processedRepoPath.replace(/\\/g, '/');
           header = `# 🔗 LINKED PROJECT: [${repoName}]\n\n`;
           header += `**ABSOLUTE PATH:** \`${absPath}\`\n`;
-          header += `**CROSS-CONTEXT MODE:** This is a linked companion project provided for reference. DO NOT generate code for it directly in your response unless explicitly asked. To inspect files inside this project, use your tool to run:\n`;
+          header += `**CROSS-CONTEXT MODE:** This is a linked companion project provided for reference. DO NOT generate code for it directly in your response unless explicitly asked. To inspect files inside this project, use your tool (or ask the user) to run ONE of the following commands:\n\n`;
+          header += `**Option A: Short format (Best for Windows PowerShell / CMD)**\n`;
+          header += `\`eck-snapshot fetch "${absPath}/src/example.js"\`\n\n`;
+          header += `**Option B: Pure JSON format (Best for Linux/Mac Bash/Zsh)**\n`;
           header += `\`eck-snapshot '{"name": "eck_fetch", "arguments": {"patterns": ["${absPath}/src/example.js"]}}'\`\n\n`;
           if (options.skipContent) {
             header += `*(Source code omitted due to linkDepth=0. Directory structure only.)*\n\n`;

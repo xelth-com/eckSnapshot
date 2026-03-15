@@ -133,6 +133,7 @@ To understand the project state, you can command the `eck-snapshot` tool directl
 - `eck-snapshot query "<question>"`: Search the codebase
 - `eck-snapshot detect`: Analyze the project structure
 - `eck-snapshot restore <snapshot_file> --include ...`: View specific files
+- `eck-snapshot link <depth>`: Run inside a related repository to generate a read-only companion snapshot.
 
 ## CAPABILITIES & DELEGATION PROTOCOL
 

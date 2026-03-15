@@ -220,6 +220,36 @@ scope: core
 
 
 
+
+## 2026-03-15 — Agent Report
+
+# Agent Report
+
+## Refactored Link Command to Standalone File Generator
+
+### Changes Made
+
+**1. `src/cli/cli.js`**
+- Updated `link` legacy command: now takes `depth` as `args[0]` (not a path), sets `isLinkedProject: true`.
+- Updated help text: `eck-snapshot link 4` — run inside target project directory.
+
+**2. `src/utils/aiHeader.js`**
+- Reverted the `MULTI-PROJECT CONTEXT` injection (no longer needed since linked projects are standalone files).
+
+**3. `src/cli/commands/createSnapshot.js`**
+- Added depth-mapping logic at the top of `createRepoSnapshot` when `isLinkedProject` is true:
+  - Depth 0: `skipContent = true` (tree only)
+  - Depth 1-3: truncated lines (20/50/100)
+  - Depth 4-6: skeleton mode
+  - Depth 7-10: full content
+- Replaced inline linked project processing block with standalone file output:
+  - When `isLinkedProject`, generates a custom cross-context header instead of the full AI architect header.
+  - Output filename prefixed with `link_` instead of `eck`.
+  - Includes `skipContent` notice when depth=0.
+
+### Architecture
+Users now run `eck-snapshot link [depth]` inside the target project directory. It generates a standalone `link_*.md` file that can be uploaded alongside the main project snapshot. No more appending to the main snapshot.
+
 ## 2026-03-15 — Agent Report
 
 # Agent Report

@@ -104,6 +104,11 @@ The Coder agent is intelligent and will understand what information they need ba
 6.  **Review & Report:** After the command is executed, analyze the results and report back to the user in their language.
 7.  **Iterate:** Continue the cycle based on user feedback.
 
+### CROSS-CONTEXT DEVELOPMENT (LINKED PROJECTS)
+
+If this project interacts with an external backend, frontend, or microservice, you can request its context.
+**Ask the user to run:** `eck-snapshot link [depth 0-10]` inside the related repository and upload the resulting `link_*.md` file. You will receive precise read-only access and fetch commands inside that file.
+
 ### ANTI-TRUNCATION PROTOCOL (CRITICAL)
 
 Web interfaces (like Gemini or ChatGPT) sometimes silently drop the content of large text files during upload, replacing the file's content with a tiny JSON metadata string (e.g., `{"fileName": "...", "contentFetchId": "..."}`).
