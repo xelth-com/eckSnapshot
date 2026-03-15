@@ -25,7 +25,7 @@ import { saveGitAnchor } from '../../utils/gitUtils.js';
 import { skeletonize } from '../../core/skeletonizer.js';
 import { updateClaudeMd } from '../../utils/claudeMdGenerator.js';
 import { generateOpenCodeAgents } from '../../utils/opencodeAgentsGenerator.js';
-import { ensureProjectMcpConfig, ensureProjectOpenCodeConfig } from './setupMcp.js';
+import { ensureProjectMcpConfig, ensureProjectOpenCodeConfig, ensureProjectCodexConfig } from './setupMcp.js';
 
 /**
  * Creates dynamic project context based on detection results
@@ -847,6 +847,16 @@ export async function createRepoSnapshot(repoPath, options) {
           }
         } catch (e) {
           // Non-critical — agent can still use manual fallback
+        }
+
+        // Ensure Codex config if the directory exists
+        try {
+          const codexMcpCreated = await ensureProjectCodexConfig(processedRepoPath);
+          if (codexMcpCreated) {
+            console.log(chalk.green('🔌 Added eck-core to .codex/config.toml'));
+          }
+        } catch (e) {
+          // Non-critical
         }
       }
 

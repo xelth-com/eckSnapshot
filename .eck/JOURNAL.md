@@ -206,6 +206,82 @@ scope: core
 
 
 
+
+## 2026-03-15 — Agent Report
+
+# Agent Report
+
+# Исследование Codex-RS для интеграции с eck-snapshot
+
+## 1. Регистрация MCP-серверов
+
+Codex использует **многослойную TOML-конфигурацию** (7 слоёв с приоритетом: CLI → repo `.codex/config.toml` → parent dirs → CWD → user `$CODEX_HOME/config.toml` → system → admin/cloud).
+
+**Два транспорта:**
+- `Stdio`: `command`, `args`, `env`, `cwd`
+- `StreamableHttp`: `url`, `bearer_token_env_var`, `http_headers`
+
+**Общие опции:** `enabled`, `required`, `startup_timeout_sec`, `tool_timeout_sec`, `enabled_tools`, `disabled_tools`, `scopes`, `oauth_resource`.
+
+**Плагины** также могут определять MCP через `.mcp.json` (JSON, camelCase). Пользовательский конфиг имеет приоритет.
+
+**Ключевые файлы:**
+- `codex-rs/core/src/config/types.rs` — `McpServerConfig`, `McpServerTransportConfig`
+- `codex-rs/core/src/config/mod.rs` — загрузка и мерж
+- `codex-rs/core/src/config_loader/mod.rs` — стек слоёв
+- `codex-rs/core/src/mcp/mod.rs` — MCP-менеджер
+- `codex-rs/core/src/plugins/manager.rs` — плагинные MCP
+
+## 2. Системные промпты
+
+Модульная сборка через `DeveloperInstructions` (`protocol/src/models.rs`):
+1. Permission/Policy шаблоны (`protocol/src/prompts/permissions/`)
+2. Базовые инструкции (`core/prompt.md`, встроены через `include_str!()`)
+3. Memory tool инструкции (`core/templates/memories/*.md`)
+4. Collaboration mode (`core/templates/collaboration_mode/{default,plan,pair_programming,execute}.md`)
+5. Personality (`core/templates/personalities/gpt-5.2-codex_{friendly,pragmatic}.md`)
+6. Apps, Git commit attribution
+
+User message: AGENTS.md инструкции + environment context (XML) + subagent config.
+
+**Ключевые файлы:**
+- `codex-rs/core/src/codex.rs:3370-3470` — сборка промпта
+- `codex-rs/protocol/src/models.rs:424-615` — `DeveloperInstructions`
+- `codex-rs/core/src/context_manager/updates.rs` — билдеры секций
+
+## 3. Формат патчей
+
+**Собственный формат**, НЕ unified diff, НЕ JSON:
+```
+*** Begin Patch
+*** Add File: <path>     — новый файл (+строки)
+*** Delete File: <path>  — удаление
+*** Update File: <path>  — патч с hunks (@@ контекст)
+*** Move to: <new_path>  — переименование
+*** End Patch
+```
+Hunks: ` ` контекст, `-` удалить, `+` добавить. 3 строки контекста по умолчанию.
+
+**НЕ поддерживаются:** unified diff, JSON, бинарные патчи, гибридные форматы (наш Eck-Protocol v2 `<file>` теги).
+
+**Ключевые файлы:**
+- `codex-rs/apply-patch/apply_patch_tool_instructions.md`
+- `codex-rs/apply-patch/src/parser.rs`
+
+## Выводы для интеграции
+
+| Аспект | Codex | eck-snapshot |
+|--------|-------|--------------|
+| Конфиг MCP | TOML, многослойный | JSON, единый |
+| Транспорты | Stdio + StreamableHttp | Stdio |
+| Промпты | Модульная сборка, developer role | CLAUDE.md/AGENTS.md генерация |
+| Патчи | `*** Begin/End Patch` | Eck-Protocol v2 (`<file>`) |
+
+**Рекомендации:**
+1. MCP: генерировать TOML-секции для `config.toml` вместо JSON
+2. Промпты: наш CLAUDE.md передавать как AGENTS.md (user instructions)
+3. Патчи: форматы несовместимы — нужен адаптер или использование встроенного `apply_patch`
+
 ## 2026-03-12 — Agent Report
 
 # Agent Report

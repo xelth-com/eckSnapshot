@@ -10,15 +10,15 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 /**
- * Setup / Restore MCP servers for Claude Code and OpenCode.
+ * Setup / Restore MCP servers for Claude Code, OpenCode, and Codex.
  * Registers:
  *   1. eck-core     (eck_finish_task) - commit + snapshot
  *   2. glm-zai      (glm_zai_*) - GLM-4.7 coding workers
  *
  * Usage:
- *   eck-snapshot setup-mcp              # Auto-detect and register for Claude Code
+ *   eck-snapshot setup-mcp              # Auto-detect and register for Claude Code & Codex
  *   eck-snapshot setup-mcp --opencode   # Register for OpenCode
- *   eck-snapshot setup-mcp --both       # Register for both
+ *   eck-snapshot setup-mcp --both       # Register for all
  */
 export async function setupMcp(options = {}) {
   const packageRoot = path.resolve(__dirname, '../../..');
@@ -43,6 +43,18 @@ export async function setupMcp(options = {}) {
     }
   }
 
+  // Auto-detect Codex
+  const codexDir = path.join(process.cwd(), '.codex');
+  let hasCodex = false;
+  try {
+    await fs.access(codexDir);
+    hasCodex = true;
+  } catch {}
+
+  if (hasCodex) {
+    await setupForCodex(packageRoot, eckCorePath, glmZaiPath, options);
+  }
+
   // Print summary
   console.log(chalk.green.bold('\n✅ MCP Setup Complete!\n'));
   console.log(chalk.white('Registered MCP servers:'));
@@ -54,9 +66,8 @@ export async function setupMcp(options = {}) {
   console.log(chalk.white('  • Get your key at https://z.ai'));
   console.log('');
   console.log(chalk.yellow('Next steps:'));
-  console.log(chalk.white('  1. Restart your AI coding tool (Claude Code / OpenCode)'));
+  console.log(chalk.white('  1. Restart your AI coding tool'));
   console.log(chalk.white('  2. The tools will be available automatically'));
-  console.log(chalk.white('  3. Use --jas or --jao flags to generate CLAUDE.md with delegation protocol'));
   console.log('');
 }
 
@@ -261,6 +272,73 @@ async function setupForOpenCode(packageRoot, eckCorePath, glmZaiPath, options) {
 
   console.log(chalk.gray('\n  OpenCode will read MCP servers from opencode.json on next start.'));
   console.log(chalk.gray('  Use `eck-snapshot --jas` or `--jao` to generate AGENTS.md for OpenCode.\n'));
+}
+
+/**
+ * Register MCP servers for Codex by appending to .codex/config.toml
+ */
+async function setupForCodex(packageRoot, eckCorePath, glmZaiPath, options) {
+  const spinner = ora();
+  console.log(chalk.blue('📦 Setting up for Codex...\n'));
+  spinner.start('Updating Codex config (.codex/config.toml)...');
+
+  try {
+    const updated = await ensureProjectCodexConfig(process.cwd());
+    if (updated) {
+      spinner.succeed(`Codex config updated: ${chalk.cyan('.codex/config.toml')}`);
+    } else {
+      spinner.info(`Codex config already up to date: ${chalk.cyan('.codex/config.toml')}`);
+    }
+  } catch (error) {
+    spinner.fail(`Failed to update Codex config: ${error.message}`);
+  }
+}
+
+/**
+ * Silently ensure .codex/config.toml exists in target project root with eck-core configured.
+ * Called automatically during snapshot creation so any Codex session
+ * in that project will have eck_finish_task / eck_fail_task available.
+ *
+ * @param {string} repoPath - Target project root
+ * @returns {boolean} true if config was created/updated, false if already OK
+ */
+export async function ensureProjectCodexConfig(repoPath) {
+  const codexDir = path.join(repoPath, '.codex');
+  try {
+    await fs.access(codexDir);
+  } catch {
+    return false; // No .codex directory, do nothing
+  }
+
+  const packageRoot = path.resolve(__dirname, '../../..');
+  const eckCorePath = path.join(packageRoot, 'scripts', 'mcp-eck-core.js');
+  const glmZaiPath = path.join(packageRoot, 'scripts', 'mcp-glm-zai-worker.mjs');
+  const configPath = path.join(codexDir, 'config.toml');
+
+  let content = '';
+  try {
+    content = await fs.readFile(configPath, 'utf-8');
+  } catch { /* file might not exist yet */ }
+
+  let updated = false;
+
+  // Simple string inclusion check (safe enough for TOML injection)
+  if (!content.includes('[mcp_servers.eck-core]')) {
+    content += `\n\n[mcp_servers.eck-core]\ncommand = "node"\nargs = ["${eckCorePath.replace(/\\/g, '\\\\')}"]\n`;
+    updated = true;
+  }
+
+  if (!content.includes('[mcp_servers.glm-zai]')) {
+    content += `\n\n[mcp_servers.glm-zai]\ncommand = "node"\nargs = ["${glmZaiPath.replace(/\\/g, '\\\\')}"]\n`;
+    updated = true;
+  }
+
+  if (updated) {
+    await fs.writeFile(configPath, content.trim() + '\n', 'utf-8');
+    return true;
+  }
+
+  return false;
 }
 
 /**
