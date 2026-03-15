@@ -216,6 +216,36 @@ scope: core
 
 
 
+
+## 2026-03-15 — Agent Report
+
+# Agent Report
+
+# release(core): Remove claudeCliService, switch to stub manifests, bump to v6.1.0
+
+## Changes
+
+### `src/utils/fileUtils.js`
+- Removed `import { executePrompt as askClaude } from '../services/claudeCliService.js'`
+- Removed `aiGenerationEnabled` flag and all AI generation logic
+- Replaced `prompt`/`fallback` template structure with simple `content` stubs
+- Creation loop simplified: just writes `config.content`, no AI branch
+- Static project detection kept for populating `projType`/`projStack` in stubs
+
+### `src/services/claudeCliService.js`
+- Deleted entirely (was 23KB of legacy subprocess Claude CLI integration)
+
+### `package.json`
+- Version bumped: `6.0.13` → `6.1.0`
+
+### `.eck/TECH_DEBT.md`
+- Marked `claudeCliService.js` debt as resolved
+
+## Verification
+- `fileUtils.js` loads cleanly without `claudeCliService.js`
+- `cli.js` loads cleanly
+- Version reads as `6.1.0`
+
 ## 2026-03-15 — Agent Report
 
 # Agent Report

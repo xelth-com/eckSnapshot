@@ -79,8 +79,11 @@ EXAMPLES:
     .addHelpText('before', helpGuide)
     .argument('[payload]', 'JSON string representing the MCP tool call')
     .action(async (payloadStr) => {
+      // Default behavior for human users: empty call = full snapshot
       if (!payloadStr) {
-        program.help();
+        console.log(chalk.cyan('🚀 No arguments provided. Defaulting to full repository snapshot...'));
+        console.log(chalk.gray('💡 Run `eck-snapshot -h` to see all available JSON tools.\n'));
+        await createRepoSnapshot(process.cwd(), {});
         return;
       }
 
