@@ -1,24 +1,44 @@
 # Project Overview
 
 ## Description
-A specialized CLI tool designed to create and restore single-file text snapshots of Git repositories. Optimized for providing full project context to Large Language Models (LLMs). Also serves as the coordination hub for the Royal Court AI architecture.
+A specialized, AI-native CLI tool that creates single-file text snapshots of Git repositories for LLM context windows. As of v6.1, the CLI operates as a **100% JSON/MCP bridge** — all commands are JSON payloads, with human-friendly shims for convenience.
+
+Also serves as the coordination hub for the Royal Court AI architecture and provides the Reconnaissance Protocol for cross-repo exploration.
 
 ## Architecture
 - **Environment**: Node.js (ESM, `type: "module"`)
-- **CLI Framework**: Commander.js
+- **CLI Framework**: Commander.js (single JSON argument router)
+- **Interface**: Pure JSON/MCP payloads (`{"name": "tool_name", "arguments": {...}}`)
+- **Legacy Shims**: Old positional commands (`snapshot`, `update`, `scout`, `fetch`) auto-translate to JSON
 - **Core Features**:
   - **Skeleton Mode**: Strips function bodies using Tree-sitter and Babel to save tokens
   - **Delta Updates**: Tracks changes via Git anchors with sequential numbering (`_up1`, `_up2`, ...)
-  - **Multi-Agent Protocol**: Eck-Protocol v2 (Markdown/XML hybrid) for agent communication
-  - **Security**: Built-in SecretScanner for automatic redaction of API keys
-  - **Telemetry**: Agent execution metrics + adaptive token weight learning via `xelth.com/T/*`
+  - **Reconnaissance Protocol**: `eck_scout` (directory tree) + `eck_fetch` (file extraction) for cross-repo exploration
+  - **Security**: Built-in SecretScanner for automatic redaction of API keys (regex + Shannon entropy)
 
 ## Key Technologies
 - **Babel**: JS/TS parsing and function body transformation
 - **Tree-sitter**: Multi-language structural analysis (Rust, Go, Python, C, Java, Kotlin)
 - **Execa**: Robust shell command execution
 - **Vitest**: Testing suite
-- **SQLx + Axum**: Rust telemetry microservice (`eck-telemetry/`)
+- **Micromatch**: Glob pattern matching (used by recon fetch)
+
+## CLI Router (`src/cli/cli.js`)
+
+All tools are dispatched via a single JSON payload argument:
+
+| JSON Tool Name | Function | Source |
+|---------------|----------|--------|
+| `eck_snapshot` | Full context snapshot | `createSnapshot.js` |
+| `eck_update` | Delta snapshot | `updateSnapshot.js` |
+| `eck_update_auto` | Silent delta (JSON output) | `updateSnapshot.js` |
+| `eck_scout` | Recon: directory tree | `recon.js` |
+| `eck_fetch` | Recon: fetch file contents | `recon.js` |
+| `eck_setup_mcp` | Configure MCP servers | `setupMcp.js` |
+| `eck_detect` | Detect project type | `detectProject.js` |
+| `eck_doctor` | Project health check | `doctor.js` |
+
+Legacy positional commands are intercepted via `LEGACY_COMMANDS` map in `cli.js` and translated to JSON before reaching the router.
 
 ## AI Infrastructure: "Royal Court" Architecture
 
@@ -39,45 +59,28 @@ GLM Z.AI Worker Fleet (MCP: glm-zai server)
     └─ glm_zai_general: Full-stack generalist
 ```
 
-### AI Coding Tools
-| Tool | Engine | Usage |
-|------|--------|-------|
-| **Claude Code** | Sonnet 4.6 / Opus 4.6 | Primary coding agent (JAS/JAO) |
-| **OpenCode** | GLM-4.7 (Z.AI Coding Plan) | Alternative coding agent (JAZ) |
-| **GLM Z.AI Worker** | GLM-4.7 via MCP | Cost-effective worker for heavy coding tasks |
+### Supported AI Coding Tools
+| Tool | Engine | MCP Config |
+|------|--------|------------|
+| **Claude Code** | Sonnet/Opus 4.6 | `.mcp.json` (JSON) |
+| **OpenCode** | GLM-4.7 (Z.AI) | `opencode.json` (JSON) |
+| **Codex** | GPT models | `.codex/config.toml` (TOML) |
 
 ### Dynamic .eck/ Manifest Loading
-As of v6.0.11, `loadProjectEckManifest` dynamically scans the `.eck/` directory for all `.md` files instead of using a hardcoded list. Well-known files (CONTEXT, OPERATIONS, JOURNAL, ROADMAP, TECH_DEBT, ENVIRONMENT) map to dedicated keys; any additional `.md` files are collected into `dynamicFiles` and rendered into the AI header automatically.
+`loadProjectEckManifest` dynamically scans the `.eck/` directory for all `.md` files. Well-known files (CONTEXT, OPERATIONS, JOURNAL, ROADMAP, TECH_DEBT, ENVIRONMENT) map to dedicated keys; additional `.md` files are collected into `dynamicFiles`.
 
 Excluded from scanning: files containing `secret`, `credential`, `server_access` in the name, and `profile_generation_guide.md`.
 
-### Knowledge Distillation Protocol
-All agent roles (JA and Coder, both in Claude Code and OpenCode) include an interactive Knowledge Distillation prompt. After completing a complex task, the agent asks the user for permission before updating `.eck/` manifests — code completion is always prioritized over documentation.
-
-### Snapshot Modes
-| Flag | Purpose | Output |
-|------|---------|--------|
-| `--jas` | Configure for JAS (Sonnet 4.6) | `CLAUDE.md` with tree + Smart Delegation Protocol |
-| `--jao` | Configure for JAO (Opus 4.6) | `CLAUDE.md` with tree + Enhanced verification rules |
-| `--jaz` | Configure for JAZ (GLM-4.7, OpenCode) | `AGENTS.md` with YAML frontmatter + GLM swarm config |
-| (none) | Standard snapshot | Standalone `.md` for any LLM |
-
-### Smart Delegation Protocol
-1. **Token Efficiency**: Tasks solvable in 1-2 tool calls → Do it yourself
-2. **Bulk Work**: Complex logic (>100 lines) → Delegate to GLM Z.AI
-3. **Failure Handling**: GLM fails → guided retry → Junior Architect takeover → escalate to SA
-
-## Telemetry Hub
-- **Service**: `eck-telemetry` (Rust/Axum, port 3203 on `antigravity`, proxied via Nginx)
-- **Endpoints**:
-  - `POST /T/report` — agent execution metrics
-  - `POST /T/tokens/train` — token estimation training points
-  - `GET /T/tokens/weights` — global linear regression coefficients per project type
-- **Local integration**: `src/utils/telemetry.js`, `src/utils/tokenEstimator.js`
-- **CLI**: `eck-snapshot telemetry push` / `eck-snapshot telemetry sync-weights`
+### Snapshot Modes (JSON arguments)
+| Argument | Purpose | Output |
+|----------|---------|--------|
+| `{"jas": true}` | Configure for JAS (Sonnet 4.6) | `CLAUDE.md` with tree + Smart Delegation Protocol |
+| `{"jao": true}` | Configure for JAO (Opus 4.6) | `CLAUDE.md` with Enhanced verification rules |
+| `{"jaz": true}` | Configure for JAZ (GLM-4.7) | `AGENTS.md` with YAML frontmatter + GLM swarm config |
+| (none) | Standard coder snapshot | Standalone `.md` for any LLM |
 
 ## Important Notes
-- MCP servers can be restored with `eck-snapshot setup-mcp`
+- MCP servers can be restored with `eck-snapshot '{"name": "eck_setup_mcp"}'`
 - GLM Z.AI requires `ZAI_API_KEY` environment variable
 - Agent reports live at `.eck/lastsnapshot/AnswerToSA.md`
-- Use `eck_finish_task` MCP tool (or `eck-snapshot update`) to commit and generate snapshots
+- Internal MCP calls (`mcp-eck-core.js`) use native JSON payloads to invoke the CLI

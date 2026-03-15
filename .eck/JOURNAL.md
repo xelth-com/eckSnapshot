@@ -213,6 +213,20 @@ scope: core
 
 
 
+
+## 2026-03-15 — Agent Report
+
+# Agent Report
+
+# docs(readme): Overhaul README for JSON-Native interface and Recon Protocol
+
+Replaced the entire README.md with updated documentation covering:
+- The new 100% JSON/MCP CLI interface with examples
+- Human-friendly shim commands for convenience
+- The Reconnaissance Protocol (scout/fetch) workflow for cross-repo exploration
+- Updated feature list (Codex support, removed deprecated features)
+- Removed documentation for deleted commands (restore, prune, consilium, etc.)
+
 ## 2026-03-15 — Agent Report
 
 # Agent Report

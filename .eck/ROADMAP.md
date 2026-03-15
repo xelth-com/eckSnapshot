@@ -1,17 +1,23 @@
 # Project Roadmap
 
 ## Current Sprint
-- [ ] Deploy `eck-telemetry` Rust service to production (`deploy_telemetry.sh`)
 - [ ] NotebookLM-optimized snapshot profiles
+- [ ] Remove `claudeCliService.js` dependency from `fileUtils.js` (last legacy service)
+- [ ] Remove `LEGACY_COMMANDS` shim from `cli.js` once all callers use JSON natively
 
 ## Next Phase
 - [ ] Web-based snapshot explorer
 - [ ] Per-project telemetry isolation (project_id in reports)
 
 ## Completed
+- [x] **v6.1: 100% JSON-Native CLI migration** — all commands are JSON payloads
+- [x] **Reconnaissance Protocol** — `eck_scout` (tree) + `eck_fetch` (file extraction) for cross-repo exploration
+- [x] **Codex MCP integration** — auto-detect `.codex/` dir, inject TOML config
+- [x] **Dead code cleanup** — removed 11 orphaned legacy modules (restore, prune, consilium, etc.)
+- [x] **Internal JSON migration** — `mcp-eck-core.js` sends native JSON payloads
+- [x] Legacy command shims for backward compatibility (`snapshot`, `update`, `scout`, `fetch`, etc.)
 - [x] Improved Incremental Snapshots (tracking deleted files)
 - [x] Shannon Entropy check in SecretScanner for better credential detection
-- [x] Project initialization
 - [x] Royal Court Architecture (Senior Architect → Junior Architects → GLM Z.AI Workers)
 - [x] GLM Z.AI Worker Swarm via MCP (frontend/backend/qa/refactor/general specialists)
 - [x] MiniMax → GLM Z.AI migration (v5.1.0)
@@ -22,14 +28,5 @@
 - [x] Skeleton Mode (Babel + Tree-sitter function body stripping)
 - [x] Delta Updates with Git anchors and sequential numbering
 - [x] Built-in SecretScanner (automatic API key redaction)
-- [x] Rust, Go, C, Python, Java, Kotlin support in Skeletonizer
-- [x] Agent Report embedding in snapshots (AnswerToSA.md)
-- [x] Identity Trace Protocol (Executor field in all reports)
-- [x] eck-telemetry Rust microservice (agent_runs + token_training tables)
-- [x] Telemetry push client (auto-push on `update` and `update-auto`)
-- [x] Global token weights sync (`GET /T/tokens/weights` with linear regression)
-- [x] `eck-snapshot telemetry push` and `sync-weights` commands
-- [x] Claude Code + OpenCode environment isolation
-- [x] Dynamic `.eck/` manifest loading (v6.0.11) — all `.md` files auto-discovered
+- [x] Dynamic `.eck/` manifest loading (v6.0.11)
 - [x] Interactive Knowledge Distillation protocol for all agent roles
-- [x] Auto-generate ENVIRONMENT.md and CONTEXT.md out of setup.json
