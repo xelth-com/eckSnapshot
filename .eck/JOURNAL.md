@@ -212,6 +212,17 @@ scope: core
 
 
 
+
+## 2026-03-15 — Agent Report
+
+# Agent Report
+
+# refactor(recon): Provide multi-platform command options in scout template
+
+Updated the `recon_tree_*.md` template in `src/cli/commands/recon.js` to offer two copy-pasteable fetch command formats:
+- **Option A** (short): `eck-snapshot fetch "path" "glob"` — best for Windows PowerShell/CMD
+- **Option B** (JSON): `eck-snapshot '{"name": "eck_fetch", ...}'` — best for Linux/Mac Bash/Zsh
+
 ## 2026-03-15 — Agent Report
 
 # Agent Report

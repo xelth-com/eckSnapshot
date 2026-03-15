@@ -1,71 +1,81 @@
-# 📸 eckSnapshot v6.0
+# 📸 eckSnapshot v6.1 (AI-Native Edition)
 
 A specialized, AI-native CLI tool that creates single-file text snapshots of entire Git repositories and feeds them directly into LLM context windows. Instead of letting AI agents guess which files to read, eckSnapshot force-feeds the complete project into the model's context — giving it a "university degree" in your codebase from the very first prompt.
 
 It also serves as the coordination hub for multi-agent AI coding workflows: generating role-specific instructions (`CLAUDE.md`, `AGENTS.md`), maintaining project manifests (`.eck/` directory), and providing MCP integration for automatic context sync after every code change.
 
+---
 
-## 🎯 The Battle-Tested Workflow & Quick Start
+## 🤖 The AI-Native JSON Interface (New in v6.1)
 
-I personally use this tool daily with local AI coding agents (**Claude Code** using Claude, and **OpenCode** using GLM). My reliable, heavily-tested workflow is:
+`eck-snapshot` is no longer a traditional CLI with human-centric flags (like `--depth` or `--no-tree`). It is a **100% pure JSON/MCP bridge**.
 
-### 1. Installation
+AI agents interact with the CLI by passing a single JSON payload representing an MCP tool call.
+
+**How AI agents use it:**
 ```bash
-npm install -g @xelth/eck-snapshot
+eck-snapshot '{"name": "eck_snapshot", "arguments": {"profile": "backend", "jas": true}}'
+eck-snapshot '{"name": "eck_update_auto", "arguments": {}}'
 ```
 
-### 2. Initial Context (Full Snapshots)
-Take a full snapshot and feed it to a powerful Web LLM (Senior Architect like **Gemini** or **Grok**). *(Note: **ChatGPT** also works, but you MUST paste the specific prompt provided at the end of the snapshot output as your first prompt).*
-```bash
-eck-snapshot
-```
-*(For massive monorepos, slice the context using profiles: `eck-snapshot --profile frontend`)*
-
-### 3. Direct Execution
-Pass the Architect's technical plan to your local Coder agent (Claude Code / OpenCode). The Coder will implement the changes directly in your repository.
-
-### 4. Auto-Updates vs Manual Updates
-When the Coder agent finishes a task, it automatically calls the built-in MCP tool (`eck_finish_task`), which commits the code and automatically generates an incremental delta update snapshot.
-
-**Optional Manual Update:**
-If you make manual changes yourself (without the agent), use this command to create a delta snapshot to sync your Web AI:
-```bash
-eck-snapshot update
-```
-This core loop is highly polished, actively maintained, and works exceptionally well.
-
-## 🌟 Core Features
-
-* **🔄 Smart Delta Updates:** Tracks incremental changes via Git anchors with sequential numbering. Accurately tracks and reports deleted files to prevent LLM hallucinations.
-* **🛡️ Security (SecretScanner):** Automatically redacts API keys and credentials before sending context to LLMs. Features both Regex matching and **Shannon Entropy** analysis.
-* **🔌 Native MCP Integration:** Instantly spins up Model Context Protocol (MCP) servers (`eck-core` for context sync) for Claude Code and OpenCode.
-* **📁 The `.eck/` Manifest:** Automatically maintains project context files (`CONTEXT.md`, `ROADMAP.md`, `TECH_DEBT.md`, etc.) to onboard AI agents instantly. Dynamic scanning — any `.md` file you add to `.eck/` is automatically included in snapshots.
-* **🧠 Knowledge Distillation:** Agents are prompted to ask the user before updating project manifests, ensuring code completion is always prioritized over documentation.
+### 🧑‍💻 Human Shims (For Convenience)
+For human users typing in the terminal, we provide legacy command shims that automatically translate to JSON under the hood:
+- `eck-snapshot` ➡️ Runs full snapshot
+- `eck-snapshot update` ➡️ Runs delta update
+- `eck-snapshot scout` ➡️ Runs reconnaissance tree generation
+- `eck-snapshot fetch "src/**/*.rs"` ➡️ Fetches specific files
 
 ---
 
-## 🧪 Experimental / Advanced Features
+## 🎯 The Battle-Tested Workflow
 
-*The following features are included in the tool, but I am not actively using them in my daily workflow right now. They are available for power users, but might have edge cases. If you use them and find issues, please open an issue on GitHub, or better yet, try fixing it yourself (you have the ultimate AI coding tool in your hands now!)*
+### 1. Initial Context (Full Snapshots)
+Take a full snapshot and feed it to a powerful Web LLM (Senior Architect like **Gemini** or **Grok**).
+```bash
+eck-snapshot
+```
+*(For massive monorepos, slice the context using profiles: `eck-snapshot '{"name": "eck_snapshot", "arguments": {"profile": "frontend"}}'`)*
 
-* **🧠 Multi-Agent Protocol (Royal Court):** Built-in support for delegating tasks from a Senior Architect to Junior Managers (`--jas`, `--jao`, `--jaz`), who orchestrate a swarm of specialized GLM workers via MCP.
-* **☠️ Skeleton Mode:** Uses `Tree-sitter` and `Babel` to strip function bodies (`--skeleton`), drastically reducing token count.
-* **📊 Telemetry Hub:** Integrated with a Rust-based microservice for tracking agent execution metrics and auto-syncing token estimation weights.
+### 2. Direct Execution
+Pass the Architect's technical plan to your local Coder agent (Claude Code / OpenCode). The Coder will implement the changes directly in your repository.
 
+### 3. Auto-Updates
+When the Coder agent finishes a task, it automatically calls the built-in MCP tool (`eck_finish_task`), which commits the code and automatically generates an incremental delta update snapshot.
+
+---
+
+## 🕵️‍♂️ The Reconnaissance Protocol (Cross-Repo Exploration)
+
+When your AI agent is working on **Project A**, but needs to understand how **Project B** works, feeding it a standard snapshot of Project B will cause "context pollution" (the AI will forget which project it is supposed to edit).
+
+The Recon Protocol solves this by providing isolated, read-only data extraction.
+
+**Step 1: Scout (Map the territory)**
+Run this in the external repository you want to explore:
+```bash
+eck-snapshot scout
+```
+*Result:* Generates `.eck/recon/recon_tree_...md`. This file contains the directory tree and strict instructions telling the AI **NOT** to edit this code.
+
+**Step 2: Fetch (Extract the data)**
+Feed the `recon_tree` to your AI. It will respond by asking you to run a fetch command for specific files it needs:
+```bash
+eck-snapshot fetch "src/core/parser.js" "docs/**/*.md"
+```
+*Result:* Generates `.eck/recon/recon_data_...md` containing only the requested code, perfectly formatted for your AI to read without losing its primary role.
+
+---
+
+## 🌟 Core Features
+
+* **🔄 Smart Delta Updates:** Tracks incremental changes via Git anchors. Accurately tracks and reports deleted files to prevent LLM hallucinations.
+* **🛡️ Security (SecretScanner):** Automatically redacts API keys and credentials before sending context to LLMs. Features both Regex matching and **Shannon Entropy** analysis.
+* **🔌 Native MCP Integration:** Instantly spins up Model Context Protocol (MCP) servers (`eck-core` and `glm-zai`) for Claude Code, OpenCode, and Codex.
+* **📁 The `.eck/` Manifest:** Automatically maintains project context files (`CONTEXT.md`, `ROADMAP.md`, `TECH_DEBT.md`). Dynamic scanning — any `.md` file you add to `.eck/` is automatically included in snapshots.
 
 ## 💡 The Philosophy: Why force a full snapshot?
 
-You've probably noticed a pattern: the longer you chat with an LLM about your codebase, the smarter it gets and the better its code becomes. 
-
-How do you get that expert-level understanding from the very first prompt? You can't rely on an agent guessing which isolated files to read based on filenames. You need to force-feed it the entire context at once. 
-
-Think of AI models like human engineers. Imagine a person standing next to a massive bookshelf of programming textbooks. The total amount of information available to them is exactly the same before they go to university and after they graduate. Both can open a book, check the table of contents, and look up a formula. Yet, the results they produce are vastly different. Why? Because the graduate has the structural context *inside their head*. 
-
-LLMs work the exact same way. Giving an AI a "file search" tool is like putting a beginner next to the bookshelf. Forcing a complete project snapshot into the LLM's massive context window is like giving it a university degree in your specific codebase. That is what `eck-snapshot` does.
-
-## 🗺️ Roadmap
-
-* **NotebookLM Optimization:** Our generated snapshots already work exceptionally well with Google NotebookLM. In the near future, we plan to introduce specific adaptations and context profiles tailored specifically for NotebookLM's document architecture, alongside our support for standard Web LLMs.
+LLMs work like humans who have memorized a textbook. Giving an AI a "file search" tool is like putting a beginner next to a bookshelf—they have to guess what to look for. Forcing a complete project snapshot into the LLM's massive context window is like giving it a university degree in your specific codebase. That is what `eck-snapshot` does.
 
 ## Ethical Automation Policy
 
