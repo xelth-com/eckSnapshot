@@ -218,6 +218,41 @@ scope: core
 
 
 
+
+## 2026-03-15 — Agent Report
+
+# Agent Report
+
+## Linked Projects (Cross-Context) Feature — Implemented
+
+### Changes Made
+
+**1. `src/cli/cli.js`** — Updated help text to document new `link` and `linkDepth` arguments.
+
+**2. `src/utils/aiHeader.js`** — Injected a `MULTI-PROJECT CONTEXT` notice into the `### PROJECT OVERVIEW` section when `options.link` is present. This tells the AI that linked projects exist at the bottom of the snapshot and provides guidance on using `eck_fetch` for deeper inspection.
+
+**3. `src/cli/commands/createSnapshot.js`** — Core implementation:
+- After the main project's `fileBody` is assembled, processes each linked project path.
+- Resolves paths relative to `originalCwd`.
+- Maps `linkDepth` (0-10) to processing modes:
+  - **0**: Tree only, no file contents.
+  - **1-3**: Truncated content (20/50/100 lines respectively).
+  - **4-6**: Skeleton mode.
+  - **7-10**: Full content.
+- Runs `detectProjectType` + `processProjectFiles` on each linked project with the mapped options.
+- Generates a directory tree for each linked project.
+- Appends a clearly marked `# 🔗 LINKED PROJECT` section with absolute path, cross-context instructions, tree, and content.
+- Errors on individual linked projects are caught and warned, not fatal.
+
+### Usage
+```json
+{"name": "eck_snapshot", "arguments": {"link": "../other-project", "linkDepth": 3}}
+{"name": "eck_snapshot", "arguments": {"link": ["../api", "../shared-lib"], "linkDepth": 5}}
+```
+
+### No Issues Remaining
+All three files modified, module loads without errors.
+
 ## 2026-03-15 — Agent Report
 
 # Agent Report
