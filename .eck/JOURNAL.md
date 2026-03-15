@@ -214,6 +214,45 @@ scope: core
 
 
 
+
+## 2026-03-15 — Agent Report
+
+# Agent Report
+
+# docs(eck): Update all .eck/ manifests for v6.1 JSON-native architecture
+
+## Updated Files
+
+### `.eck/CONTEXT.md`
+- Rewrote architecture section: CLI is now a JSON/MCP bridge, not traditional commander subcommands
+- Added CLI router table mapping JSON tool names → source files
+- Added Codex to supported AI coding tools table
+- Added Reconnaissance Protocol description
+- Updated snapshot modes to show JSON arguments instead of flags
+- Removed telemetry hub section (CLI commands deleted)
+- Updated all command examples to JSON format
+
+### `.eck/OPERATIONS.md`
+- Rewrote all command examples to use JSON payloads with shim alternatives
+- Added Reconnaissance Protocol section (scout/fetch)
+- Added MCP config locations table (Claude Code / OpenCode / Codex)
+- Removed browser automation section (ask-claude deleted)
+- Removed legacy ask-claude subprocess warning
+- Kept Smart Delegation Protocol and Reporting Protocol (still valid)
+
+### `.eck/ROADMAP.md`
+- Added v6.1 completed items: JSON-native CLI, Recon Protocol, Codex integration, dead code cleanup
+- Added current sprint items: remove claudeCliService dependency, remove legacy shims
+- Removed completed items that were already tracked in earlier versions
+
+### `.eck/TECH_DEBT.md`
+- Added 4 active debt items:
+  - `claudeCliService.js` still used by `fileUtils.js`
+  - `LEGACY_COMMANDS` shim still present
+  - `mcp-server-template.js` stale description
+  - `eck_train_tokens` JSON command generated but not routed
+- Moved resolved items from v6.1 migration
+
 ## 2026-03-15 — Agent Report
 
 # Agent Report

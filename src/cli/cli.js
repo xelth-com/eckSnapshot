@@ -15,6 +15,7 @@ import { setupMcp } from './commands/setupMcp.js';
 import { detectProject } from './commands/detectProject.js';
 import { runDoctor } from './commands/doctor.js';
 import { runReconTool } from './commands/recon.js';
+import { runTokenTools } from './commands/trainTokens.js';
 
 // Legacy command shims: translate old positional commands to JSON payloads
 // so internal callers (mcp-eck-core.js) keep working after the JSON migration.
@@ -62,6 +63,8 @@ AVAILABLE TOOLS:
   - eck_setup_mcp : Configure MCP. Args: { opencode?: boolean, both?: boolean }
   - eck_detect    : Detect project type. Args: {}
   - eck_doctor    : Run project health check. Args: {}
+  - eck_train_tokens: Calibrate token estimator. Args: { projectType, fileSizeBytes, estimatedTokens, actualTokens }
+  - eck_token_stats : Show token estimation accuracy. Args: {}
 
 EXAMPLES:
   eck-snapshot '{"name": "eck_snapshot", "arguments": {"profile": "backend"}}'
@@ -117,6 +120,10 @@ EXAMPLES:
           case 'eck_scout':
           case 'eck_fetch':
             await runReconTool(payload);
+            break;
+          case 'eck_train_tokens':
+          case 'eck_token_stats':
+            await runTokenTools(payload);
             break;
           default:
             console.log(chalk.red(`❌ Unknown tool: "${toolName}"`));

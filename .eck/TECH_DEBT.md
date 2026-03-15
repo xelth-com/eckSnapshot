@@ -4,7 +4,7 @@
 - [ ] `claudeCliService.js` is still imported by `fileUtils.js` (line 6) for AI-powered manifest auto-generation — cannot be deleted until that dependency is refactored out
 - [ ] `LEGACY_COMMANDS` shim in `cli.js` translates old positional commands to JSON — should be removed once all documentation and muscle memory is updated
 - [ ] `src/templates/claude-code/mcp-server-template.js` still references `eck-snapshot update-auto` in description string (non-functional, documentation only)
-- [ ] `src/cli/commands/trainTokens.js` was deleted but `generateTrainingCommand()` in `tokenEstimator.js` still generates a JSON command for `eck_train_tokens` which is not wired into the router
+- [x] `trainTokens.js` re-created with JSON-native interface, `eck_train_tokens` and `eck_token_stats` wired into router (2026-03-15)
 
 ## Resolved
 - [x] Legacy CLI commands removed — 11 orphaned modules deleted (2026-03-15)
