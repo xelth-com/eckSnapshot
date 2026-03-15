@@ -2,7 +2,6 @@
 
 ## Current Sprint
 - [ ] NotebookLM-optimized snapshot profiles
-- [ ] Remove `claudeCliService.js` dependency from `fileUtils.js` (last legacy service)
 - [ ] Remove `LEGACY_COMMANDS` shim from `cli.js` once all callers use JSON natively
 
 ## Next Phase
@@ -15,6 +14,9 @@
 - [x] **Codex MCP integration** — auto-detect `.codex/` dir, inject TOML config
 - [x] **Dead code cleanup** — removed 11 orphaned legacy modules (restore, prune, consilium, etc.)
 - [x] **Internal JSON migration** — `mcp-eck-core.js` sends native JSON payloads
+- [x] `claudeCliService.js` removed — `fileUtils.js` uses static stub templates (v6.1.0)
+- [x] Token training tools restored (`eck_train_tokens`, `eck_token_stats`) in JSON interface
+- [x] Empty `eck-snapshot` command defaults to full snapshot (v6.1.3)
 - [x] Legacy command shims for backward compatibility (`snapshot`, `update`, `scout`, `fetch`, etc.)
 - [x] Improved Incremental Snapshots (tracking deleted files)
 - [x] Shannon Entropy check in SecretScanner for better credential detection

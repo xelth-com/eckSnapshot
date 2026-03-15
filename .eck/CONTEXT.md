@@ -37,8 +37,12 @@ All tools are dispatched via a single JSON payload argument:
 | `eck_setup_mcp` | Configure MCP servers | `setupMcp.js` |
 | `eck_detect` | Detect project type | `detectProject.js` |
 | `eck_doctor` | Project health check | `doctor.js` |
+| `eck_train_tokens` | Calibrate token estimator | `trainTokens.js` |
+| `eck_token_stats` | Show estimation accuracy | `trainTokens.js` |
 
 Legacy positional commands are intercepted via `LEGACY_COMMANDS` map in `cli.js` and translated to JSON before reaching the router.
+
+**Default behavior:** Running `eck-snapshot` without arguments defaults to a full snapshot (`eck_snapshot`).
 
 ## AI Infrastructure: "Royal Court" Architecture
 
