@@ -217,6 +217,15 @@ scope: core
 
 
 
+
+## 2026-03-15 — Agent Report
+
+# Agent Report
+
+# feat(cli): Make empty command default to full snapshot
+
+Changed `cli.js` action handler: when no payload is provided, instead of showing help, it now runs `createRepoSnapshot(cwd, {})` — a full snapshot. Added a hint pointing users to `eck-snapshot -h` for the full tool list. Help is still accessible via `-h`/`--help` flags.
+
 ## 2026-03-15 — Agent Report
 
 # Agent Report
