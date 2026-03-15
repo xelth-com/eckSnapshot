@@ -1,7 +1,7 @@
 # Technical Debt
 
 ## Active
-- [ ] `claudeCliService.js` is still imported by `fileUtils.js` (line 6) for AI-powered manifest auto-generation — cannot be deleted until that dependency is refactored out
+- [x] `claudeCliService.js` removed — `fileUtils.js` now uses static stub templates instead of AI generation (2026-03-15)
 - [ ] `LEGACY_COMMANDS` shim in `cli.js` translates old positional commands to JSON — should be removed once all documentation and muscle memory is updated
 - [ ] `src/templates/claude-code/mcp-server-template.js` still references `eck-snapshot update-auto` in description string (non-functional, documentation only)
 - [x] `trainTokens.js` re-created with JSON-native interface, `eck_train_tokens` and `eck_token_stats` wired into router (2026-03-15)

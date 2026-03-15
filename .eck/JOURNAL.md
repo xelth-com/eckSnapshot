@@ -215,6 +215,27 @@ scope: core
 
 
 
+
+## 2026-03-15 — Agent Report
+
+# Agent Report
+
+# feat(cli): Restore token training tools using JSON-native interface
+
+## What was done
+- Re-created `src/cli/commands/trainTokens.js` with JSON-native `runTokenTools(payload)` dispatcher
+- Wired `eck_train_tokens` and `eck_token_stats` into `cli.js` router (switch cases + help text)
+- Updated `.eck/TECH_DEBT.md` — marked this item as resolved
+
+## New tools
+| Tool | Args | Function |
+|------|------|----------|
+| `eck_train_tokens` | `{ projectType, fileSizeBytes, estimatedTokens, actualTokens }` | Calibrate token estimation polynomial |
+| `eck_token_stats` | `{}` | Show estimation accuracy + sync weights |
+
+## Verification
+- `cli.js` loads cleanly with new import
+
 ## 2026-03-15 — Agent Report
 
 # Agent Report

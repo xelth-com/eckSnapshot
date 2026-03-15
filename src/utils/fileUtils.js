@@ -3,7 +3,6 @@ import path from 'path';
 import { execa } from 'execa';
 import ignore from 'ignore';
 import { detectProjectType, getProjectSpecificFiltering } from './projectDetector.js';
-import { executePrompt as askClaude } from '../services/claudeCliService.js';
 import { getProfile, loadSetupConfig } from '../config.js';
 import micromatch from 'micromatch';
 import { minimatch } from 'minimatch';
@@ -903,15 +902,11 @@ export async function applyProfileFilter(allFiles, profileString, repoPath) {
 export async function initializeEckManifest(projectPath) {
   const eckDir = path.join(projectPath, '.eck');
 
-  // Load setup configuration to check AI generation settings and project context
-  let aiGenerationEnabled = false;
   let setupConfig = null;
   try {
     setupConfig = await loadSetupConfig();
-    aiGenerationEnabled = setupConfig?.aiInstructions?.manifestInitialization?.aiGenerationEnabled ?? false;
   } catch (error) {
-    // If setup config fails to load, default to disabled
-    console.warn(`   ⚠️ Could not load setup config: ${error.message}. AI generation disabled.`);
+    // If setup config fails to load, continue with defaults
   }
 
   try {
@@ -945,118 +940,45 @@ export async function initializeEckManifest(projectPath) {
     await fs.mkdir(eckDir, { recursive: true });
     console.log('📋 Initializing .eck manifest directory...');
 
-    // --- NEW HYBRID LOGIC --- 
-    // 1. Run static analysis first to gather facts.
+    // Gather basic project info for stub templates
     let staticFacts = {};
     try {
       staticFacts = await detectProjectType(projectPath);
-      console.log(`   🔍 Static analysis complete. Detected type: ${staticFacts.type}`);
     } catch (e) {
-      console.warn(`   ⚠️ Static project detection failed: ${e.message}. Proceeding with generic prompts.`);
+      // Non-critical
     }
 
-    // Prevent AI hallucination by removing low-confidence "other possibilities"
-    if (staticFacts && staticFacts.allDetections) {
-      delete staticFacts.allDetections;
-    }
-    
-    const staticFactsJson = JSON.stringify(staticFacts, null, 2);
-    // --- END NEW LOGIC ---
-
-    // Extract Context from setup.json if available
-    const projName = setupConfig?.projectContext?.name || path.basename(projectPath) || staticFacts.type || 'project';
+    const projName = setupConfig?.projectContext?.name || path.basename(projectPath) || 'project';
     const projType = setupConfig?.projectContext?.type || staticFacts.type || 'unknown';
     const projStack = (setupConfig?.projectContext?.architecture?.stack?.length > 0)
       ? setupConfig.projectContext.architecture.stack.join(', ')
       : 'TBD';
-    const projAi = setupConfig?.projectContext?.architecture?.aiIntegration || 'None';
     
-    // 3. Define smarter templates and prompts using setup.json context
+    // Static stub templates — AI agents fill these in via their AGENTS.md/CLAUDE.md instructions
     const templateConfigs = {
       'ENVIRONMENT.md': {
-        prompt: `Generate raw YAML for .eck/ENVIRONMENT.md based on these project facts:\n${staticFactsJson}\nInclude project_type, runtime, and agent_id: local_dev. NO markdown fences.`,
-        fallback: `project_type: ${projType}
-agent_id: local_dev
-# Generated from setup.json
-`
+        content: `project_type: ${projType}\nagent_id: local_dev\n`
       },
       'CONTEXT.md': {
-        prompt: `Analyze these project files and dependencies:\n${staticFactsJson}\nGenerate a professional # Project Overview in Markdown. Describe the actual architecture and purpose of this specific project. Be technical and concise. Start with '# Project Overview'.`,
-        fallback: `# Project Overview
-
-## Description
-Project name: ${projName}
-Type: ${projType}
-AI Integration: ${projAi}
-
-## Architecture
-Stack: ${projStack}
-
-*(Auto-generated from setup.json)*
-`
+        content: `# [STUB: CONTEXT.md]\n\nProject: ${projName} | Type: ${projType} | Stack: ${projStack}\n\nAI Agent: please update this file based on your analysis of the codebase.\n`
       },
       'OPERATIONS.md': {
-        prompt: `Look at the dependencies and files:\n${staticFactsJson}\nGenerate a Markdown guide for common operations (Setup, Run, Test, Build) using the correct commands for this tech stack. Start with '# Common Operations'.`,
-        fallback: `# [STUB: OPERATIONS.MD]
-
-## 🚨 ATTENTION
-**CODER:** Run \`npm run\`, check Makefile, or build files to identify REAL commands for Setup, Running, and Testing. Replace this stub with actual commands. Remove this notice.
-
-## Setup
-${staticFacts.type === 'nodejs' ? 'npm install' : 'TBD'}`
+        content: `# [STUB: OPERATIONS.md]\n\nAI Agent: please update with actual setup, run, and test commands.\n\n## Setup\n${staticFacts.type === 'nodejs' ? '\\`\\`\\`bash\\nnpm install\\n\\`\\`\\`' : 'TBD'}\n`
       },
       'ROADMAP.md': {
-        prompt: `Based on the project type (${staticFacts.type}), propose a 3-step roadmap. Start with '# Project Roadmap'.`,
-        fallback: `# [STUB: ROADMAP.MD]
-
-**ARCHITECT:** Set a real roadmap based on user goals. **CODER:** Remove this stub marker once a real goal is added.`
+        content: `# [STUB: ROADMAP.md]\n\nAI Agent: please set a real roadmap based on project goals.\n`
       },
       'TECH_DEBT.md': {
-        prompt: `Given this is a ${staticFacts.type} project, list 2-3 common technical debt items. Start with '# Technical Debt'.`,
-        fallback: `# [STUB: TECH_DEBT.MD]
-
-**CODER:** Scan for TODOs/FIXMEs or structural issues and list them here. Remove this stub marker.`
+        content: `# [STUB: TECH_DEBT.md]\n\nAI Agent: please scan for TODOs/FIXMEs or structural issues and list them here.\n`
       },
       'DEPLOY_CHECKLIST.md': {
-        prompt: `Based on the project type (${staticFacts.type}), generate a pre-deployment checklist. Start with '# Deployment Checklist'.`,
-        fallback: `# [STUB: DEPLOY_CHECKLIST.MD]
-
-## 🚨 ATTENTION CODER
-Verify required build steps before deployment.
-
-## Pre-Deployment Checklist
-- [ ] Verify all tests pass
-- [ ] Build assets (e.g., npm run build)
-- [ ] Check environment variables
-
-**CODER:** Update this checklist with actual build/deploy steps for this project.`
+        content: `# [STUB: DEPLOY_CHECKLIST.md]\n\n- [ ] Verify all tests pass\n- [ ] Build assets\n- [ ] Check environment variables\n\nAI Agent: please update with actual deploy steps.\n`
       },
       'RUNTIME_STATE.md': {
-        prompt: `Based on the project type (${staticFacts.type}), generate a template for RUNTIME_STATE.md. Start with '# Runtime State'.`,
-        fallback: `# Runtime State
-
-## 🚨 ATTENTION CODER
-Always check this file and verify the actual runtime state (ports, running processes, env variables) BEFORE writing code. Update this file if ports or access methods change.
-
-- **Server:** e.g., running on port 3210
-- **Services:** e.g., Scraper running on port 3211
-- **Auth:** e.g., admin@local / password
-- **Verification Commands:**
-  - \`pm2 ls\`
-  - \`curl http://localhost:3210/health\`
-`
+        content: `# [STUB: RUNTIME_STATE.md]\n\nAI Agent: check actual runtime state (ports, processes, env vars) and update this file.\n\n- **Server:** TBD\n- **Services:** TBD\n`
       },
       'JOURNAL.md': {
-        fallback: `# Development Journal
-
-## Recent Changes
----
-type: feat
-scope: project
-summary: Initial manifest generated (PENDING REVIEW)
-date: ${new Date().toISOString().split('T')[0]}
----
-- NOTICE: Some .eck files are STUBS. They need manual or AI-assisted verification.`
+        content: `# Development Journal\n\n## Recent Changes\n---\ntype: feat\nscope: project\nsummary: Initial manifest generated (PENDING REVIEW)\ndate: ${new Date().toISOString().split('T')[0]}\n---\n- NOTICE: Some .eck files are STUBS. They need manual or AI-assisted verification.\n`
       }
     };
     
@@ -1073,40 +995,8 @@ date: ${new Date().toISOString().split('T')[0]}
         // File doesn't exist, create it
       }
 
-      let fileContent = config.fallback; // Start with stub fallback
-      let generatedByAI = false;
-
-      // For files with a prompt, try to dynamically generate (only if enabled)
-      if (config.prompt && aiGenerationEnabled) {
-        try {
-          console.log(`   🧠 Attempting to auto-generate ${fileName} via Claude...`);
-          const aiResponseObject = await askClaude(config.prompt);
-          const rawText = aiResponseObject.result;
-
-          if (!rawText || typeof rawText.replace !== 'function') {
-             throw new Error(`AI returned invalid content type: ${typeof rawText}`);
-          }
-
-          // Basic cleanup of potential markdown code blocks from Claude
-          const cleanedResponse = rawText.replace(/^```(markdown|yaml)?\n|```$/g, '').trim();
-
-          if (cleanedResponse) {
-            fileContent = cleanedResponse;
-            generatedByAI = true;
-            console.log(`   ✨ AI successfully generated ${fileName}`);
-          } else {
-            throw new Error('AI returned empty content.');
-          }
-        } catch (error) {
-          console.warn(`   ⚠️ AI generation failed for ${fileName}: ${error.message}. Using stub template.`);
-          // fileContent is already set to the stub fallback
-        }
-      }
-
-      await fs.writeFile(filePath, fileContent);
-      if (!generatedByAI) {
-          console.log(`   ✅ Created ${fileName} (stub template)`);
-      }
+      await fs.writeFile(filePath, config.content);
+      console.log(`   ✅ Created ${fileName} (stub template)`);
     }
     
     console.log('📋 .eck manifest initialized! Edit the files to provide project-specific context.');
