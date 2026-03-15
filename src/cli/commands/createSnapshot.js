@@ -721,6 +721,68 @@ export async function createRepoSnapshot(repoPath, options) {
       // File body always includes full content
       let fileBody = (directoryTree ? `\n## Directory Structure\n\n\`\`\`\n${directoryTree}\`\`\`\n\n` : '') + contentArray.join('');
 
+      // --- PROCESS LINKED PROJECTS ---
+      let linkedBody = '';
+      if (options.link) {
+        const links = Array.isArray(options.link) ? options.link : [options.link];
+        const linkDepth = options.linkDepth !== undefined ? parseInt(options.linkDepth, 10) : 0;
+
+        for (const linkPath of links) {
+          const absLinkPath = path.resolve(originalCwd, linkPath);
+          const linkName = path.basename(absLinkPath);
+          console.log(chalk.magenta(`\n🔗 Processing Linked Project: ${linkName} (Depth: ${linkDepth})`));
+
+          // Configure options based on 0-10 scale
+          let linkOptions = { ...options, link: undefined, linkDepth: undefined, profile: undefined };
+          let skipContent = false;
+
+          if (linkDepth === 0) {
+            skipContent = true;
+          } else if (linkDepth >= 1 && linkDepth <= 3) {
+            const linesMap = { 1: 20, 2: 50, 3: 100 };
+            linkOptions.maxLinesPerFile = linesMap[linkDepth];
+            linkOptions.skeleton = false;
+          } else if (linkDepth >= 4 && linkDepth <= 6) {
+            linkOptions.skeleton = true;
+            linkOptions.maxLinesPerFile = 0;
+          } else {
+            linkOptions.skeleton = false;
+            linkOptions.maxLinesPerFile = 0;
+          }
+
+          try {
+            const linkDetection = await detectProjectType(absLinkPath);
+            const linkResult = await processProjectFiles(absLinkPath, linkOptions, config, linkDetection.type);
+
+            let linkTree = '';
+            if (config.tree && !options.noTree) {
+              linkTree = await generateDirectoryTree(absLinkPath, '', linkResult.allFiles, 0, config.maxDepth || 10, config);
+            }
+
+            linkedBody += `\n\n# 🔗 LINKED PROJECT: [${linkName}]\n\n`;
+            linkedBody += `**ABSOLUTE PATH:** \`${absLinkPath}\`\n`;
+            linkedBody += `**CROSS-CONTEXT MODE:** This is a linked companion project provided for reference. DO NOT generate code for it directly in your response unless explicitly asked. To inspect files inside this project, use your tool to run:\n`;
+            linkedBody += `\`eck-snapshot '{"name": "eck_fetch", "arguments": {"patterns": ["${absLinkPath.replace(/\\/g, '/')}/src/example.js"]}}'\`\n\n`;
+
+            if (linkTree) {
+              linkedBody += `## Linked Directory Structure\n\n\`\`\`\n${linkTree}\`\`\`\n\n`;
+            }
+
+            if (!skipContent && linkResult.contentArray) {
+              linkedBody += `## Linked Source Code (Depth Level ${linkDepth})\n\n`;
+              linkedBody += linkResult.contentArray.join('');
+            } else {
+              linkedBody += `*(Source code omitted due to linkDepth=${linkDepth})*\n`;
+            }
+
+          } catch (linkErr) {
+            console.warn(chalk.yellow(`⚠️ Failed to process linked project at ${absLinkPath}: ${linkErr.message}`));
+          }
+        }
+      }
+
+      fileBody += linkedBody;
+
       // Helper to write snapshot file
       const writeSnapshot = async (suffix, isAgentMode) => {
         // CHANGE: Force agent to FALSE for the main snapshot header.

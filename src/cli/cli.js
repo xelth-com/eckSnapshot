@@ -56,7 +56,7 @@ USAGE:
 
 AVAILABLE TOOLS:
   - eck_snapshot  : Create a full context snapshot.
-                    Args: { profile?: string, skeleton?: boolean, jas/jao/jaz?: boolean }
+                    Args: { profile?: string, skeleton?: boolean, jas/jao/jaz?: boolean, link?: string|string[], linkDepth?: number }
   - eck_update    : Create a delta snapshot.
   - eck_scout     : Reconnaissance (generate tree for external repos).
   - eck_fetch     : Reconnaissance (fetch file contents). Args: { patterns: string[] }
