@@ -208,6 +208,36 @@ scope: core
 
 
 
+
+## 2026-03-15 — Agent Report
+
+# Agent Report
+
+# refactor(cli): Migrate to 100% AI-Native JSON/MCP CLI interface
+
+## What was done
+Completely rewrote `src/cli/cli.js`:
+- Removed all `commander` sub-commands and legacy human-centric flags
+- CLI now accepts a single JSON string: `{"name": "tool_name", "arguments": {...}}`
+- Routes to existing core functions: `eck_snapshot`, `eck_update`, `eck_update_auto`, `eck_setup_mcp`, `eck_detect`, `eck_doctor`
+
+## Legacy compatibility shim
+Added `LEGACY_COMMANDS` map that intercepts old positional commands (`update-auto`, `snapshot`, `update`, `setup-mcp`, `detect`, `doctor`) and translates them to JSON payloads before commander parses them. This keeps internal callers like `mcp-eck-core.js` (which calls `node index.js update-auto`) working without modification.
+
+## Deviation from spec
+- `eck_scout`/`eck_fetch` (`runReconTool` from `recon.js`) omitted — module doesn't exist in codebase
+- Legacy shim was NOT in the spec but was required to prevent breaking `eck_finish_task` MCP tool
+
+## Removed imports (dead code)
+`restoreSnapshot`, `pruneSnapshot`, `generateConsilium`, `testFileParsing`, `trainTokens`, `showTokenStats`, `executePrompt`, `executePromptWithSession`, `detectProfiles`, `generateProfileGuide`, `setupGemini`, `pushTelemetry`, `showFile`, `envPush`, `envPull`, `inquirer`, `ora`, `execa`, `checkCodeBoundaries`
+
+## Verification
+- `--help` shows new JSON interface
+- `'{"name": "eck_detect"}'` — works
+- `detect` (legacy) — works via shim
+- Invalid JSON — clean error with example
+- `eck_finish_task` MCP tool — works (this commit proves it)
+
 ## 2026-03-15 — Agent Report
 
 # Agent Report

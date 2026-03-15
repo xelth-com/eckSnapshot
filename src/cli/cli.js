@@ -14,6 +14,7 @@ import { updateSnapshot, updateSnapshotJson } from './commands/updateSnapshot.js
 import { setupMcp } from './commands/setupMcp.js';
 import { detectProject } from './commands/detectProject.js';
 import { runDoctor } from './commands/doctor.js';
+import { runReconTool } from './commands/recon.js';
 
 // Legacy command shims: translate old positional commands to JSON payloads
 // so internal callers (mcp-eck-core.js) keep working after the JSON migration.
@@ -24,6 +25,8 @@ const LEGACY_COMMANDS = {
   'setup-mcp':   (args) => ({ name: 'eck_setup_mcp', arguments: { opencode: args.includes('--opencode'), both: args.includes('--both') } }),
   'detect':      () => ({ name: 'eck_detect', arguments: {} }),
   'doctor':      () => ({ name: 'eck_doctor', arguments: {} }),
+  'scout':       () => ({ name: 'eck_scout', arguments: {} }),
+  'fetch':       (args) => ({ name: 'eck_fetch', arguments: { patterns: args } }),
 };
 
 export function run() {
@@ -54,6 +57,8 @@ AVAILABLE TOOLS:
   - eck_snapshot  : Create a full context snapshot.
                     Args: { profile?: string, skeleton?: boolean, jas/jao/jaz?: boolean }
   - eck_update    : Create a delta snapshot.
+  - eck_scout     : Reconnaissance (generate tree for external repos).
+  - eck_fetch     : Reconnaissance (fetch file contents). Args: { patterns: string[] }
   - eck_setup_mcp : Configure MCP. Args: { opencode?: boolean, both?: boolean }
   - eck_detect    : Detect project type. Args: {}
   - eck_doctor    : Run project health check. Args: {}
@@ -61,7 +66,8 @@ AVAILABLE TOOLS:
 EXAMPLES:
   eck-snapshot '{"name": "eck_snapshot", "arguments": {"profile": "backend"}}'
   eck-snapshot '{"name": "eck_update"}'
-  eck-snapshot '{"name": "eck_setup_mcp", "arguments": {"both": true}}'
+  eck-snapshot '{"name": "eck_scout"}'
+  eck-snapshot '{"name": "eck_fetch", "arguments": {"patterns": ["src/**/*.rs"]}}'
 `;
 
   program
@@ -107,6 +113,10 @@ EXAMPLES:
             break;
           case 'eck_doctor':
             await runDoctor(cwd);
+            break;
+          case 'eck_scout':
+          case 'eck_fetch':
+            await runReconTool(payload);
             break;
           default:
             console.log(chalk.red(`❌ Unknown tool: "${toolName}"`));
