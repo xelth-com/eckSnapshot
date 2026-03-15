@@ -48,8 +48,14 @@ async function runScout() {
 **CRITICAL INSTRUCTION FOR AI:** You are currently working on your primary project. The data below is strictly for REFERENCE from an external repository named \`${repoName}\`. DO NOT assume the role of architect for this repository. DO NOT attempt to write code for this repository.
 
 ## How to request data from this repository
-Below is the directory tree of this external codebase. If you need to see the contents of specific files or folders to understand how they work, ask the user to run the following JSON command in the external repository's terminal:
+Below is the directory tree of this external codebase. If you need to see the contents of specific files or folders to understand how they work, ask the user to run ONE of the following commands in the external repository's terminal:
 
+**Option A: Short format (Best for Windows PowerShell / CMD)**
+\`\`\`bash
+eck-snapshot fetch "path/to/file.rs" "src/**/*.js"
+\`\`\`
+
+**Option B: Pure JSON format (Best for Linux/Mac Bash/Zsh)**
 \`\`\`bash
 eck-snapshot '{"name": "eck_fetch", "arguments": {"patterns": ["path/to/file.rs", "src/**/*.js"]}}'
 \`\`\`

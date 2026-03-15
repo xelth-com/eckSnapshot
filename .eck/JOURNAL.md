@@ -211,6 +211,33 @@ scope: core
 
 
 
+
+## 2026-03-15 — Agent Report
+
+# Agent Report
+
+# refactor(cleanup): Delete orphaned legacy CLI commands and services
+
+## Deleted (11 files)
+- `src/cli/commands/restoreSnapshot.js`
+- `src/cli/commands/pruneSnapshot.js`
+- `src/cli/commands/consilium.js`
+- `src/cli/commands/trainTokens.js`
+- `src/cli/commands/detectProfiles.js`
+- `src/cli/commands/generateProfileGuide.js`
+- `src/cli/commands/setupGemini.js`
+- `src/cli/commands/setupGemini.test.js`
+- `src/cli/commands/showFile.js`
+- `src/cli/commands/envSync.js`
+- `src/services/claudeCliService.test.js`
+
+## Kept (deviation from spec)
+- `src/services/claudeCliService.js` — still actively imported by `src/utils/fileUtils.js` (line 6: `askClaude` used in manifest auto-generation at line 1083). Deleting it would break the snapshot pipeline.
+
+## Verification
+- `cli.js` loads cleanly after deletions
+- No remaining imports reference the deleted modules
+
 ## 2026-03-15 — Agent Report
 
 # Agent Report
