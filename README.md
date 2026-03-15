@@ -39,24 +39,25 @@ When the Coder agent finishes a task, it automatically calls the built-in MCP to
 
 ### Senior Architect (Web LLM — reads the snapshot)
 
-The Architect needs a **massive context window** and strong reasoning. Best choices:
+The Architect needs a **massive context window** and strong reasoning to digest the full codebase snapshot:
 
-| Model | Context | Notes |
-|-------|---------|-------|
-| **Gemini 2.5 Pro** | 1M tokens | Best for large projects. Handles huge snapshots effortlessly. |
-| **Grok 3** | 128K tokens | Fast and capable. Great balance of speed and quality. |
-| **Claude Opus 4** | 200K tokens | Excellent reasoning. Slightly smaller context but very precise. |
-| **ChatGPT (o3/o4-mini)** | 128K tokens | Works, but can be slow and may ignore the snapshot instructions. If using ChatGPT, you **MUST** paste the specific prompt provided at the end of the snapshot output as your first message — otherwise it will act as a generic reviewer instead of assuming the Architect role. |
+| Model | Context Window | Notes |
+|-------|---------------|-------|
+| **Grok 4 Fast** | **2M tokens** | Largest context available. Can swallow even the biggest monorepos whole. |
+| **Gemini 3.1 Pro** | 1M tokens | Excellent for large projects. Handles huge snapshots effortlessly. |
+| **GPT-5.4** | 1M tokens | Strong reasoning. Note: 1M context is opt-in; default is 272K. Prompts over 272K are priced at 2x. |
+| **Grok 4** | 256K tokens | Fast and capable. Good for medium-sized projects. |
+| **ChatGPT (GPT-5.4 via web)** | 1M tokens | Works, but can be stubborn with instructions. You **MUST** paste the specific prompt provided at the end of the snapshot output as your first message — otherwise ChatGPT will act as a generic code reviewer instead of assuming the Architect role. |
 
 ### Coder Agent (Local — executes the plan)
 
-The Coder needs **tool access** (file editing, terminal, MCP) and works locally on your machine:
+The Coder needs **tool access** (file editing, terminal, MCP) and works locally in your repository:
 
 | Tool | Engine | Best For |
 |------|--------|----------|
-| **Claude Code** | Claude Sonnet/Opus 4 | Primary choice. Deep tool integration, MCP support. |
-| **OpenCode** | Any model (GLM, Claude, etc.) | Lightweight alternative with AGENTS.md support. |
-| **Codex CLI** | GPT models | OpenAI's coding agent. Supported via `.codex/config.toml`. |
+| **Claude Code** | Claude Sonnet/Opus 4.6 (1M context) | Primary choice. Deep tool integration, native MCP support, context compaction for long sessions. |
+| **OpenCode** | GLM-4.7 / any model | Cost-effective alternative. AGENTS.md support, GLM Z.AI worker swarm via MCP. |
+| **Codex CLI** | GPT models | OpenAI's coding agent. Auto-configured via `.codex/config.toml`. |
 
 ### MCP Setup (One-Time)
 Register the MCP servers so your Coder agent can auto-commit and sync context:
