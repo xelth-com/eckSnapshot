@@ -1,4 +1,4 @@
-# 📸 eckSnapshot v6.2.5 (AI-Native Edition)
+# 📸 eckSnapshot v6.2.6 (AI-Native Edition)
 
 A specialized, AI-native CLI tool that creates single-file text snapshots of entire Git repositories and feeds them directly into LLM context windows. Instead of letting AI agents guess which files to read, eckSnapshot force-feeds the complete project into the model's context — giving it a "university degree" in your codebase from the very first prompt.
 
