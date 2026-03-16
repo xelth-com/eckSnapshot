@@ -111,6 +111,46 @@ node index.js '{"name": "eck_setup_mcp", "arguments": {"both": true}}'
 
 Codex config is auto-detected during `setup-mcp` and snapshot creation if `.codex/` directory exists.
 
+## Release & Publish
+
+### Standard release (patch/minor changes)
+```bash
+npm version patch --no-git-tag-version   # or: minor
+# Update version in README.md header too
+git add package.json README.md && git commit -m "chore: bump X.Y.Z" && git push
+npm publish --access public
+```
+
+### Self-snapshot update (only on MINOR version bumps, e.g. 6.3.0)
+The repo includes `ecksnapshot-context.md` — a snapshot of itself, linked from README as a download demo.
+Rebuild it when the minor version changes (new features that alter architecture):
+```bash
+# 1. Generate fresh snapshot
+eck-snapshot snapshot
+
+# 2. Copy to repo root
+cp .eck/snapshots/eck*.md ecksnapshot-context.md
+
+# 3. Create GitHub release with asset (forces download instead of browser render)
+TOKEN=$(printf "protocol=https\nhost=github.com\n" | git credential fill 2>/dev/null | grep password | cut -d= -f2)
+
+# Create release
+curl -s -X POST "https://api.github.com/repos/xelth-com/eckSnapshot/releases" \
+  -H "Authorization: token $TOKEN" -H "Content-Type: application/json" \
+  -d '{"tag_name":"vX.Y.0","name":"vX.Y.0","body":"Release notes here"}' \
+  | python -c "import sys,json; print(json.load(sys.stdin)['id'])"
+
+# Upload asset (replace RELEASE_ID)
+curl -s -X POST "https://uploads.github.com/repos/xelth-com/eckSnapshot/releases/RELEASE_ID/assets?name=ecksnapshot-context.md" \
+  -H "Authorization: token $TOKEN" -H "Content-Type: text/markdown" \
+  --data-binary @ecksnapshot-context.md
+
+# 4. Update download link in README.md to point to new release tag
+# 5. Commit, push, npm publish
+```
+
+**Why release assets?** GitHub raw links open `.md` in browser. Release assets send `Content-Disposition: attachment` → forced download.
+
 ## Testing
 ```bash
 npm test

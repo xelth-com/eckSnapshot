@@ -1,4 +1,5 @@
 import fs from 'fs/promises';
+import fsSync from 'fs';
 import path from 'path';
 import chalk from 'chalk';
 import ora from 'ora';
@@ -8,6 +9,25 @@ import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+/**
+ * Walk up from cwd to find the project root (directory containing .git or package.json).
+ * Falls back to cwd if no marker is found.
+ */
+function findProjectRoot() {
+  let dir = process.cwd();
+  const root = path.parse(dir).root;
+  while (dir !== root) {
+    try {
+      const entries = fsSync.readdirSync(dir);
+      if (entries.includes('.git') || entries.includes('package.json')) {
+        return dir;
+      }
+    } catch { /* unreadable dir, keep going */ }
+    dir = path.dirname(dir);
+  }
+  return process.cwd();
+}
 
 /**
  * Setup / Restore MCP servers for Claude Code, OpenCode, and Codex.
@@ -22,6 +42,7 @@ const __dirname = path.dirname(__filename);
  */
 export async function setupMcp(options = {}) {
   const packageRoot = path.resolve(__dirname, '../../..');
+  const projectRoot = findProjectRoot();
   const eckCorePath = path.join(packageRoot, 'scripts', 'mcp-eck-core.js');
   const glmZaiPath = path.join(packageRoot, 'scripts', 'mcp-glm-zai-worker.mjs');
   const targets = [];
@@ -34,17 +55,20 @@ export async function setupMcp(options = {}) {
   }
 
   console.log(chalk.blue.bold('\n🔧 EckSnapshot MCP Setup\n'));
+  if (projectRoot !== process.cwd()) {
+    console.log(chalk.gray(`  Project root: ${projectRoot}\n`));
+  }
 
   for (const target of targets) {
     if (target === 'claude') {
-      await setupForClaude(packageRoot, eckCorePath, glmZaiPath, options);
+      await setupForClaude(packageRoot, eckCorePath, glmZaiPath, options, projectRoot);
     } else {
-      await setupForOpenCode(packageRoot, eckCorePath, glmZaiPath, options);
+      await setupForOpenCode(packageRoot, eckCorePath, glmZaiPath, options, projectRoot);
     }
   }
 
   // Auto-detect Codex
-  const codexDir = path.join(process.cwd(), '.codex');
+  const codexDir = path.join(projectRoot, '.codex');
   let hasCodex = false;
   try {
     await fs.access(codexDir);
@@ -52,7 +76,7 @@ export async function setupMcp(options = {}) {
   } catch {}
 
   if (hasCodex) {
-    await setupForCodex(packageRoot, eckCorePath, glmZaiPath, options);
+    await setupForCodex(packageRoot, eckCorePath, glmZaiPath, options, projectRoot);
   }
 
   // Print summary
@@ -74,7 +98,7 @@ export async function setupMcp(options = {}) {
 /**
  * Register MCP servers for Claude Code using `claude mcp add`
  */
-async function setupForClaude(packageRoot, eckCorePath, glmZaiPath, options) {
+async function setupForClaude(packageRoot, eckCorePath, glmZaiPath, options, projectRoot) {
   const spinner = ora();
 
   console.log(chalk.blue('📦 Setting up for Claude Code...\n'));
@@ -184,7 +208,7 @@ async function setupForClaude(packageRoot, eckCorePath, glmZaiPath, options) {
   spinner.succeed(`Config saved: ${chalk.cyan(claudeConfigPath)}`);
 
   // Also update the local .eck/claude-mcp-config.json
-  const localConfigPath = path.join(process.cwd(), '.eck', 'claude-mcp-config.json');
+  const localConfigPath = path.join(projectRoot, '.eck', 'claude-mcp-config.json');
   const localConfig = {
     mcpServers: {
       'eck-core': config.mcpServers['eck-core'],
@@ -207,12 +231,12 @@ async function setupForClaude(packageRoot, eckCorePath, glmZaiPath, options) {
  *   { "mcp": { "name": { "type": "local", "command": [...], "enabled": true } } }
  * The CLI (`opencode mcp add`) is interactive (TUI), so we write the config directly.
  */
-async function setupForOpenCode(packageRoot, eckCorePath, glmZaiPath, options) {
+async function setupForOpenCode(packageRoot, eckCorePath, glmZaiPath, options, projectRoot) {
   const spinner = ora();
 
   console.log(chalk.blue('📦 Setting up for OpenCode...\n'));
 
-  const configPath = path.join(process.cwd(), 'opencode.json');
+  const configPath = path.join(projectRoot, 'opencode.json');
 
   spinner.start('Updating OpenCode config (opencode.json)...');
 
@@ -277,13 +301,13 @@ async function setupForOpenCode(packageRoot, eckCorePath, glmZaiPath, options) {
 /**
  * Register MCP servers for Codex by appending to .codex/config.toml
  */
-async function setupForCodex(packageRoot, eckCorePath, glmZaiPath, options) {
+async function setupForCodex(packageRoot, eckCorePath, glmZaiPath, options, projectRoot) {
   const spinner = ora();
   console.log(chalk.blue('📦 Setting up for Codex...\n'));
   spinner.start('Updating Codex config (.codex/config.toml)...');
 
   try {
-    const updated = await ensureProjectCodexConfig(process.cwd());
+    const updated = await ensureProjectCodexConfig(projectRoot);
     if (updated) {
       spinner.succeed(`Codex config updated: ${chalk.cyan('.codex/config.toml')}`);
     } else {

@@ -5,7 +5,7 @@
       "type": "local",
       "command": [
         "node",
-        "C:\\Users\\Dmytro\\eckSnapshot\\scripts\\mcp-eck-core.js"
+        "C:\\Users\\Dmytro\\ecksnapshot\\scripts\\mcp-eck-core.js"
       ],
       "enabled": true,
       "timeout": 30000
