@@ -64,14 +64,17 @@ const languages = {
  * Strips implementation details from code.
  * @param {string} content - Full file content
  * @param {string} filePath - File path to determine language
+ * @param {object} [options] - Options
+ * @param {boolean} [options.preserveDocs=true] - Keep JSDoc/docstrings (depth 6) or strip them (depth 5)
  * @returns {Promise<string>} - Skeletonized code
  */
-export async function skeletonize(content, filePath) {
+export async function skeletonize(content, filePath, options = {}) {
     if (!content) return content;
+    const preserveDocs = options.preserveDocs !== undefined ? options.preserveDocs : true;
 
     // 1. JS/TS Strategy (Babel is better for JS ecosystem)
     if (/\.(js|jsx|ts|tsx|mjs|cjs)$/.test(filePath)) {
-        return skeletonizeJs(content);
+        return skeletonizeJs(content, preserveDocs);
     }
 
     // 2. Tree-sitter Strategy (Python, Java, Kotlin, C, Rust, Go)
@@ -83,7 +86,7 @@ export async function skeletonize(content, filePath) {
 
         // Only attempt tree-sitter if both the parser and the specific language module are ready
         if (available && Parser && langModule) {
-            return skeletonizeTreeSitter(content, langModule, ext);
+            return skeletonizeTreeSitter(content, langModule, ext, preserveDocs);
         }
         return content; // Fallback: return original content if tree-sitter unavailable
     }
@@ -92,7 +95,7 @@ export async function skeletonize(content, filePath) {
     return content;
 }
 
-function skeletonizeJs(content) {
+function skeletonizeJs(content, preserveDocs = true) {
     try {
         const ast = parse(content, {
             sourceType: 'module',
@@ -100,27 +103,27 @@ function skeletonizeJs(content) {
             errorRecovery: true
         });
 
-        traverse(ast, {
-            Function(path) {
-                if (path.node.body && path.node.body.type === 'BlockStatement') {
-                    // Preserve leading comments (JSDoc) before emptying body
+        const emptyBody = (path) => {
+            if (path.node.body && path.node.body.type === 'BlockStatement') {
+                if (preserveDocs) {
+                    // Keep leading comments (JSDoc) before emptying body
                     const leadingComments = path.node.leadingComments || [];
                     path.node.body.body = [];
                     path.node.body.innerComments = leadingComments.length > 0
                         ? leadingComments
                         : [{ type: 'CommentBlock', value: ' ... ' }];
-                }
-            },
-            ClassMethod(path) {
-                if (path.node.body && path.node.body.type === 'BlockStatement') {
-                    // Preserve leading comments (JSDoc) before emptying body
-                    const leadingComments = path.node.leadingComments || [];
+                } else {
+                    // Strip everything including docs
+                    path.node.leadingComments = null;
                     path.node.body.body = [];
-                    path.node.body.innerComments = leadingComments.length > 0
-                        ? leadingComments
-                        : [{ type: 'CommentBlock', value: ' ... ' }];
+                    path.node.body.innerComments = [{ type: 'CommentBlock', value: ' ... ' }];
                 }
             }
+        };
+
+        traverse(ast, {
+            Function: emptyBody,
+            ClassMethod: emptyBody
         });
 
         const output = generate(ast, {}, content);
@@ -130,7 +133,7 @@ function skeletonizeJs(content) {
     }
 }
 
-function skeletonizeTreeSitter(content, language, ext) {
+function skeletonizeTreeSitter(content, language, ext, preserveDocs = true) {
     try {
         const parser = new Parser();
         parser.setLanguage(language);
@@ -172,6 +175,19 @@ function skeletonizeTreeSitter(content, language, ext) {
                 }
 
                 if (bodyNode) {
+                    // For Python with preserveDocs: keep docstring as first statement
+                    if (preserveDocs && ext === '.py' && bodyNode.childCount > 0) {
+                        const docstring = extractPythonDocstring(bodyNode);
+                        if (docstring) {
+                            replacements.push({
+                                start: bodyNode.startIndex,
+                                end: bodyNode.endIndex,
+                                text: docstring + '\n    ...'
+                            });
+                            return;
+                        }
+                    }
+
                     replacements.push({
                         start: bodyNode.startIndex,
                         end: bodyNode.endIndex,
@@ -179,6 +195,16 @@ function skeletonizeTreeSitter(content, language, ext) {
                     });
                     return;
                 }
+            }
+
+            // If not preserveDocs, also strip standalone comment blocks
+            if (!preserveDocs && type === 'comment') {
+                replacements.push({
+                    start: node.startIndex,
+                    end: node.endIndex,
+                    text: ''
+                });
+                return;
             }
 
             for (let i = 0; i < node.childCount; i++) {
@@ -194,8 +220,35 @@ function skeletonizeTreeSitter(content, language, ext) {
             currentContent = currentContent.substring(0, rep.start) + rep.text + currentContent.substring(rep.end);
         }
 
+        // Clean up excessive blank lines from stripped comments
+        if (!preserveDocs) {
+            currentContent = currentContent.replace(/\n{3,}/g, '\n\n');
+        }
+
         return currentContent;
     } catch (e) {
         return content + `\n// [Skeleton error: ${e.message}]`;
     }
+}
+
+/**
+ * Extract Python docstring from the first statement of a function body block.
+ */
+function extractPythonDocstring(bodyNode) {
+    for (let i = 0; i < bodyNode.childCount; i++) {
+        const child = bodyNode.child(i);
+        // Python docstrings are expression_statement containing a string
+        if (child.type === 'expression_statement') {
+            const expr = child.child(0);
+            if (expr && expr.type === 'string') {
+                // Return the indented docstring text
+                return '\n    ' + expr.text;
+            }
+        }
+        // Skip newline/indent tokens, but stop at first real statement
+        if (child.type !== 'newline' && child.type !== 'indent' && child.type !== 'NEWLINE' && child.type !== 'INDENT') {
+            if (child.type !== 'expression_statement') break;
+        }
+    }
+    return null;
 }

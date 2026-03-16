@@ -107,7 +107,7 @@ The Coder agent is intelligent and will understand what information they need ba
 ### CROSS-CONTEXT DEVELOPMENT (LINKED PROJECTS)
 
 If this project interacts with an external backend, frontend, or microservice, you can request its context.
-**Ask the user to run:** `eck-snapshot link [depth 0-10]` inside the related repository and upload the resulting `link_*.md` file. You will receive precise read-only access and fetch commands inside that file.
+**Ask the user to run:** `eck-snapshot link [depth 0-9]` inside the related repository and upload the resulting `link_*.md` file. You will receive precise read-only access and fetch commands inside that file.
 
 ### ANTI-TRUNCATION PROTOCOL (CRITICAL)
 

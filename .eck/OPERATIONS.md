@@ -52,37 +52,42 @@ node index.js '{"name": "eck_snapshot", "arguments": {"profile": "backend", "jas
 # Generate a standalone linked snapshot of the current project
 # Run this INSIDE the target project directory
 eck-snapshot link        # Depth 0: tree only
-eck-snapshot link 3      # Depth 3: truncated (100 lines per file)
+eck-snapshot link 3      # Depth 3: truncated (60 lines per file)
 eck-snapshot link 5      # Depth 5: skeleton mode
-eck-snapshot link 8      # Depth 8: full content
+eck-snapshot link 9      # Depth 9: full content
 
 # JSON equivalent:
 node index.js '{"name": "eck_snapshot", "arguments": {"isLinkedProject": true, "linkDepth": 5}}'
 ```
 
-**Depth Scale (0-10):**
+## Reconnaissance Protocol (Cross-Repo Exploration)
+```bash
+# Scout: Generate directory tree (with optional depth for file contents)
+eck-snapshot scout       # Depth 0: tree only (default)
+eck-snapshot scout 3     # Depth 3: tree + truncated file contents
+eck-snapshot scout 5     # Depth 5: tree + skeleton
+eck-snapshot scout 9     # Depth 9: tree + full content
+
+# Fetch: Extract specific files by glob pattern
+eck-snapshot fetch "src/**/*.js" "README.md"
+```
+
+Scout/Link output saved to `.eck/recon/` and `snapshots/` respectively.
+Fetch output saved to `.eck/recon/`.
+
+## Depth Scale (0-9) — shared by `scout` and `link`
 | Depth | Mode | Description |
 |-------|------|-------------|
 | 0 | Tree only | Directory structure, no file contents |
-| 1-3 | Truncated | 20 / 50 / 100 lines per file |
-| 4-6 | Skeleton | Function signatures only (Babel + Tree-sitter) |
-| 7-10 | Full | Complete file contents |
-
-Output: `link_*.md` in the `snapshots/` directory. Upload alongside main project snapshot.
-
-## Reconnaissance Protocol (Cross-Repo Exploration)
-```bash
-# Scout: Generate directory tree of external repo
-# (Run in the target repo's directory)
-node index.js '{"name": "eck_scout"}'
-# Or: node index.js scout
-
-# Fetch: Extract specific file contents
-node index.js '{"name": "eck_fetch", "arguments": {"patterns": ["src/**/*.js", "README.md"]}}'
-# Or: node index.js fetch "src/**/*.js" "README.md"
-```
-
-Output saved to `.eck/recon/` directory.
+| 1 | Truncated 10 | 10 lines per file (imports/header) |
+| 2 | Truncated 30 | 30 lines per file |
+| 3 | Truncated 60 | 60 lines per file |
+| 4 | Truncated 100 | 100 lines per file |
+| 5 | Skeleton | Function/class signatures only |
+| 6 | Skeleton + docs | Signatures + docstrings/comments |
+| 7 | Full (compact) | Full content, truncated at 500 lines |
+| 8 | Full (standard) | Full content, truncated at 1000 lines |
+| 9 | Full (unlimited) | Everything, no limits |
 
 ## MCP Setup / Restoration
 ```bash

@@ -26,7 +26,7 @@ const LEGACY_COMMANDS = {
   'setup-mcp':   (args) => ({ name: 'eck_setup_mcp', arguments: { opencode: args.includes('--opencode'), both: args.includes('--both') } }),
   'detect':      () => ({ name: 'eck_detect', arguments: {} }),
   'doctor':      () => ({ name: 'eck_doctor', arguments: {} }),
-  'scout':       () => ({ name: 'eck_scout', arguments: {} }),
+  'scout':       (args) => ({ name: 'eck_scout', arguments: { depth: args[0] ? parseInt(args[0], 10) : 0 } }),
   'fetch':       (args) => ({ name: 'eck_fetch', arguments: { patterns: args } }),
   'link':        (args) => ({ name: 'eck_snapshot', arguments: { isLinkedProject: true, linkDepth: args[0] ? parseInt(args[0], 10) : 0 } }),
 };
@@ -59,8 +59,8 @@ AVAILABLE TOOLS:
   - eck_snapshot  : Create a full context snapshot.
                     Args: { profile?: string, skeleton?: boolean, jas/jao/jaz?: boolean, link?: string|string[], linkDepth?: number }
   - eck_update    : Create a delta snapshot.
-  - eck_scout     : Reconnaissance (generate tree for external repos).
-  - eck_fetch     : Reconnaissance (fetch file contents). Args: { patterns: string[] }
+  - eck_scout     : Reconnaissance (generate tree + optional content). Args: { depth?: 0-9 }
+  - eck_fetch     : Reconnaissance (fetch file contents by glob). Args: { patterns: string[] }
   - eck_setup_mcp : Configure MCP. Args: { opencode?: boolean, both?: boolean }
   - eck_detect    : Detect project type. Args: {}
   - eck_doctor    : Run project health check. Args: {}
@@ -74,7 +74,9 @@ EXAMPLES:
   eck-snapshot '{"name": "eck_fetch", "arguments": {"patterns": ["src/**/*.rs"]}}'
 
 HUMAN SHORTHANDS:
-  eck-snapshot link 4  (Run inside the target project to create a standalone linked snapshot at depth 4)
+  eck-snapshot scout 5   (Reconnaissance tree + skeleton at depth 5)
+  eck-snapshot link 5    (Linked snapshot at depth 5)
+  eck-snapshot fetch "src/**/*.js"  (Fetch specific files by glob)
 `;
 
   program

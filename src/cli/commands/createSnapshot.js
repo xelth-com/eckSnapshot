@@ -23,6 +23,7 @@ import { loadSetupConfig, getProfile } from '../../config.js';
 import { applyProfileFilter } from '../../utils/fileUtils.js';
 import { saveGitAnchor } from '../../utils/gitUtils.js';
 import { skeletonize } from '../../core/skeletonizer.js';
+import { getDepthConfig } from '../../core/depthConfig.js';
 import { updateClaudeMd } from '../../utils/claudeMdGenerator.js';
 import { generateOpenCodeAgents } from '../../utils/opencodeAgentsGenerator.js';
 import { ensureProjectMcpConfig, ensureProjectOpenCodeConfig, ensureProjectCodexConfig } from './setupMcp.js';
@@ -484,7 +485,7 @@ async function processProjectFiles(repoPath, options, config, projectType = null
           // Check if file should be focused (kept full)
           const isFocused = options.focus && micromatch.isMatch(normalizedPath, options.focus);
           if (!isFocused) {
-            content = await skeletonize(content, normalizedPath);
+            content = await skeletonize(content, normalizedPath, { preserveDocs: options.preserveDocs !== false });
           }
         }
 
@@ -535,20 +536,11 @@ async function processProjectFiles(repoPath, options, config, projectType = null
 export async function createRepoSnapshot(repoPath, options) {
   // Handle linked project depth settings before processing
   if (options.isLinkedProject) {
-    const depth = options.linkDepth !== undefined ? parseInt(options.linkDepth, 10) : 0;
-    if (depth === 0) {
-      options.skipContent = true;
-    } else if (depth >= 1 && depth <= 3) {
-      const linesMap = { 1: 20, 2: 50, 3: 100 };
-      options.maxLinesPerFile = linesMap[depth];
-      options.skeleton = false;
-    } else if (depth >= 4 && depth <= 6) {
-      options.skeleton = true;
-      options.maxLinesPerFile = 0;
-    } else {
-      options.skeleton = false;
-      options.maxLinesPerFile = 0;
-    }
+    const depthCfg = getDepthConfig(options.linkDepth !== undefined ? options.linkDepth : 0);
+    if (depthCfg.skipContent) options.skipContent = true;
+    if (depthCfg.skeleton !== undefined) options.skeleton = depthCfg.skeleton;
+    if (depthCfg.preserveDocs !== undefined) options.preserveDocs = depthCfg.preserveDocs;
+    if (depthCfg.maxLinesPerFile !== undefined) options.maxLinesPerFile = depthCfg.maxLinesPerFile;
   }
 
   const spinner = ora('Analyzing project...').start();
