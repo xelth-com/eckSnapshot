@@ -1,11 +1,11 @@
-# 📸 eckSnapshot v6.2.3 (AI-Native Edition)
+# 📸 eckSnapshot v6.2.4 (AI-Native Edition)
 
 A specialized, AI-native CLI tool that creates single-file text snapshots of entire Git repositories and feeds them directly into LLM context windows. Instead of letting AI agents guess which files to read, eckSnapshot force-feeds the complete project into the model's context — giving it a "university degree" in your codebase from the very first prompt.
 
 It also serves as the coordination hub for multi-agent AI coding workflows: generating role-specific instructions (`CLAUDE.md`, `AGENTS.md`), maintaining project manifests (`.eck/` directory), and providing MCP integration for automatic context sync after every code change.
 
 > **Want to see it in action?** This project snapshots itself.
-> Download [`ecksnapshot-context.md`](https://github.com/xelth-com/eckSnapshot/raw/main/ecksnapshot-context.md), drop it into [Gemini](https://gemini.google.com/), ChatGPT, or any LLM with a large context window — and ask it anything about how eckSnapshot works. The AI will become a Senior Architect who built this tool.
+> [**Download ecksnapshot-context.md**](https://github.com/xelth-com/eckSnapshot/releases/download/v6.2.3/ecksnapshot-context.md) (364 KB), drop it into [Gemini](https://gemini.google.com/), ChatGPT, or any LLM with a large context window — and ask it anything about how eckSnapshot works. The AI will become a Senior Architect who built this tool.
 
 ---
 
