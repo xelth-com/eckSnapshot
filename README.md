@@ -5,7 +5,7 @@ A specialized, AI-native CLI tool that creates single-file text snapshots of ent
 It also serves as the coordination hub for multi-agent AI coding workflows: generating role-specific instructions (`CLAUDE.md`, `AGENTS.md`), maintaining project manifests (`.eck/` directory), and providing MCP integration for automatic context sync after every code change.
 
 > **Want to see it in action?** This project snapshots itself.
-> [**Download ecksnapshot-context.md**](https://github.com/xelth-com/eckSnapshot/releases/download/v6.2.3/ecksnapshot-context.md) (364 KB), drop it into [Gemini](https://gemini.google.com/), ChatGPT, or any LLM with a large context window — and ask it anything about how eckSnapshot works. The AI will become a Senior Architect who built this tool.
+> [**Download ecksnapshot-context.md**](https://github.com/xelth-com/eckSnapshot/releases/download/v6.2.3/ecksnapshot-context.md) (364 KB), drop it into [Gemini](https://gemini.google.com/), ChatGPT, or any LLM with a large context window — and ask anything in your language — the AI will answer you natively while keeping code-level discussions in English. It becomes a Senior Architect who built this tool.
 
 ---
 
