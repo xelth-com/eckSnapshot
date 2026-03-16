@@ -1,4 +1,4 @@
-# 📸 eckSnapshot v6.2 (AI-Native Edition)
+# 📸 eckSnapshot v6.2.1 (AI-Native Edition)
 
 A specialized, AI-native CLI tool that creates single-file text snapshots of entire Git repositories and feeds them directly into LLM context windows. Instead of letting AI agents guess which files to read, eckSnapshot force-feeds the complete project into the model's context — giving it a "university degree" in your codebase from the very first prompt.
 
@@ -80,56 +80,60 @@ eck-snapshot '{"name": "eck_update"}'
 For humans typing in the terminal, short commands work too:
 - `eck-snapshot` — Full snapshot
 - `eck-snapshot update` — Delta update
-- `eck-snapshot scout` — Recon tree generation
-- `eck-snapshot fetch "src/**/*.rs"` — Fetch specific files
-- `eck-snapshot link 4` — Generate a linked companion snapshot (depth 4)
+- `eck-snapshot scout` — Recon tree (depth 0, default)
+- `eck-snapshot scout 5` — Recon tree + skeleton content (depth 5)
+- `eck-snapshot fetch "src/**/*.rs"` — Fetch specific files by glob
+- `eck-snapshot link 5` — Generate a linked companion snapshot (depth 5)
 - `eck-snapshot setup-mcp` — Configure MCP servers
 
 ---
 
-## 🔗 The Cross-Context Protocol (Linked Projects) — New in v6.2
+## 🔗 Cross-Context & Reconnaissance (Working with External Projects)
 
-When your AI is working on **Project A** and needs deep awareness of **Project B** (e.g., a shared backend, a component library), use the Cross-Context Protocol.
+When your AI is working on **Project A** but needs awareness of **Project B** (a shared backend, a component library, a microservice), feeding it a standard snapshot of Project B will cause "context pollution" — the AI forgets which project it's supposed to edit.
 
-**Run inside the companion project:**
+eckSnapshot solves this with two complementary tools that share a **unified depth scale (0-9)** for controlling how much content is included:
+
+### `scout` — Quick Reconnaissance (read-only exploration)
+Run inside the external repository:
 ```bash
 cd ../project-b
-eck-snapshot link 5
+eck-snapshot scout        # depth 0: tree only (fast overview)
+eck-snapshot scout 3      # depth 3: tree + 60 lines per file
+eck-snapshot scout 5      # depth 5: tree + function signatures
 ```
+*Result:* Generates `.eck/recon/recon_tree_...md` — a directory tree (and optionally file contents) with strict instructions telling the AI **NOT** to edit this code. Feed it to your AI, and it can request specific files via `eck-snapshot fetch "src/**/*.js"`.
 
-This generates a standalone `link_*.md` file with a read-only cross-context header. Upload it alongside your main project snapshot.
-
-### Depth Scale (0-10)
-| Depth | Mode | Use Case |
-|-------|------|----------|
-| **0** | Tree only | "Just show me the folder structure" |
-| **1-3** | Truncated (20/50/100 lines) | Quick API surface scan |
-| **4-6** | Skeleton (signatures only) | Architecture understanding |
-| **7-10** | Full content | Deep integration work |
-
-The AI will automatically receive instructions to **not edit** the linked project and will be given `eck_fetch` commands to drill deeper if needed.
-
----
-
-## 🕵️‍♂️ The Reconnaissance Protocol (Cross-Repo Exploration)
-
-When your AI agent is working on **Project A**, but needs to understand how **Project B** works, feeding it a standard snapshot of Project B will cause "context pollution" (the AI will forget which project it is supposed to edit).
-
-The Recon Protocol solves this by providing isolated, read-only data extraction.
-
-**Step 1: Scout (Map the territory)**
-Run this in the external repository you want to explore:
+### `link` — Deep Cross-Context Snapshot (companion file)
+Run inside the companion project:
 ```bash
-eck-snapshot scout
+cd ../project-b
+eck-snapshot link 5       # skeleton: function signatures
+eck-snapshot link 9       # full: complete file contents
 ```
-*Result:* Generates `.eck/recon/recon_tree_...md` — a directory tree with strict instructions telling the AI **NOT** to edit this code.
+*Result:* Generates a standalone `link_*.md` file with a read-only cross-context header. Upload it alongside your main project snapshot. The AI will automatically receive instructions to **not edit** the linked project and will be given `eck_fetch` commands to drill deeper if needed.
 
-**Step 2: Fetch (Extract the data)**
-Feed the `recon_tree` to your AI. It will ask you to run a fetch command for specific files:
+### `fetch` — Targeted File Extraction (by glob pattern)
 ```bash
 eck-snapshot fetch "src/core/parser.js" "docs/**/*.md"
 ```
-*Result:* Generates `.eck/recon/recon_data_...md` containing only the requested code, perfectly formatted for reading without losing the primary role.
+*Result:* Generates `.eck/recon/recon_data_...md` containing only the requested file contents, perfectly formatted for reading without losing the primary role.
+
+### Shared Depth Scale (0-9)
+Both `scout` and `link` use the same depth scale to control content granularity:
+
+| Depth | Mode | Use Case |
+|-------|------|----------|
+| **0** | Tree only | "Just show me the folder structure" |
+| **1** | Truncated (10 lines) | Imports and file headers only |
+| **2** | Truncated (30 lines) | Quick surface scan |
+| **3** | Truncated (60 lines) | API surface overview |
+| **4** | Truncated (100 lines) | Detailed surface scan |
+| **5** | Skeleton | Function/class signatures only (no docs) |
+| **6** | Skeleton + docs | Signatures with JSDoc/docstrings preserved |
+| **7** | Full (compact) | Full content, truncated at 500 lines per file |
+| **8** | Full (standard) | Full content, truncated at 1000 lines per file |
+| **9** | Full (unlimited) | Everything, no limits |
 
 ---
 

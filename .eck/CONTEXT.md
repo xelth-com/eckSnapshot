@@ -13,11 +13,14 @@ Also serves as the coordination hub for the Royal Court AI architecture and prov
 - **Core Features**:
   - **Skeleton Mode**: Strips function bodies using Tree-sitter and Babel to save tokens
   - **Delta Updates**: Tracks changes via Git anchors with sequential numbering (`_up1`, `_up2`, ...)
-  - **Reconnaissance Protocol**: `eck_scout` (directory tree) + `eck_fetch` (file extraction) for cross-repo exploration
-  - **Cross-Context Protocol**: `eck-snapshot link [depth]` generates standalone `link_*.md` companion snapshots with 0-10 depth scale
+  - **Reconnaissance Protocol**: `eck_scout` (directory tree + optional depth content) + `eck_fetch` (file extraction by glob) for cross-repo exploration
+  - **Cross-Context Protocol**: `eck-snapshot link [depth]` generates standalone `link_*.md` companion snapshots
+  - **Shared Depth Scale (0-9)**: Used by both `scout` and `link` — tree-only → truncated → skeleton → skeleton+docs → full
   - **Security**: Built-in SecretScanner for automatic redaction of API keys (regex + Shannon entropy)
 
 ## Key Technologies
+- **Depth Config** (`src/core/depthConfig.js`): Shared 0-9 depth scale for `scout` and `link`, returns mode/truncation/skeleton settings
+- **Skeletonizer** (`src/core/skeletonizer.js`): Strips function bodies via Babel (JS/TS) and Tree-sitter (Rust, Go, Python, C, Java, Kotlin). Supports `preserveDocs` option (depth 5 strips docs, depth 6 keeps them)
 - **Babel**: JS/TS parsing and function body transformation
 - **Tree-sitter**: Multi-language structural analysis (Rust, Go, Python, C, Java, Kotlin)
 - **Execa**: Robust shell command execution
@@ -33,15 +36,15 @@ All tools are dispatched via a single JSON payload argument:
 | `eck_snapshot` | Full context snapshot | `createSnapshot.js` |
 | `eck_update` | Delta snapshot | `updateSnapshot.js` |
 | `eck_update_auto` | Silent delta (JSON output) | `updateSnapshot.js` |
-| `eck_scout` | Recon: directory tree | `recon.js` |
-| `eck_fetch` | Recon: fetch file contents | `recon.js` |
+| `eck_scout` | Recon: tree + content at depth 0-9 | `recon.js` |
+| `eck_fetch` | Recon: fetch files by glob pattern | `recon.js` |
 | `eck_setup_mcp` | Configure MCP servers | `setupMcp.js` |
 | `eck_detect` | Detect project type | `detectProject.js` |
 | `eck_doctor` | Project health check | `doctor.js` |
 | `eck_train_tokens` | Calibrate token estimator | `trainTokens.js` |
 | `eck_token_stats` | Show estimation accuracy | `trainTokens.js` |
 
-Legacy positional commands are intercepted via `LEGACY_COMMANDS` map in `cli.js` and translated to JSON before reaching the router. Includes `link` shim for cross-context snapshots.
+Legacy positional commands are intercepted via `LEGACY_COMMANDS` map in `cli.js` and translated to JSON before reaching the router. Includes `link` and `scout` shims with depth argument support.
 
 **Default behavior:** Running `eck-snapshot` without arguments defaults to a full snapshot (`eck_snapshot`).
 

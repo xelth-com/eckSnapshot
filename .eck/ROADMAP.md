@@ -9,9 +9,10 @@
 - [ ] Per-project telemetry isolation (project_id in reports)
 
 ## Completed
-- [x] **v6.2: Cross-Context Protocol** — `eck-snapshot link [depth]` generates standalone companion snapshots with 0-10 depth scale (tree-only → truncated → skeleton → full)
+- [x] **v6.2.1: Refined Depth Scale (0-9)** — Granular 10-level depth for both `scout` and `link`: tree → truncated(10/30/60/100) → skeleton → skeleton+docs → full(500/1000/unlimited). Shared via `depthConfig.js`. Skeletonizer now supports `preserveDocs` option (2026-03-16)
+- [x] **v6.2: Cross-Context Protocol** — `eck-snapshot link [depth]` generates standalone companion snapshots
 - [x] **v6.1: 100% JSON-Native CLI migration** — all commands are JSON payloads
-- [x] **Reconnaissance Protocol** — `eck_scout` (tree) + `eck_fetch` (file extraction) for cross-repo exploration
+- [x] **Reconnaissance Protocol** — `eck_scout` (tree + depth content) + `eck_fetch` (file extraction by glob) for cross-repo exploration
 - [x] **Codex MCP integration** — auto-detect `.codex/` dir, inject TOML config
 - [x] **Dead code cleanup** — removed 11 orphaned legacy modules (restore, prune, consilium, etc.)
 - [x] **Internal JSON migration** — `mcp-eck-core.js` sends native JSON payloads
