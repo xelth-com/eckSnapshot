@@ -44,9 +44,7 @@ The Architect needs a **massive context window** and strong reasoning to digest 
 | Model | Context Window | Notes |
 |-------|---------------|-------|
 | **Grok 4 Fast** | **2M tokens** | Largest context available. Can swallow even the biggest monorepos whole. |
-| **Gemini 3.1 Pro** | 1M tokens | Excellent for large projects. Handles huge snapshots effortlessly. |
-| **GPT-5.4** | 1M tokens | Strong reasoning. Note: 1M context is opt-in; default is 272K. Prompts over 272K are priced at 2x. |
-| **Grok 4** | 256K tokens | Fast and capable. Good for medium-sized projects. |
+| **Gemini 3.1 Pro** | 1M tokens | Excellent for large projects. Handles huge snapshots effortlessly. *(Author's choice)* |
 | **ChatGPT (GPT-5.4 via web)** | 1M tokens | Works, but can be stubborn with instructions. You **MUST** paste the specific prompt provided at the end of the snapshot output as your first message — otherwise ChatGPT will act as a generic code reviewer instead of assuming the Architect role. |
 
 ### Coder Agent (Local — executes the plan)
