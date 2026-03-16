@@ -245,6 +245,63 @@ scope: core
 
 
 
+
+## 2026-03-16 — Agent Report
+
+# Agent Report
+
+## Task: Refine depth gradations (0-9) for `scout` and `link` commands
+
+### Problem
+- `fetch` command was being confused with `link` — user typed `fetch 10` expecting depth-based output, but `fetch` only accepts glob patterns
+- Old depth scale (0-10) had redundant levels: 4-6 all did identical skeleton, 7-10 all did identical full content
+
+### Changes Made
+
+**New file: `src/core/depthConfig.js`**
+- Shared depth configuration used by both `scout` and `link`
+- `getDepthConfig(depth)` returns mode settings for any depth 0-9
+- `DEPTH_SCALE` array for human-readable documentation
+
+**Updated depth scale (0-9):**
+| Depth | Mode | Description |
+|-------|------|-------------|
+| 0 | Tree only | Directory structure, no file contents |
+| 1 | Truncated 10 | 10 lines per file (imports/header) |
+| 2 | Truncated 30 | 30 lines per file |
+| 3 | Truncated 60 | 60 lines per file |
+| 4 | Truncated 100 | 100 lines per file |
+| 5 | Skeleton | Function/class signatures only (no docs) |
+| 6 | Skeleton + docs | Signatures + docstrings/comments preserved |
+| 7 | Full (compact) | Full content, truncated at 500 lines |
+| 8 | Full (standard) | Full content, truncated at 1000 lines |
+| 9 | Full (unlimited) | Everything, no limits |
+
+**`src/core/skeletonizer.js`** — Added `preserveDocs` option:
+- Depth 5: strips JSDoc/docstrings for maximum compression
+- Depth 6: preserves JSDoc (JS/TS) and Python docstrings (tree-sitter)
+
+**`src/cli/commands/recon.js`** — `scout` now accepts depth argument:
+- `eck-snapshot scout` → tree only (default, depth 0)
+- `eck-snapshot scout 5` → tree + skeleton content
+- Output includes depth scale table for AI reference
+
+**`src/cli/commands/createSnapshot.js`** — `link` uses shared `getDepthConfig()`
+
+**`src/cli/cli.js`** — Updated legacy shims and help text
+
+**`.eck/OPERATIONS.md`** — Updated documentation with new scale
+
+**`src/templates/multiAgent.md`** — Updated 0-10 → 0-9 reference
+
+### `fetch` — unchanged
+Still accepts only glob patterns. No depth support (by design).
+
+### Smoke tested
+- `scout` (depth 0): tree only ✅
+- `scout 1` (depth 1): tree + 10 lines per file, 66 files processed ✅
+- `depthConfig` module: all 10 levels return correct configs ✅
+
 ## 2026-03-15 — Agent Report
 
 # Agent Report
