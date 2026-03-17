@@ -60,7 +60,7 @@ eck-snapshot link 9      # Depth 9: full content
 node index.js '{"name": "eck_snapshot", "arguments": {"isLinkedProject": true, "linkDepth": 5}}'
 ```
 
-## Reconnaissance Protocol (Cross-Repo Exploration)
+## Scout Protocol (Cross-Repo Exploration)
 ```bash
 # Scout: Generate directory tree (with optional depth for file contents)
 eck-snapshot scout       # Depth 0: tree only (default)
@@ -72,8 +72,8 @@ eck-snapshot scout 9     # Depth 9: tree + full content
 eck-snapshot fetch "src/**/*.js" "README.md"
 ```
 
-Scout/Link output saved to `.eck/recon/` and `snapshots/` respectively.
-Fetch output saved to `.eck/recon/`.
+Scout/Fetch output saved to `.eck/scouts/`.
+Link output saved to `.eck/links/` and `snapshots/`.
 
 ## Depth Scale (0-9) — shared by `scout` and `link`
 | Depth | Mode | Description |

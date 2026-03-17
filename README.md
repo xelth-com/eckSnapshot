@@ -1,4 +1,4 @@
-# 📸 eckSnapshot v6.2.6 (AI-Native Edition)
+# 📸 eckSnapshot v6.2.8 (AI-Native Edition)
 
 A specialized, AI-native CLI tool that creates single-file text snapshots of entire Git repositories and feeds them directly into LLM context windows. Instead of letting AI agents guess which files to read, eckSnapshot force-feeds the complete project into the model's context — giving it a "university degree" in your codebase from the very first prompt.
 
@@ -81,21 +81,21 @@ eck-snapshot '{"name": "eck_update"}'
 For humans typing in the terminal, short commands work too:
 - `eck-snapshot` — Full snapshot
 - `eck-snapshot update` — Delta update
-- `eck-snapshot scout` — Recon tree (depth 0, default)
-- `eck-snapshot scout 5` — Recon tree + skeleton content (depth 5)
+- `eck-snapshot scout` — Scout tree (depth 0, default)
+- `eck-snapshot scout 5` — Scout tree + skeleton content (depth 5)
 - `eck-snapshot fetch "src/**/*.rs"` — Fetch specific files by glob
 - `eck-snapshot link 5` — Generate a linked companion snapshot (depth 5)
 - `eck-snapshot setup-mcp` — Configure MCP servers
 
 ---
 
-## 🔗 Cross-Context & Reconnaissance (Working with External Projects)
+## 🔗 Cross-Context: Scouts & Links (Working with External Projects)
 
 When your AI is working on **Project A** but needs awareness of **Project B** (a shared backend, a component library, a microservice), feeding it a standard snapshot of Project B will cause "context pollution" — the AI forgets which project it's supposed to edit.
 
 eckSnapshot solves this with two complementary tools that share a **unified depth scale (0-9)** for controlling how much content is included:
 
-### `scout` — Quick Reconnaissance (read-only exploration)
+### `scout` — Quick Exploration (read-only)
 Run inside the external repository:
 ```bash
 cd ../project-b
@@ -103,7 +103,7 @@ eck-snapshot scout        # depth 0: tree only (fast overview)
 eck-snapshot scout 3      # depth 3: tree + 60 lines per file
 eck-snapshot scout 5      # depth 5: tree + function signatures
 ```
-*Result:* Generates `.eck/recon/recon_tree_...md` — a directory tree (and optionally file contents) with strict instructions telling the AI **NOT** to edit this code. Feed it to your AI, and it can request specific files via `eck-snapshot fetch "src/**/*.js"`.
+*Result:* Generates `.eck/scouts/scout_tree_...md` — a directory tree (and optionally file contents) with strict instructions telling the AI **NOT** to edit this code. Feed it to your AI, and it can request specific files via `eck-snapshot fetch "src/**/*.js"`.
 
 ### `link` — Deep Cross-Context Snapshot (companion file)
 Run inside the companion project:
@@ -112,13 +112,13 @@ cd ../project-b
 eck-snapshot link 5       # skeleton: function signatures
 eck-snapshot link 9       # full: complete file contents
 ```
-*Result:* Generates a standalone `link_*.md` file with a read-only cross-context header. Upload it alongside your main project snapshot. The AI will automatically receive instructions to **not edit** the linked project and will be given `eck_fetch` commands to drill deeper if needed.
+*Result:* Generates a standalone `link_*.md` file saved to `.eck/links/` with a read-only cross-context header. Upload it alongside your main project snapshot. The AI will automatically receive instructions to **not edit** the linked project and will be given `eck_fetch` commands to drill deeper if needed.
 
 ### `fetch` — Targeted File Extraction (by glob pattern)
 ```bash
 eck-snapshot fetch "src/core/parser.js" "docs/**/*.md"
 ```
-*Result:* Generates `.eck/recon/recon_data_...md` containing only the requested file contents, perfectly formatted for reading without losing the primary role.
+*Result:* Generates `.eck/scouts/scout_data_...md` containing only the requested file contents, perfectly formatted for reading without losing the primary role.
 
 ### Shared Depth Scale (0-9)
 Both `scout` and `link` use the same depth scale to control content granularity:

@@ -3,7 +3,7 @@
 ## Description
 A specialized, AI-native CLI tool that creates single-file text snapshots of Git repositories for LLM context windows. As of v6.2, the CLI operates as a **100% JSON/MCP bridge** — all commands are JSON payloads, with human-friendly shims for convenience.
 
-Also serves as the coordination hub for the Royal Court AI architecture and provides the Reconnaissance Protocol for cross-repo exploration and the Cross-Context Protocol for linked multi-project snapshots.
+Also serves as the coordination hub for the Royal Court AI architecture and provides the Scout Protocol for cross-repo exploration and the Cross-Context Protocol for linked multi-project snapshots.
 
 ## Architecture
 - **Environment**: Node.js (ESM, `type: "module"`)
@@ -13,7 +13,7 @@ Also serves as the coordination hub for the Royal Court AI architecture and prov
 - **Core Features**:
   - **Skeleton Mode**: Strips function bodies using Tree-sitter and Babel to save tokens
   - **Delta Updates**: Tracks changes via Git anchors with sequential numbering (`_up1`, `_up2`, ...)
-  - **Reconnaissance Protocol**: `eck_scout` (directory tree + optional depth content) + `eck_fetch` (file extraction by glob) for cross-repo exploration
+  - **Scout Protocol**: `eck_scout` (directory tree + optional depth content) + `eck_fetch` (file extraction by glob) for cross-repo exploration
   - **Cross-Context Protocol**: `eck-snapshot link [depth]` generates standalone `link_*.md` companion snapshots
   - **Shared Depth Scale (0-9)**: Used by both `scout` and `link` — tree-only → truncated → skeleton → skeleton+docs → full
   - **Security**: Built-in SecretScanner for automatic redaction of API keys (regex + Shannon entropy)
@@ -26,7 +26,7 @@ Also serves as the coordination hub for the Royal Court AI architecture and prov
 - **Tree-sitter**: Multi-language structural analysis (Rust, Go, Python, C, Java, Kotlin)
 - **Execa**: Robust shell command execution
 - **Vitest**: Testing suite
-- **Micromatch**: Glob pattern matching (used by recon fetch)
+- **Micromatch**: Glob pattern matching (used by scout fetch)
 
 ## CLI Router (`src/cli/cli.js`)
 
@@ -37,8 +37,8 @@ All tools are dispatched via a single JSON payload argument:
 | `eck_snapshot` | Full context snapshot | `createSnapshot.js` |
 | `eck_update` | Delta snapshot | `updateSnapshot.js` |
 | `eck_update_auto` | Silent delta (JSON output) | `updateSnapshot.js` |
-| `eck_scout` | Recon: tree + content at depth 0-9 | `recon.js` |
-| `eck_fetch` | Recon: fetch files by glob pattern | `recon.js` |
+| `eck_scout` | Scout: tree + content at depth 0-9 | `recon.js` |
+| `eck_fetch` | Scout: fetch files by glob pattern | `recon.js` |
 | `eck_setup_mcp` | Configure MCP servers | `setupMcp.js` |
 | `eck_detect` | Detect project type | `detectProject.js` |
 | `eck_doctor` | Project health check | `doctor.js` |
