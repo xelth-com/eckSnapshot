@@ -106,6 +106,11 @@ eck-snapshot scout 9    # full content
 eck-snapshot fetch "src/**/*.js" "README.md"
 \`\`\`
 
+**⚠️ IMPORTANT: Tree paths are easy to misread.** If \`fetch\` returns fewer files than you requested, you likely got the path wrong. Do NOT guess exact paths from the tree — use glob patterns instead:
+- Instead of \`"plugins/mcp-integration/examples/stdio-server.json"\` use \`"**/mcp-integration/examples/stdio-server.json"\`
+- Instead of \`"src/utils/helper.js"\` use \`"**/helper.js"\`
+- Use \`"**/<filename>"\` to find a file anywhere in the tree regardless of nesting depth.
+
 **Depth scale:**
 | Depth | Mode | Description |
 |-------|------|-------------|
@@ -165,10 +170,15 @@ async function runFetch(patterns) {
     const timestamp = generateTimestamp();
     const filename = `recon_data_${repoName}_${timestamp}.md`;
 
+    // Check how many patterns actually matched at least one file
+    const matchedPatternCount = patterns.filter(p => micromatch(allFiles, [p]).length > 0).length;
+    const missedCount = patterns.length - matchedPatternCount;
+    const missedWarning = missedCount > 0 ? `\n**⚠️ ${missedCount} of ${patterns.length} requested patterns returned no results.** You likely misread the directory tree. Re-check the tree carefully and retry with glob patterns like \`"**/<filename>"\` to match files regardless of nesting depth.\n` : '';
+
     const finalContent = `# ⚠️ RECONNAISSANCE FETCH RESULTS: [${repoName}]
 
 Here are the file contents you requested from the external repository. Use this to inform your work on your primary project.
-
+${missedWarning}
 ${fileContentStr}
 `;
 
