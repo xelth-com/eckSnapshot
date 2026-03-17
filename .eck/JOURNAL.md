@@ -246,6 +246,33 @@ scope: core
 
 
 
+
+## 2026-03-16 — Agent Report
+
+# Agent Report
+
+## Fix: MCP setup path resolution bug
+
+### Problem
+`setupMcp.js` used `process.cwd()` in 4 places for locating project config files (`.mcp.json`, `opencode.json`, `.codex/config.toml`, `.eck/claude-mcp-config.json`). If the user ran `eck-snapshot setup-mcp` from a subdirectory, configs would be created in the wrong location.
+
+### Fix
+- Added `findProjectRoot()` — walks up from `cwd` looking for `.git` or `package.json` markers, falls back to `cwd`
+- Added `fsSync` import for synchronous directory scanning
+- Replaced all 4 `process.cwd()` references with `projectRoot` parameter
+- All internal functions (`setupForClaude`, `setupForOpenCode`, `setupForCodex`) now receive `projectRoot` as a parameter
+- Exported `ensure*` functions were already correct (they accept `repoPath`) — no changes needed
+- Diagnostic log added: if `projectRoot !== cwd`, prints the resolved root path
+
+### Not affected
+- `ensureProjectMcpConfig(repoPath)` — already directory-agnostic
+- `ensureProjectOpenCodeConfig(repoPath)` — already directory-agnostic
+- `ensureProjectCodexConfig(repoPath)` — already directory-agnostic
+
+### Verified
+- Module loads without errors
+- `findProjectRoot()` correctly resolves project root via `.git`/`package.json` markers
+
 ## 2026-03-16 — Agent Report
 
 # Agent Report
