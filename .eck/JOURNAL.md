@@ -247,6 +247,49 @@ scope: core
 
 
 
+
+## 2026-03-17 — Agent Report
+
+# Agent Report
+
+## Polyglot Monorepo Filtering — Implemented (Path A)
+
+### Problem
+In multi-stack projects (e.g., xelixir = Rust + Android), `detectProjectType` returned only the dominant type (e.g., "rust"). Only Rust-specific filters were applied, allowing Android junk (`gradlew`, `gradlew.bat`, `ic_launcher*.xml`, `.gradle/`, vector drawables) to leak into snapshots, wasting tens of thousands of tokens.
+
+### Solution: Path A — Union of All Detected Type Filters
+Chose Path A (simple merge) over Path B (scoped per-directory) as it solves 95%+ of cases with minimal code changes.
+
+### Changes Made
+
+**`src/utils/projectDetector.js`:**
+1. `getProjectSpecificFiltering()` — now accepts `string | string[]`. When given an array, merges (union + dedup) `filesToIgnore`, `dirsToIgnore`, `extensionsToIgnore` from ALL matching types in `setup.json`.
+2. New export `getAllDetectedTypes(detection)` — extracts all types from a detection result (primary + `allDetections`).
+3. Android detection improved: added `'android'` to subdirectory search lists for Gradle files and project directories, so `android/build.gradle.kts` is now found in polyglot repos.
+
+**`src/utils/fileUtils.js`:**
+1. `scanDirectoryRecursively()` — parameter renamed `projectType → projectTypes`, now passes array through recursive calls and to `getProjectSpecificFiltering`.
+2. `displayProjectInfo()` — shows "Polyglot filtering" message when multiple types detected.
+3. Import updated to include `getAllDetectedTypes`.
+
+**`src/cli/commands/createSnapshot.js`:**
+1. `processProjectFiles()` — parameter renamed `projectType → projectTypes`, receives array.
+2. `estimateProjectTokens()` — receives array for filtering, extracts primary type for polynomial coefficient lookup.
+3. Call sites updated: `getAllDetectedTypes(projectDetection)` used instead of `projectDetection.type`.
+
+### Verification (xelixir project)
+- **Before:** Detection = `rust(45)` only → Android junk passes through
+- **After:** Detection = `[android(70), rust(45), flutter(20), react-native(20)]` → merged filters from ALL types
+- `gradlew` → FILTERED ✅
+- `gradlew.bat` → FILTERED ✅  
+- `ic_launcher_background.xml` → FILTERED ✅
+- `ic_launcher.xml` → FILTERED ✅
+- `crates/server/src/main.rs` → KEPT ✅
+- `Cargo.toml` → KEPT ✅
+
+### Note
+Android now scores highest (70) for xelixir due to strong manifest+gradle signals. This doesn't affect filtering (all types merged), but may affect token estimation coefficients (uses primary type). Minor cosmetic issue — out of scope for this fix.
+
 ## 2026-03-16 — Agent Report
 
 # Agent Report

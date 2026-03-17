@@ -313,7 +313,9 @@ export async function generateDirectoryTree(dir, prefix = '', allFiles, depth = 
       if (entry.name.startsWith('.') && entry.name !== '.eck') {
         continue;
       }
-      if (config.dirsToIgnore.some(d => entry.name.includes(d.replace('/', '')))) continue;
+      // Only skip directories (not files) and use exact name match to avoid
+      // substring false positives (e.g., "build/" hiding "build.gradle.kts")
+      if (entry.isDirectory() && config.dirsToIgnore.some(d => entry.name === d.replace('/', ''))) continue;
       const fullPath = path.join(dir, entry.name);
       const relativePath = path.relative(process.cwd(), fullPath).replace(/\\/g, '/');
 
