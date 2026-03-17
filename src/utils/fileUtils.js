@@ -2,7 +2,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import { execa } from 'execa';
 import ignore from 'ignore';
-import { detectProjectType, getProjectSpecificFiltering } from './projectDetector.js';
+import { detectProjectType, getProjectSpecificFiltering, getAllDetectedTypes } from './projectDetector.js';
 import { getProfile, loadSetupConfig } from '../config.js';
 import micromatch from 'micromatch';
 import { minimatch } from 'minimatch';
@@ -172,17 +172,17 @@ export async function checkGitRepository(repoPath) {
   }
 }
 
-export async function scanDirectoryRecursively(dirPath, config, relativeTo = dirPath, projectType = null, trackConfidential = false) {
+export async function scanDirectoryRecursively(dirPath, config, relativeTo = dirPath, projectTypes = null, trackConfidential = false) {
   const files = [];
   const confidentialFiles = [];
 
-  // Get project-specific filtering if not provided
-  if (!projectType) {
+  // Get project-specific filtering for ALL detected types (polyglot monorepo support)
+  if (!projectTypes) {
     const detection = await detectProjectType(relativeTo);
-    projectType = detection.type;
+    projectTypes = getAllDetectedTypes(detection);
   }
 
-  const projectSpecific = await getProjectSpecificFiltering(projectType);
+  const projectSpecific = await getProjectSpecificFiltering(projectTypes);
 
   // Merge project-specific filters with global config
   const effectiveConfig = {
@@ -234,7 +234,7 @@ export async function scanDirectoryRecursively(dirPath, config, relativeTo = dir
       }
 
       if (entry.isDirectory()) {
-        const subResult = await scanDirectoryRecursively(fullPath, effectiveConfig, relativeTo, projectType, trackConfidential);
+        const subResult = await scanDirectoryRecursively(fullPath, effectiveConfig, relativeTo, projectTypes, trackConfidential);
         if (trackConfidential) {
           files.push(...subResult.files);
           confidentialFiles.push(...subResult.confidentialFiles);
@@ -627,7 +627,8 @@ export function displayProjectInfo(detection) {
   }
   
   if (detection.allDetections && detection.allDetections.length > 1) {
-    console.log(`   Other possibilities: ${detection.allDetections.slice(1).map(d => d.type).join(', ')}`);
+    const otherTypes = detection.allDetections.slice(1).map(d => d.type).join(', ');
+    console.log(`   Polyglot filtering: applying rules for [${detection.type}, ${otherTypes}]`);
   }
   
   console.log('');

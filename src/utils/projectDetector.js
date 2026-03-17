@@ -101,6 +101,10 @@ async function calculateTypeScore(projectPath, pattern) {
         if (file === 'package.json') {
           commonSubdirs.push('codex-cli', 'cli', 'client', 'web', 'ui');
         }
+        // Android/Gradle files often live inside android/ subdirectory (polyglot monorepos)
+        if (file.startsWith('build.gradle') || file.startsWith('settings.gradle')) {
+          commonSubdirs.push('android');
+        }
 
         for (const subdir of commonSubdirs) {
           const subdirExists = await fileExists(path.join(projectPath, subdir, file));
@@ -120,8 +124,8 @@ async function calculateTypeScore(projectPath, pattern) {
       if (rootExists) {
         score += 20; // Each required directory adds points
       } else {
-        // Check in common project subdirectories
-        const projectSubdirs = ['codex-rs', 'codex-cli', 'src', 'lib', 'app'];
+        // Check in common project subdirectories (including android/ for polyglot monorepos)
+        const projectSubdirs = ['codex-rs', 'codex-cli', 'src', 'lib', 'app', 'android'];
         for (const projDir of projectSubdirs) {
           const subdirExists = await directoryExists(path.join(projectPath, projDir, dir));
           if (subdirExists) {
@@ -680,25 +684,60 @@ async function findFileRecursive(basePath, fileName, maxDepth = 3) {
 }
 
 /**
- * Gets project-specific filtering configuration
- * @param {string} projectType - The detected project type
+ * Gets project-specific filtering configuration.
+ * Accepts a single type string OR an array of types (for polyglot monorepos).
+ * When multiple types are provided, filters from ALL types are merged (union).
+ * @param {string|string[]} projectTypes - The detected project type(s)
  * @returns {object} Project-specific filtering rules
  */
-export async function getProjectSpecificFiltering(projectType) {
+export async function getProjectSpecificFiltering(projectTypes) {
   const config = await loadSetupConfig();
-  const projectSpecific = config.fileFiltering?.projectSpecific?.[projectType];
-  
-  if (!projectSpecific) {
-    return {
-      filesToIgnore: [],
-      dirsToIgnore: [],
-      extensionsToIgnore: []
-    };
-  }
-  
-  return {
-    filesToIgnore: projectSpecific.filesToIgnore || [],
-    dirsToIgnore: projectSpecific.dirsToIgnore || [],
-    extensionsToIgnore: projectSpecific.extensionsToIgnore || []
+  const allProjectSpecific = config.fileFiltering?.projectSpecific || {};
+
+  // Normalize to array
+  const types = Array.isArray(projectTypes) ? projectTypes : [projectTypes];
+
+  const merged = {
+    filesToIgnore: [],
+    dirsToIgnore: [],
+    extensionsToIgnore: []
   };
+
+  for (const type of types) {
+    const specific = allProjectSpecific[type];
+    if (specific) {
+      merged.filesToIgnore.push(...(specific.filesToIgnore || []));
+      merged.dirsToIgnore.push(...(specific.dirsToIgnore || []));
+      merged.extensionsToIgnore.push(...(specific.extensionsToIgnore || []));
+    }
+  }
+
+  // Deduplicate
+  merged.filesToIgnore = [...new Set(merged.filesToIgnore)];
+  merged.dirsToIgnore = [...new Set(merged.dirsToIgnore)];
+  merged.extensionsToIgnore = [...new Set(merged.extensionsToIgnore)];
+
+  return merged;
+}
+
+/**
+ * Extracts all detected project types from a detection result.
+ * Returns array of type strings suitable for getProjectSpecificFiltering.
+ * @param {object} detection - Result from detectProjectType()
+ * @returns {string[]} All detected project types
+ */
+export function getAllDetectedTypes(detection) {
+  if (!detection || detection.type === 'unknown') return [];
+
+  const types = [detection.type];
+
+  if (detection.allDetections && detection.allDetections.length > 1) {
+    for (const d of detection.allDetections) {
+      if (!types.includes(d.type)) {
+        types.push(d.type);
+      }
+    }
+  }
+
+  return types;
 }

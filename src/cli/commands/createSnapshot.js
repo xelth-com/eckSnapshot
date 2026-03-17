@@ -17,7 +17,7 @@ import {
   ensureSnapshotsInGitignore, initializeEckManifest, generateTimestamp,
   getShortRepoName, SecretScanner
 } from '../../utils/fileUtils.js';
-import { detectProjectType, getProjectSpecificFiltering } from '../../utils/projectDetector.js';
+import { detectProjectType, getProjectSpecificFiltering, getAllDetectedTypes } from '../../utils/projectDetector.js';
 import { estimateTokensWithPolynomial, generateTrainingCommand } from '../../utils/tokenEstimator.js';
 import { loadSetupConfig, getProfile } from '../../config.js';
 import { applyProfileFilter } from '../../utils/fileUtils.js';
@@ -256,14 +256,14 @@ async function getGitCommitHash(projectPath) {
   return null;
 }
 
-async function estimateProjectTokens(projectPath, config, projectType = null) {
+async function estimateProjectTokens(projectPath, config, projectTypes = null) {
   // Get project-specific filtering if not provided
-  if (!projectType) {
+  if (!projectTypes) {
     const detection = await detectProjectType(projectPath);
-    projectType = detection.type;
+    projectTypes = getAllDetectedTypes(detection);
   }
 
-  const projectSpecific = await getProjectSpecificFiltering(projectType);
+  const projectSpecific = await getProjectSpecificFiltering(projectTypes);
 
   // Merge project-specific filters with global config (same as in scanDirectoryRecursively)
   const effectiveConfig = {
@@ -316,15 +316,17 @@ async function estimateProjectTokens(projectPath, config, projectType = null) {
   }
 
   // Use adaptive polynomial estimation
-  const estimatedTokens = await estimateTokensWithPolynomial(projectType, totalSize);
+  // Token estimation uses the primary type for coefficient lookup
+  const primaryType = Array.isArray(projectTypes) ? projectTypes[0] : projectTypes;
+  const estimatedTokens = await estimateTokensWithPolynomial(primaryType, totalSize);
 
   return { estimatedTokens, totalSize, includedFiles };
 }
 
-async function processProjectFiles(repoPath, options, config, projectType = null) {
-  // Merge project-specific filtering rules (e.g., Cargo.lock for Rust)
-  if (projectType) {
-    const projectSpecific = await getProjectSpecificFiltering(projectType);
+async function processProjectFiles(repoPath, options, config, projectTypes = null) {
+  // Merge project-specific filtering rules for ALL detected types (polyglot monorepo support)
+  if (projectTypes) {
+    const projectSpecific = await getProjectSpecificFiltering(projectTypes);
     config = {
       ...config,
       dirsToIgnore: [...(config.dirsToIgnore || []), ...(projectSpecific.dirsToIgnore || [])],
@@ -669,7 +671,8 @@ export async function createRepoSnapshot(repoPath, options) {
       config.includeHidden = setupConfig.fileFiltering?.includeHidden ?? false;
     }
 
-    const estimation = await estimateProjectTokens(repoPath, config, projectDetection.type);
+    const allTypesForEstimation = getAllDetectedTypes(projectDetection);
+    const estimation = await estimateProjectTokens(repoPath, config, allTypesForEstimation);
     spinner.info(`Estimated project size: ~${Math.round(estimation.estimatedTokens).toLocaleString()} tokens.`);
 
     spinner.succeed('Creating snapshots...');
@@ -680,7 +683,8 @@ export async function createRepoSnapshot(repoPath, options) {
 
     let stats, contentArray, successfulFileObjects, allFiles, processedRepoPath;
 
-    const result = await processProjectFiles(repoPath, options, config, projectDetection.type);
+    const allTypes = getAllDetectedTypes(projectDetection);
+    const result = await processProjectFiles(repoPath, options, config, allTypes);
     stats = result.stats;
     contentArray = result.contentArray;
     successfulFileObjects = result.successfulFileObjects;
