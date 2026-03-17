@@ -32,7 +32,7 @@ export async function runReconTool(payload) {
 async function runScout(depth = 0) {
   const depthCfg = getDepthConfig(depth);
   const depthInfo = DEPTH_SCALE[depth] || DEPTH_SCALE[0];
-  console.log(chalk.blue(`🕵️‍♂️ Generating reconnaissance (depth ${depth}: ${depthInfo.mode})...`));
+  console.log(chalk.blue(`🕵️ Scouting repository (depth ${depth}: ${depthInfo.mode})...`));
   try {
     const repoPath = process.cwd();
     const repoName = path.basename(repoPath);
@@ -82,11 +82,11 @@ async function runScout(depth = 0) {
 
     const timestamp = generateTimestamp();
     const suffix = depth > 0 ? `_d${depth}` : '';
-    const filename = `recon_tree_${repoName}_${timestamp}${suffix}.md`;
+    const filename = `scout_tree_${repoName}_${timestamp}${suffix}.md`;
 
     const depthScaleTable = DEPTH_SCALE.map(d => `| ${d.depth} | ${d.mode} | ${d.description} |`).join('\n');
 
-    let outputContent = `# ⚠️ EXTERNAL REPOSITORY RECONNAISSANCE: [${repoName}]
+    let outputContent = `# ⚠️ EXTERNAL REPOSITORY SCOUT: [${repoName}]
 
 **CRITICAL INSTRUCTION FOR AI:** You are currently working on your primary project. The data below is strictly for REFERENCE from an external repository named \`${repoName}\`. DO NOT assume the role of architect for this repository. DO NOT attempt to write code for this repository.
 
@@ -126,11 +126,11 @@ ${directoryTree}
       outputContent += `\n## File Contents (depth ${depth}: ${depthInfo.mode})\n\n${fileContentSection}`;
     }
 
-    await fs.mkdir(path.join(repoPath, '.eck', 'recon'), { recursive: true });
-    const outputPath = path.join(repoPath, '.eck', 'recon', filename);
+    await fs.mkdir(path.join(repoPath, '.eck', 'scouts'), { recursive: true });
+    const outputPath = path.join(repoPath, '.eck', 'scouts', filename);
     await fs.writeFile(outputPath, outputContent, 'utf-8');
 
-    console.log(chalk.green(`✅ Scout complete. Saved to: .eck/recon/${filename}`));
+    console.log(chalk.green(`✅ Scout complete. Saved to: .eck/scouts/${filename}`));
   } catch (error) {
     console.error(chalk.red(`❌ Scout failed: ${error.message}`));
   }
@@ -168,25 +168,25 @@ async function runFetch(patterns) {
     }
 
     const timestamp = generateTimestamp();
-    const filename = `recon_data_${repoName}_${timestamp}.md`;
+    const filename = `scout_data_${repoName}_${timestamp}.md`;
 
     // Check how many patterns actually matched at least one file
     const matchedPatternCount = patterns.filter(p => micromatch(allFiles, [p]).length > 0).length;
     const missedCount = patterns.length - matchedPatternCount;
     const missedWarning = missedCount > 0 ? `\n**⚠️ ${missedCount} of ${patterns.length} requested patterns returned no results.** You likely misread the directory tree. Re-check the tree carefully and retry with glob patterns like \`"**/<filename>"\` to match files regardless of nesting depth.\n` : '';
 
-    const finalContent = `# ⚠️ RECONNAISSANCE FETCH RESULTS: [${repoName}]
+    const finalContent = `# ⚠️ SCOUT FETCH RESULTS: [${repoName}]
 
 Here are the file contents you requested from the external repository. Use this to inform your work on your primary project.
 ${missedWarning}
 ${fileContentStr}
 `;
 
-    await fs.mkdir(path.join(repoPath, '.eck', 'recon'), { recursive: true });
-    const outputPath = path.join(repoPath, '.eck', 'recon', filename);
+    await fs.mkdir(path.join(repoPath, '.eck', 'scouts'), { recursive: true });
+    const outputPath = path.join(repoPath, '.eck', 'scouts', filename);
     await fs.writeFile(outputPath, finalContent, 'utf-8');
 
-    console.log(chalk.green(`✅ Fetched ${fetchedCount} files. Saved to: .eck/recon/${filename}`));
+    console.log(chalk.green(`✅ Fetched ${fetchedCount} files. Saved to: .eck/scouts/${filename}`));
   } catch (error) {
     console.error(chalk.red(`❌ Fetch failed: ${error.message}`));
   }

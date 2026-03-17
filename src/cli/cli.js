@@ -59,8 +59,8 @@ AVAILABLE TOOLS:
   - eck_snapshot  : Create a full context snapshot.
                     Args: { profile?: string, skeleton?: boolean, jas/jao/jaz?: boolean, link?: string|string[], linkDepth?: number }
   - eck_update    : Create a delta snapshot.
-  - eck_scout     : Reconnaissance (generate tree + optional content). Args: { depth?: 0-9 }
-  - eck_fetch     : Reconnaissance (fetch file contents by glob). Args: { patterns: string[] }
+  - eck_scout     : Scout repository (generate tree + optional content). Args: { depth?: 0-9 }
+  - eck_fetch     : Fetch file contents by glob pattern. Args: { patterns: string[] }
   - eck_setup_mcp : Configure MCP. Args: { opencode?: boolean, both?: boolean }
   - eck_detect    : Detect project type. Args: {}
   - eck_doctor    : Run project health check. Args: {}
@@ -74,7 +74,7 @@ EXAMPLES:
   eck-snapshot '{"name": "eck_fetch", "arguments": {"patterns": ["src/**/*.rs"]}}'
 
 HUMAN SHORTHANDS:
-  eck-snapshot scout 5   (Reconnaissance tree + skeleton at depth 5)
+  eck-snapshot scout 5   (Scout tree + skeleton at depth 5)
   eck-snapshot link 5    (Linked snapshot at depth 5)
   eck-snapshot fetch "src/**/*.js"  (Fetch specific files by glob)
 `;

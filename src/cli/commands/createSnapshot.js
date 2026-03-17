@@ -781,29 +781,34 @@ export async function createRepoSnapshot(repoPath, options) {
         await fs.writeFile(fpath, fullContent);
         console.log(`📄 Generated Snapshot: ${fname}`);
 
-        // --- FEATURE: Active Snapshot (.eck/lastsnapshot/) ---
-        // Only create .eck/lastsnapshot/ entries for the main snapshot
+        // --- FEATURE: Active Snapshot ---
         if (!isAgentMode) {
           try {
-            const snapDir = path.join(originalCwd, '.eck', 'lastsnapshot');
-            await fs.mkdir(snapDir, { recursive: true });
+            if (options.isLinkedProject) {
+              // Link snapshots go to .eck/links/
+              const linksDir = path.join(originalCwd, '.eck', 'links');
+              await fs.mkdir(linksDir, { recursive: true });
+              await fs.writeFile(path.join(linksDir, fname), fullContent);
+              console.log(chalk.cyan(`🔗 Link saved to .eck/links/${fname}`));
+            } else {
+              // Main snapshots go to .eck/lastsnapshot/
+              const snapDir = path.join(originalCwd, '.eck', 'lastsnapshot');
+              await fs.mkdir(snapDir, { recursive: true });
 
-            // 1. Clean up OLD snapshots in this specific folder
-            // We keep AnswerToSA.md, but remove old snapshots and legacy answer.md
-            const existingFiles = await fs.readdir(snapDir);
-            for (const file of existingFiles) {
-              if ((file.startsWith('eck') && file.endsWith('.md')) || file === 'answer.md') {
-                await fs.unlink(path.join(snapDir, file));
+              // Clean up OLD snapshots (keep AnswerToSA.md)
+              const existingFiles = await fs.readdir(snapDir);
+              for (const file of existingFiles) {
+                if ((file.startsWith('eck') && file.endsWith('.md')) || file === 'answer.md') {
+                  await fs.unlink(path.join(snapDir, file));
+                }
               }
+
+              await fs.writeFile(path.join(snapDir, fname), fullContent);
+              console.log(chalk.cyan(`📋 Active snapshot updated in .eck/lastsnapshot/: ${fname}`));
             }
-
-            // 2. Save the NEW specific named file
-            await fs.writeFile(path.join(snapDir, fname), fullContent);
-
-            console.log(chalk.cyan(`📋 Active snapshot updated in .eck/lastsnapshot/: ${fname}`));
           } catch (e) {
             // Non-critical failure
-            console.warn(chalk.yellow(`⚠️  Could not update .eck/lastsnapshot/: ${e.message}`));
+            console.warn(chalk.yellow(`⚠️  Could not update active snapshot: ${e.message}`));
           }
         }
         // --------------------------------------------
