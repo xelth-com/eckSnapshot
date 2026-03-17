@@ -1,4 +1,42 @@
 ---
+task_id: fix-directory-tree-substring-match
+date: 2026-03-17
+type: fix
+scope: fileUtils
+summary: Fix generateDirectoryTree hiding files whose names contain dirsToIgnore substrings
+---
+
+# Fix generateDirectoryTree substring match bug
+
+- `generateDirectoryTree` used `.includes()` to check `dirsToIgnore`, causing files like `build.gradle.kts` to be hidden because `"build"` is a substring
+- Changed to exact `===` match with `entry.isDirectory()` guard — only actual directories are filtered now
+- Files like `build.gradle`, `build.gradle.kts`, `rebuild-index.js` are no longer falsely excluded from the tree
+
+**Modified Files**:
+- `src/utils/fileUtils.js`: line 316, `generateDirectoryTree` filtering logic
+
+---
+task_id: polyglot-monorepo-filtering
+date: 2026-03-17
+type: feat
+scope: filtering,projectDetector
+summary: Merge ignore filters from ALL detected project types for polyglot monorepos
+---
+
+# Polyglot Monorepo Filtering (Path A)
+
+- `getProjectSpecificFiltering()` now accepts `string | string[]` — merges (union + dedup) `filesToIgnore`, `dirsToIgnore`, `extensionsToIgnore` from all matching types in `setup.json`
+- New export `getAllDetectedTypes(detection)` extracts all types from detection result
+- Android detection improved: `android/` added to subdirectory search lists for Gradle files, so nested Android projects (e.g., `android/build.gradle.kts`) are detected in polyglot repos
+- `processProjectFiles`, `estimateProjectTokens`, `scanDirectoryRecursively` all updated to pass full type arrays instead of single primary type
+- Verified on xelixir (Rust + Android): `gradlew`, `gradlew.bat`, `ic_launcher*.xml`, `.gradle/` now filtered; Rust sources kept
+
+**Modified Files**:
+- `src/utils/projectDetector.js`: `getProjectSpecificFiltering` (array support), `getAllDetectedTypes` (new), `calculateTypeScore` (android subdirs)
+- `src/utils/fileUtils.js`: `scanDirectoryRecursively` (projectTypes array), import updated
+- `src/cli/commands/createSnapshot.js`: all call sites updated to use `getAllDetectedTypes()`
+
+---
 task_id: cross-context-linked-projects
 date: 2026-03-15
 type: feat
@@ -247,6 +285,33 @@ scope: core
 
 
 
+
+
+## 2026-03-17 — Agent Report
+
+# Agent Report
+
+## Fix: generateDirectoryTree substring match bug
+
+### Problem
+Line 316 in `generateDirectoryTree` used `.includes()` for directory ignore matching:
+```js
+config.dirsToIgnore.some(d => entry.name.includes(d.replace('/', '')))
+```
+This caused `"build/"` in dirsToIgnore to hide any entry containing "build" as a substring — including files like `build.gradle`, `build.gradle.kts`, and even `rebuild-index.js`.
+
+### Fix
+Changed to exact name match, applied only to directories:
+```js
+entry.isDirectory() && config.dirsToIgnore.some(d => entry.name === d.replace('/', ''))
+```
+
+### Verified
+- `build/` (dir) → filtered ✅
+- `build.gradle.kts` (file) → kept ✅ (was broken)
+- `build.gradle` (file) → kept ✅ (was broken)
+- `rebuild-index.js` (file) → kept ✅ (was broken)
+- `node_modules/`, `dist/`, `.gradle/` → still filtered ✅
 
 ## 2026-03-17 — Agent Report
 

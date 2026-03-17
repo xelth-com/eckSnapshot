@@ -5,10 +5,12 @@
 - [ ] Remove `LEGACY_COMMANDS` shim from `cli.js` once all callers use JSON natively
 
 ## Next Phase
+- [ ] **Scoped Directory Filtering (Path Б)** — dynamically apply project-specific filters per subdirectory (e.g., Android rules only inside `android/`) instead of global union
 - [ ] Web-based snapshot explorer
 - [ ] Per-project telemetry isolation (project_id in reports)
 
 ## Completed
+- [x] **Polyglot Monorepo Filtering** — `getProjectSpecificFiltering` merges ignore rules from all detected project types (Rust+Android, etc.). Fixed `generateDirectoryTree` substring match bug hiding `build.gradle` files (2026-03-17)
 - [x] **v6.2.1: Refined Depth Scale (0-9)** — Granular 10-level depth for both `scout` and `link`: tree → truncated(10/30/60/100) → skeleton → skeleton+docs → full(500/1000/unlimited). Shared via `depthConfig.js`. Skeletonizer now supports `preserveDocs` option (2026-03-16)
 - [x] **v6.2: Cross-Context Protocol** — `eck-snapshot link [depth]` generates standalone companion snapshots
 - [x] **v6.1: 100% JSON-Native CLI migration** — all commands are JSON payloads

@@ -17,6 +17,7 @@ Also serves as the coordination hub for the Royal Court AI architecture and prov
   - **Cross-Context Protocol**: `eck-snapshot link [depth]` generates standalone `link_*.md` companion snapshots
   - **Shared Depth Scale (0-9)**: Used by both `scout` and `link` — tree-only → truncated → skeleton → skeleton+docs → full
   - **Security**: Built-in SecretScanner for automatic redaction of API keys (regex + Shannon entropy)
+  - **Polyglot Monorepo Filtering**: `detectProjectType` returns all detected types via `allDetections`; `getProjectSpecificFiltering` accepts `string[]` and merges ignore rules from all stacks (e.g., Rust + Android). Helper `getAllDetectedTypes(detection)` extracts the full type list
 
 ## Key Technologies
 - **Depth Config** (`src/core/depthConfig.js`): Shared 0-9 depth scale for `scout` and `link`, returns mode/truncation/skeleton settings
