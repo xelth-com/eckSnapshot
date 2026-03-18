@@ -288,6 +288,34 @@ scope: core
 
 
 
+
+## 2026-03-17 — Agent Report
+
+# Agent Report
+
+## Задача: Переименовать recon → scouts + вынести линки в .eck/links/
+
+### Изменения
+
+**1. `src/cli/commands/recon.js` — переименование recon → scouts:**
+- Папка `.eck/recon/` → `.eck/scouts/`
+- Файлы `recon_tree_*` → `scout_tree_*`, `recon_data_*` → `scout_data_*`
+- Заголовки в markdown: "RECONNAISSANCE" → "SCOUT"
+- Лог сообщения: "Generating reconnaissance" → "Scouting repository"
+
+**2. `src/cli/commands/createSnapshot.js` — линки в отдельную папку:**
+- Link snapshots (`link_*.md`) теперь сохраняются в `.eck/links/` вместо `.eck/lastsnapshot/`
+- Обычные снапшоты остаются в `.eck/lastsnapshot/` как раньше
+- Больше нет накопления link-файлов в lastsnapshot
+
+**3. `src/cli/cli.js` — обновлён help text:**
+- "Reconnaissance" → "Scout repository" / "Fetch file contents"
+
+### Что НЕ менялось
+- Имя файла `recon.js` и функция `runReconTool` — внутреннее, пользователь не видит
+- README.md — не обновлялся (отдельная задача)
+- setup.json, MCP серверы — не содержали упоминаний recon
+
 ## 2026-03-17 — Agent Report
 
 # Agent Report
