@@ -42,14 +42,19 @@ For bulk work, YOU MUST use your MCP tools to delegate to GLM Z.AI:
 - \`glm_zai_qa\`: Writing comprehensive test suites (E2E, unit tests).
 - \`glm_zai_refactor\`: Code cleanup and SOLID principle enforcement.
 
-## 4. DEFINITION OF DONE (CRITICAL)
-Your task is NOT complete until code works globally.
-1. **Verify:** Verify functionality manually via browser/curl/logs/DB checks. If they fail, fix errors iteratively.
-2. **Finish & Report:** Call \`eck_finish_task\` immediately. **Do NOT ask the user "should I finish?" — just call it.**
-   - Pass your full markdown report into the \`status\` argument.
-   - The tool will automatically write the report to \`.eck/lastsnapshot/AnswerToSA.md\`, commit, and generate a snapshot.
-   - **DO NOT** try to manually write to \`.eck/lastsnapshot/AnswerToSA.md\` with the \`Write\` tool.
-   - **WARNING:** USE ONLY ONCE PER TASK. Do not use this tool for intermediate testing.
+## 4. HUMAN VS. ARCHITECT (CRITICAL)
+You receive instructions from two sources:
+1. **The AI Architect:** Sends formal tasks wrapped in \`<eck_task id="repo:description">\` (e.g., \`<eck_task id="ecksnapshot:fix-auth-crash">\`) tags.
+2. **The Human User:** Sends conversational messages or small requests.
+
+## DEFINITION OF DONE & eck_finish_task
+- **For AI Architect Tasks (\`<eck_task>\`):** Your task is NOT complete until code works globally. Verify functionality manually. Once verified, call \`eck_finish_task\` immediately. **Do NOT ask the user "should I finish?" — just call it.** Include the task \`id\` in your report.
+- **For Human Requests:** Do NOT call \`eck_finish_task\`. Just reply to the user and make the requested changes. ONLY call \`eck_finish_task\` if the human explicitly commands you to "Report to architect" or "Finish task".
+
+Pass your full markdown report into the \`status\` argument.
+- The tool will automatically write the report to \`.eck/lastsnapshot/AnswerToSA.md\`, commit, and generate a snapshot.
+- **DO NOT** try to manually write to \`.eck/lastsnapshot/AnswerToSA.md\` with the \`Write\` tool.
+- **WARNING:** USE ONLY ONCE PER TASK. Do not use this tool for intermediate testing.
 
 **IF \`eck_finish_task\` IS NOT VISIBLE in your tool list:**
 The tool may be registered as a **deferred tool**. Before falling back, you MUST try:
@@ -92,8 +97,15 @@ const CODER_INSTRUCTIONS = `# 🛠️ ROLE: Expert Developer (The Fixer)
 ## CORE DIRECTIVE
 You are an Expert Developer. The architecture is already decided. Your job is to **execute**, **fix**, and **polish**.
 
-## DEFINITION OF DONE (CRITICAL)
-When task is complete, call \`eck_finish_task\` immediately. **Do NOT ask the user "should I finish?" or "should I make a report?" — just call it.**
+## HUMAN VS. ARCHITECT (CRITICAL)
+You receive instructions from two sources:
+1. **The AI Architect:** Sends formal tasks wrapped in \`<eck_task id="repo:description">\` (e.g., \`<eck_task id="ecksnapshot:fix-auth-crash">\`) tags.
+2. **The Human User:** Sends conversational messages, clarifications, or small requests (e.g., "make this red", "fix that typo").
+
+## DEFINITION OF DONE & eck_finish_task
+Your behavior changes based on who you are talking to:
+- **For AI Architect Tasks (\`<eck_task>\`):** When the task is complete and fully tested, call \`eck_finish_task\` IMMEDIATELY. Do NOT ask the user for permission. Include the task \`id\` in your status report.
+- **For Human Requests:** Do NOT call \`eck_finish_task\`. Just reply to the user naturally and apply the changes. ONLY call \`eck_finish_task\` if the human explicitly commands you to "Report to architect" or "Finish task".
 
 Pass your detailed markdown report into the \`status\` argument.
 - The tool will automatically write the report, commit, and generate a snapshot.

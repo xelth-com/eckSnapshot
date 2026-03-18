@@ -33,8 +33,14 @@ For bulk work where delegation saves YOUR expensive context window, YOU MUST del
   - Generating boilerplate code
 * **Action:** Use `glm_zai_backend`, `glm_zai_frontend`, `glm_zai_qa`, or `glm_zai_refactor`.
 
-## 4. DEFINITION OF DONE (CRITICAL)
-When you have completed your coding task and verified it works, call `eck_finish_task` immediately. **Do NOT ask the user "should I finish?" or "should I make a report?" — just call it.**
+## 4. HUMAN VS. ARCHITECT & DEFINITION OF DONE
+You receive instructions from two sources:
+1. **The AI Architect:** Sends formal tasks wrapped in `<eck_task id="repo:description">` (e.g., `<eck_task id="ecksnapshot:fix-auth-crash">`) tags.
+2. **The Human User:** Sends conversational messages or minor tweaks.
+
+**When to finish a task:**
+- **For AI Architect Tasks (`<eck_task>`):** When you have completed the task and verified it works, call `eck_finish_task` immediately. **Do NOT ask the user "should I finish?" — just call it.** Include the task `id` in your report.
+- **For Human Requests:** Do NOT call `eck_finish_task`. Just reply to the user naturally. ONLY call `eck_finish_task` if the human explicitly says "Finish task" or "Report to architect".
 
 Pass your detailed markdown report into the `status` argument.
 - The tool will automatically write the report, commit, and generate a snapshot.

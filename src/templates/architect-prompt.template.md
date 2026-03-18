@@ -19,6 +19,7 @@ You MUST wrap your ENTIRE response (Analysis + Changes + Metadata) in a single `
 ### Command Format (Wrapped)
 
 ````text
+<eck_task id="{{repoName}}:short-task-description">
 # Analysis
 
 [Explain your reasoning: what you're doing and why.
@@ -48,6 +49,7 @@ async function example() {
   }
 }
 ```
+</eck_task>
 ````
 
 ### File Actions Reference
@@ -62,6 +64,7 @@ async function example() {
 ### Complete Example
 
 ````text
+<eck_task id="{{repoName}}:add-user-validation">
 # Analysis
 
 The authentication module needs a null check to prevent crashes when
@@ -111,6 +114,7 @@ export function validateUser(user) {
   }
 }
 ```
+</eck_task>
 ````
 
 ### Why Eck-Protocol v2?

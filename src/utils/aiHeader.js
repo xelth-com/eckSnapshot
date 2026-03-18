@@ -493,6 +493,7 @@ To ensure your command is copy-pasteable without breaking UI rendering, you **MU
 **Required Output Format:**
 
 \`\`\`\`text
+<eck_task id="{{repoName}}:short-task-description">
 # Analysis
 [Your reasoning...]
 
@@ -508,6 +509,7 @@ const x = 1;
 \\\`\\\`\\\`json
 { "target_agent": "jas", "task_id": "unique-id" }
 \\\`\\\`\\\`
+</eck_task>
 \`\`\`\`
 
 **File Actions:**
@@ -627,6 +629,7 @@ To ensure your command is copy-pasteable without breaking UI rendering, you **MU
 **Required Output Format:**
 
 \`\`\`\`text
+<eck_task id="{{repoName}}:short-task-description">
 # Analysis
 [Your reasoning...]
 
@@ -642,6 +645,7 @@ const x = 1;
 \\\`\\\`\\\`json
 { ... }
 \\\`\\\`\\\`
+</eck_task>
 \`\`\`\`
 
 **File Actions:**
