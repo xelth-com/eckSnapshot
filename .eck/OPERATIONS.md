@@ -180,6 +180,31 @@ For bulk work where delegation saves expensive context:
 
 At the end of every task, agents **MUST** call `eck_finish_task` MCP tool (or manual fallback to `.eck/lastsnapshot/AnswerToSA.md`).
 
+### Task Context Separation (`<eck_task>` Protocol)
+
+Agents distinguish between Architect tasks and Human requests:
+
+| Source | Signal | Agent Behavior |
+|--------|--------|----------------|
+| **AI Architect** | Message wrapped in `<eck_task id="repo:desc">` | Execute → verify → auto-call `eck_finish_task` with task `id` |
+| **Human User** | No `<eck_task>` tag | Apply changes → reply naturally. No `eck_finish_task` unless explicitly told |
+
+**Architect command format** (Eck-Protocol v2):
+```text
+<eck_task id="ecksnapshot:fix-auth-crash">
+# Analysis
+...
+## Changes
+<file path="..." action="replace">
+...
+</file>
+## Metadata
+...
+</eck_task>
+```
+
+**Human trigger phrases** to force finish: "Finish task", "Report to architect".
+
 ### Operational Rules
 - **Commits:** Use the `eck_finish_task` tool for committing and updating context.
 - **Manifests:** If you see [STUB] in .eck/ files, update them.

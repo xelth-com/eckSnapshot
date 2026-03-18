@@ -80,6 +80,25 @@ GLM Z.AI Worker Fleet (MCP: glm-zai server)
 
 Excluded from scanning: files containing `secret`, `credential`, `server_access` in the name, and `profile_generation_guide.md`.
 
+### Task Context Separation (`<eck_task>` Protocol)
+
+Execution agents (Coders, Junior Architects) receive instructions from two sources:
+1. **AI Architect** — formal tasks wrapped in `<eck_task id="repo:description">` XML tags (e.g., `<eck_task id="ecksnapshot:fix-auth-crash">`).
+2. **Human User** — conversational messages without tags.
+
+**Behavior rules:**
+- Architect task (`<eck_task>`) → execute, verify, call `eck_finish_task` automatically with task `id` in the report.
+- Human request (no tag) → apply changes and reply naturally. Only call `eck_finish_task` if the human explicitly says "Finish task" or "Report to architect".
+
+**ID format:** `repoName:short-task-description` — provides visual project identification when multiple agent windows are open.
+
+This protocol is implemented in all agent instruction templates:
+- `claudeMdGenerator.js` (CODER_INSTRUCTIONS + getArchitectInstructions)
+- `coder.template.md` (OpenCode coder)
+- `junior-architect.template.md` (OpenCode JA)
+- `architect-prompt.template.md` (Senior Architect command format examples)
+- `aiHeader.js` (commandFormats for snapshot-embedded Architect prompts)
+
 ### Snapshot Modes (JSON arguments)
 | Argument | Purpose | Output |
 |----------|---------|--------|
