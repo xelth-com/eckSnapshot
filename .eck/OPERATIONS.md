@@ -200,7 +200,7 @@ Agents distinguish between Architect tasks and Human requests:
 </file>
 ## Metadata
 ...
-</eck_task>
+</eck_task id="ecksnapshot:fix-auth-crash">
 ```
 
 **Human trigger phrases** to force finish: "Finish task", "Report to architect".

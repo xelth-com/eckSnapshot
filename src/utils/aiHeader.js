@@ -509,7 +509,7 @@ const x = 1;
 \\\`\\\`\\\`json
 { "target_agent": "jas", "task_id": "unique-id" }
 \\\`\\\`\\\`
-</eck_task>
+</eck_task id="{{repoName}}:short-task-description">
 \`\`\`\`
 
 **File Actions:**
@@ -645,7 +645,7 @@ const x = 1;
 \\\`\\\`\\\`json
 { ... }
 \\\`\\\`\\\`
-</eck_task>
+</eck_task id="{{repoName}}:short-task-description">
 \`\`\`\`
 
 **File Actions:**

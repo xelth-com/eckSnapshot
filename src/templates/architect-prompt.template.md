@@ -49,7 +49,7 @@ async function example() {
   }
 }
 ```
-</eck_task>
+</eck_task id="{{repoName}}:short-task-description">
 ````
 
 ### File Actions Reference
@@ -114,7 +114,7 @@ export function validateUser(user) {
   }
 }
 ```
-</eck_task>
+</eck_task id="{{repoName}}:add-user-validation">
 ````
 
 ### Why Eck-Protocol v2?
