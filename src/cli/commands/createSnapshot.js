@@ -535,6 +535,55 @@ async function processProjectFiles(repoPath, options, config, projectTypes = nul
   }
 }
 
+/**
+ * Groups files by directory and packs them into chunks of a given maximum size.
+ * Preserves directory locality for better RAG retrieval in NotebookLM.
+ */
+function packFilesForNotebookLM(successfulFileObjects, maxChunkSizeBytes = 2.5 * 1024 * 1024) {
+  const dirGroups = new Map();
+
+  for (const fileObj of successfulFileObjects) {
+    const dir = fileObj.path.includes('/') ? fileObj.path.substring(0, fileObj.path.lastIndexOf('/')) : './';
+    if (!dirGroups.has(dir)) dirGroups.set(dir, { size: 0, files: [] });
+    const group = dirGroups.get(dir);
+    group.files.push(fileObj);
+    group.size += fileObj.size;
+  }
+
+  const sortedDirs = Array.from(dirGroups.keys()).sort();
+  const chunks = [];
+  let currentChunk = { size: 0, contentArray: [] };
+
+  for (const dir of sortedDirs) {
+    const group = dirGroups.get(dir);
+
+    if (group.size > maxChunkSizeBytes) {
+      // Directory too large — pack files individually
+      for (const fileObj of group.files) {
+        if (currentChunk.size + fileObj.size > maxChunkSizeBytes && currentChunk.contentArray.length > 0) {
+          chunks.push(currentChunk);
+          currentChunk = { size: 0, contentArray: [] };
+        }
+        currentChunk.contentArray.push(fileObj.content);
+        currentChunk.size += fileObj.size;
+      }
+    } else if (currentChunk.size + group.size <= maxChunkSizeBytes) {
+      // Directory fits in current chunk
+      for (const f of group.files) currentChunk.contentArray.push(f.content);
+      currentChunk.size += group.size;
+    } else {
+      // Start a new chunk
+      chunks.push(currentChunk);
+      currentChunk = { size: 0, contentArray: [] };
+      for (const f of group.files) currentChunk.contentArray.push(f.content);
+      currentChunk.size += group.size;
+    }
+  }
+
+  if (currentChunk.contentArray.length > 0) chunks.push(currentChunk);
+  return chunks;
+}
+
 export async function createRepoSnapshot(repoPath, options) {
   // Handle linked project depth settings before processing
   if (options.isLinkedProject) {
@@ -732,6 +781,48 @@ export async function createRepoSnapshot(repoPath, options) {
       let architectFilePath = null;
       let jaFilePath = null;
 
+      // --- NotebookLM Chunked Export ---
+      if (options.notebooklm) {
+        console.log(chalk.blue('\n📚 Packing project for NotebookLM (Semantic Chunking)...'));
+        const chunks = packFilesForNotebookLM(successfulFileObjects);
+
+        const treeSection = directoryTree ? `\n## Directory Structure\n\n\`\`\`\n${directoryTree}\`\`\`\n\n` : '';
+        const shortRepoName = getShortRepoName(repoName);
+
+        // Clean up old booklm chunks
+        try {
+          const existingFiles = await fs.readdir(outputPath);
+          for (const file of existingFiles) {
+            if (file.includes('_booklm_part')) {
+              await fs.unlink(path.join(outputPath, file));
+            }
+          }
+        } catch (e) { /* ignore */ }
+
+        for (let i = 0; i < chunks.length; i++) {
+          const chunk = chunks[i];
+          const header = `# 📚 NOTEBOOKLM KNOWLEDGE BASE — PART ${i + 1} OF ${chunks.length}\n` +
+                         `**Project:** ${repoName}\n` +
+                         `**Role:** You are an expert code analyst. Use the directory structure below to understand the project layout. Answer questions using ONLY the code provided in this document. Do not hallucinate code that is not present.\n\n`;
+
+          const body = treeSection + chunk.contentArray.join('');
+          const fname = `eck_${shortRepoName}_booklm_part${i + 1}.md`;
+          const fpath = path.join(outputPath, fname);
+
+          await fs.writeFile(fpath, header + body);
+          console.log(chalk.cyan(`   📄 Part ${i + 1}/${chunks.length}: ${fname} (${formatSize(chunk.size)})`));
+        }
+
+        architectFilePath = path.join(outputPath, `eck_${shortRepoName}_booklm_part1.md`);
+        console.log(chalk.green(`\n✅ NotebookLM export complete: ${chunks.length} chunk(s) in ${outputPath}`));
+        console.log(chalk.gray(`   Upload all part files as separate sources in NotebookLM (max 50 sources).`));
+
+        // Save git anchor and skip the rest of the snapshot logic
+        await saveGitAnchor(processedRepoPath);
+        return;
+      }
+
+      // --- Standard Snapshot Mode ---
       let fileBody = '';
       if (directoryTree) {
         fileBody += `\n## Directory Structure\n\n\`\`\`\n${directoryTree}\`\`\`\n\n`;
