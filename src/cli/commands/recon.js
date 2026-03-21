@@ -148,6 +148,7 @@ async function runFetch(patterns) {
   try {
     const repoPath = process.cwd();
     const repoName = path.basename(repoPath);
+    const repoPathNorm = repoPath.replace(/\\/g, '/').replace(/\/$/, '') + '/';
     const setupConfig = await loadSetupConfig();
     const config = { ...setupConfig.fileFiltering, ...setupConfig.performance };
 
@@ -157,7 +158,29 @@ async function runFetch(patterns) {
       const normalized = f.replace(/\\/g, '/');
       return !gitignore.ignores(normalized) && !isBinaryPath(f);
     });
-    const matchedFiles = micromatch(allFiles, patterns);
+
+    // Normalize patterns: strip absolute cwd prefix, convert backslashes,
+    // and auto-wrap bare filenames with **/ for convenience
+    const normalizedPatterns = patterns.map(p => {
+      let norm = p.replace(/\\/g, '/');
+      // Strip absolute path prefix matching cwd (case-insensitive on Windows)
+      if (norm.toLowerCase().startsWith(repoPathNorm.toLowerCase())) {
+        norm = norm.slice(repoPathNorm.length);
+      }
+      // If it looks like an absolute path from another project, extract just the filename
+      if (path.isAbsolute(norm) || /^[A-Za-z]:\//.test(norm)) {
+        const basename = path.basename(norm);
+        console.log(chalk.yellow(`   ⚠️ Cross-repo absolute path detected, using: **/${basename}`));
+        norm = `**/${basename}`;
+      }
+      // If it's a plain filename with no glob chars and no path separators, wrap it
+      if (!norm.includes('/') && !norm.includes('*') && !norm.includes('?')) {
+        norm = `**/${norm}`;
+      }
+      return norm;
+    });
+
+    const matchedFiles = micromatch(allFiles, normalizedPatterns);
 
     if (matchedFiles.length === 0) {
       console.log(chalk.yellow('⚠️ No files matched the requested patterns.'));
@@ -183,8 +206,8 @@ async function runFetch(patterns) {
     const filename = `scout_data_${repoName}_${timestamp}.md`;
 
     // Check how many patterns actually matched at least one file
-    const matchedPatternCount = patterns.filter(p => micromatch(allFiles, [p]).length > 0).length;
-    const missedCount = patterns.length - matchedPatternCount;
+    const matchedPatternCount = normalizedPatterns.filter(p => micromatch(allFiles, [p]).length > 0).length;
+    const missedCount = normalizedPatterns.length - matchedPatternCount;
     const missedWarning = missedCount > 0 ? `\n**⚠️ ${missedCount} of ${patterns.length} requested patterns returned no results.** You likely misread the directory tree. Re-check the tree carefully and retry with glob patterns like \`"**/<filename>"\` to match files regardless of nesting depth.\n` : '';
 
     const finalContent = `# ⚠️ SCOUT FETCH RESULTS: [${repoName}]
