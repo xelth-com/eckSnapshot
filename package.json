@@ -1,6 +1,6 @@
 {
   "name": "@xelth/eck-snapshot",
-  "version": "6.2.10",
+  "version": "6.2.11",
   "description": "A powerful CLI tool to create and restore single-file text snapshots of Git repositories. Optimized for AI context, LLM workflows, and multi-agent Swarm coordination.",
   "keywords": [
     "ai",
