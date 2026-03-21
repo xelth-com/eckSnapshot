@@ -2,12 +2,14 @@ import fs from 'fs/promises';
 import path from 'path';
 import chalk from 'chalk';
 import micromatch from 'micromatch';
+import isBinaryPath from 'is-binary-path';
 import {
   scanDirectoryRecursively,
   generateDirectoryTree,
   generateTimestamp,
   readFileWithSizeCheck,
-  parseSize
+  parseSize,
+  loadGitignore
 } from '../../utils/fileUtils.js';
 import { loadSetupConfig } from '../../config.js';
 import { getDepthConfig, DEPTH_SCALE } from '../../core/depthConfig.js';
@@ -42,7 +44,12 @@ async function runScout(depth = 0) {
     // Use a deep maxDepth for scout so the AI can see the full structure
     config.maxDepth = 15;
 
-    const allFiles = await scanDirectoryRecursively(repoPath, config, repoPath);
+    const gitignore = await loadGitignore(repoPath);
+    const rawFiles = await scanDirectoryRecursively(repoPath, config, repoPath);
+    const allFiles = rawFiles.filter(f => {
+      const normalized = f.replace(/\\/g, '/');
+      return !gitignore.ignores(normalized) && !isBinaryPath(f);
+    });
     const directoryTree = await generateDirectoryTree(repoPath, '', allFiles, 0, config.maxDepth, config);
 
     // Build file contents section if depth > 0
@@ -144,7 +151,12 @@ async function runFetch(patterns) {
     const setupConfig = await loadSetupConfig();
     const config = { ...setupConfig.fileFiltering, ...setupConfig.performance };
 
-    const allFiles = await scanDirectoryRecursively(repoPath, config, repoPath);
+    const gitignore = await loadGitignore(repoPath);
+    const rawFiles = await scanDirectoryRecursively(repoPath, config, repoPath);
+    const allFiles = rawFiles.filter(f => {
+      const normalized = f.replace(/\\/g, '/');
+      return !gitignore.ignores(normalized) && !isBinaryPath(f);
+    });
     const matchedFiles = micromatch(allFiles, patterns);
 
     if (matchedFiles.length === 0) {
