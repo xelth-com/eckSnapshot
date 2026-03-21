@@ -289,6 +289,20 @@ scope: core
 
 
 
+
+## 2026-03-21 — Agent Report
+
+# Agent Report
+
+## Task: `ecksnapshot:fix-detector-enoent-spam`
+
+### Done
+- Added `fileExists` guard in `getNodejsDetails()` (line ~293) — returns early with base `details` object if `package.json` is missing.
+- Added `fileExists` guard in `getReactNativeDetails()` (line ~401) — same early return pattern.
+
+### Result
+ENOENT warnings no longer spam the console when these detection functions are called on projects without a root `package.json`. The existing `catch` blocks remain as a safety net for other I/O or parse errors.
+
 ## 2026-03-17 — Agent Report
 
 # Agent Report

@@ -47,36 +47,37 @@ export function run() {
   const helpGuide = `
 eck-snapshot (v${pkg.version}) - AI-Native Repository Context Tool.
 ===================================================================
-⚠️ PURE JSON/MCP INTERFACE ACTIVE ⚠️
 
+[AI AGENTS: PURE JSON/MCP INTERFACE ACTIVE]
 This CLI is designed to be operated by AI agents using JSON payloads.
-Legacy command-line flags have been removed.
+  - eck_snapshot    : { profile, skeleton, jas, link, linkDepth }
+  - eck_update      : Delta snapshot
+  - eck_scout       : { depth: 0-9 }
+  - eck_fetch       : { patterns: [] }
+  - eck_setup_mcp   : Configure MCP servers
+  - eck_detect      : Detect project type
+  - eck_doctor      : Health check
 
-USAGE:
-  eck-snapshot '<json_payload>'
+[HUMAN COMMANDS: SHORTHANDS]
+Ranked by frequency of use:
 
-AVAILABLE TOOLS:
-  - eck_snapshot  : Create a full context snapshot.
-                    Args: { profile?: string, skeleton?: boolean, jas/jao/jaz?: boolean, link?: string|string[], linkDepth?: number }
-  - eck_update    : Create a delta snapshot.
-  - eck_scout     : Scout repository (generate tree + optional content). Args: { depth?: 0-9 }
-  - eck_fetch     : Fetch file contents by glob pattern. Args: { patterns: string[] }
-  - eck_setup_mcp : Configure MCP. Args: { opencode?: boolean, both?: boolean }
-  - eck_detect    : Detect project type. Args: {}
-  - eck_doctor    : Run project health check. Args: {}
-  - eck_train_tokens: Calibrate token estimator. Args: { projectType, fileSizeBytes, estimatedTokens, actualTokens }
-  - eck_token_stats : Show token estimation accuracy. Args: {}
+  1. eck-snapshot snapshot      Create a full project snapshot
+  2. eck-snapshot update        Create a delta update (changed files only)
+  3. eck-snapshot scout [0-9]   Scout external repo. Depths:
+                                  0: Tree only (default)
+                                  1-4: Truncated (10, 30, 60, 100 lines)
+                                  5: Skeleton (Signatures only)
+                                  6: Skeleton + docs
+                                  7-9: Full content (500, 1000, unlimited)
+  4. eck-snapshot fetch <glob>  Fetch specific files (e.g., "src/**/*.js")
+  5. eck-snapshot link [0-9]    Create linked companion snapshot (same depths)
+  6. eck-snapshot setup-mcp     Configure AI agents (Claude Code, OpenCode)
+  7. eck-snapshot detect        Detect project type and active filters
+  8. eck-snapshot doctor        Check project health and stubs
 
-EXAMPLES:
-  eck-snapshot '{"name": "eck_snapshot", "arguments": {"profile": "backend"}}'
-  eck-snapshot '{"name": "eck_update"}'
-  eck-snapshot '{"name": "eck_scout"}'
-  eck-snapshot '{"name": "eck_fetch", "arguments": {"patterns": ["src/**/*.rs"]}}'
-
-HUMAN SHORTHANDS:
-  eck-snapshot scout 5   (Scout tree + skeleton at depth 5)
-  eck-snapshot link 5    (Linked snapshot at depth 5)
-  eck-snapshot fetch "src/**/*.js"  (Fetch specific files by glob)
+[FEEDBACK]
+  eck-snapshot -e "message"     Send feedback/ideas to developers (read by AI)
+  eck-snapshot -E "message"     Send urgent bug report
 `;
 
   program
@@ -84,7 +85,29 @@ HUMAN SHORTHANDS:
     .version(pkg.version)
     .addHelpText('before', helpGuide)
     .argument('[payload]', 'JSON string representing the MCP tool call')
-    .action(async (payloadStr) => {
+    .option('-e, --feedback <message>', 'Send feedback or report an issue to developers')
+    .option('-E, --urgent-feedback <message>', 'Send urgent feedback to developers')
+    .action(async (payloadStr, options) => {
+
+      // --- Handle Feedback Flags ---
+      if (options.feedback || options.urgentFeedback) {
+        const msg = options.feedback || options.urgentFeedback;
+        const type = options.urgentFeedback ? 'URGENT' : 'NORMAL';
+        const queuePath = path.join(process.cwd(), '.eck', 'telemetry_queue.json');
+
+        let queue = { feedback: [], usage: {}, errors: [] };
+        try { queue = JSON.parse(await fs.readFile(queuePath, 'utf-8')); } catch(e) { /* no existing queue */ }
+
+        queue.feedback.push({ type, message: msg, date: new Date().toISOString() });
+
+        await fs.mkdir(path.dirname(queuePath), { recursive: true }).catch(() => {});
+        await fs.writeFile(queuePath, JSON.stringify(queue, null, 2));
+
+        console.log(chalk.green('Feedback saved locally. It will be sent to developers during the next telemetry sync.'));
+        console.log(chalk.gray('(Note: Messages are processed by AI for developers)'));
+        return;
+      }
+
       // Default behavior for human users: empty call = full snapshot
       if (!payloadStr) {
         console.log(chalk.cyan('🚀 No arguments provided. Defaulting to full repository snapshot...'));
@@ -105,8 +128,18 @@ HUMAN SHORTHANDS:
       const toolName = payload.name;
       const args = payload.arguments || {};
       const cwd = process.cwd();
+      const queuePath = path.join(cwd, '.eck', 'telemetry_queue.json');
 
       try {
+        // --- Track Usage Locally ---
+        try {
+          let queue = { feedback: [], usage: {}, errors: [] };
+          try { queue = JSON.parse(await fs.readFile(queuePath, 'utf-8')); } catch(e) { /* no existing queue */ }
+          queue.usage[toolName] = (queue.usage[toolName] || 0) + 1;
+          await fs.mkdir(path.dirname(queuePath), { recursive: true }).catch(() => {});
+          await fs.writeFile(queuePath, JSON.stringify(queue, null, 2));
+        } catch(e) { /* ignore tracking errors */ }
+
         switch (toolName) {
           case 'eck_snapshot':
             await createRepoSnapshot(cwd, args);
@@ -140,6 +173,15 @@ HUMAN SHORTHANDS:
             process.exit(1);
         }
       } catch (err) {
+        // --- Track Errors Locally ---
+        try {
+          let queue = { feedback: [], usage: {}, errors: [] };
+          try { queue = JSON.parse(await fs.readFile(queuePath, 'utf-8')); } catch(e) { /* no existing queue */ }
+          queue.errors.push({ tool: toolName, error: err.message, date: new Date().toISOString() });
+          await fs.mkdir(path.dirname(queuePath), { recursive: true }).catch(() => {});
+          await fs.writeFile(queuePath, JSON.stringify(queue, null, 2));
+        } catch(e) { /* ignore tracking errors */ }
+
         console.error(chalk.red(`❌ Execution failed for ${toolName}:`), err.message);
         process.exit(1);
       }
