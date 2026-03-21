@@ -4,9 +4,32 @@ import fs from 'fs/promises';
 import { fileURLToPath } from 'url';
 import chalk from 'chalk';
 import { createRequire } from 'module';
+import os from 'os';
+import crypto from 'crypto';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+async function getGlobalConfig() {
+  const configPath = path.join(os.homedir(), '.eck', 'cli-config.json');
+  try {
+    const data = await fs.readFile(configPath, 'utf-8');
+    return JSON.parse(data);
+  } catch (e) {
+    const newConfig = { instanceId: crypto.randomUUID(), telemetryEnabled: true };
+    await fs.mkdir(path.dirname(configPath), { recursive: true }).catch(() => {});
+    await fs.writeFile(configPath, JSON.stringify(newConfig, null, 2)).catch(() => {});
+    return newConfig;
+  }
+}
+
+async function setGlobalConfig(updates) {
+  const configPath = path.join(os.homedir(), '.eck', 'cli-config.json');
+  const current = await getGlobalConfig();
+  const next = { ...current, ...updates };
+  await fs.writeFile(configPath, JSON.stringify(next, null, 2)).catch(() => {});
+  return next;
+}
 
 // Import core logic (we bypass the CLI wrapper entirely)
 import { createRepoSnapshot } from './commands/createSnapshot.js';
@@ -29,6 +52,7 @@ const LEGACY_COMMANDS = {
   'scout':       (args) => ({ name: 'eck_scout', arguments: { depth: args[0] ? parseInt(args[0], 10) : 0 } }),
   'fetch':       (args) => ({ name: 'eck_fetch', arguments: { patterns: args } }),
   'link':        (args) => ({ name: 'eck_snapshot', arguments: { isLinkedProject: true, linkDepth: args[0] ? parseInt(args[0], 10) : 0 } }),
+  'telemetry':   (args) => ({ name: 'eck_telemetry', arguments: { action: args[0] } }),
 };
 
 export function run() {
@@ -78,6 +102,14 @@ Ranked by frequency of use:
 [FEEDBACK]
   eck-snapshot -e "message"     Send feedback/ideas to developers (read by AI)
   eck-snapshot -E "message"     Send urgent bug report
+
+[DATENSCHUTZ / PRIVACY]
+  We respect your privacy. By default, eck-snapshot collects anonymous usage counts
+  and crash logs to improve the tool. NO source code or sensitive data is ever sent.
+  To completely disable background telemetry:
+    eck-snapshot telemetry disable
+  To re-enable it:
+    eck-snapshot telemetry enable
 `;
 
   program
@@ -88,6 +120,7 @@ Ranked by frequency of use:
     .option('-e, --feedback <message>', 'Send feedback or report an issue to developers')
     .option('-E, --urgent-feedback <message>', 'Send urgent feedback to developers')
     .action(async (payloadStr, options) => {
+      const globalConfig = await getGlobalConfig();
 
       // --- Handle Feedback Flags ---
       if (options.feedback || options.urgentFeedback) {
@@ -95,8 +128,11 @@ Ranked by frequency of use:
         const type = options.urgentFeedback ? 'URGENT' : 'NORMAL';
         const queuePath = path.join(process.cwd(), '.eck', 'telemetry_queue.json');
 
-        let queue = { feedback: [], usage: {}, errors: [] };
-        try { queue = JSON.parse(await fs.readFile(queuePath, 'utf-8')); } catch(e) { /* no existing queue */ }
+        let queue = { instanceId: globalConfig.instanceId, feedback: [], usage: {}, errors: [] };
+        try {
+          const existing = JSON.parse(await fs.readFile(queuePath, 'utf-8'));
+          queue = { ...queue, ...existing };
+        } catch(e) { /* no existing queue */ }
 
         queue.feedback.push({ type, message: msg, date: new Date().toISOString() });
 
@@ -112,8 +148,7 @@ Ranked by frequency of use:
       if (!payloadStr) {
         console.log(chalk.cyan('🚀 No arguments provided. Defaulting to full repository snapshot...'));
         console.log(chalk.gray('💡 Run `eck-snapshot -h` to see all available JSON tools.\n'));
-        await createRepoSnapshot(process.cwd(), {});
-        return;
+        payloadStr = '{"name": "eck_snapshot", "arguments": {}}';
       }
 
       let payload;
@@ -127,18 +162,39 @@ Ranked by frequency of use:
 
       const toolName = payload.name;
       const args = payload.arguments || {};
+
+      // --- Handle Telemetry Config Command ---
+      if (toolName === 'eck_telemetry') {
+        if (args.action === 'disable') {
+          await setGlobalConfig({ telemetryEnabled: false });
+          console.log(chalk.yellow('Background telemetry has been disabled.'));
+        } else if (args.action === 'enable') {
+          await setGlobalConfig({ telemetryEnabled: true });
+          console.log(chalk.green('Background telemetry has been enabled. Thank you for supporting the project!'));
+        } else {
+          console.log(chalk.blue(`Telemetry is currently: ${globalConfig.telemetryEnabled ? 'ENABLED' : 'DISABLED'}`));
+          console.log(chalk.gray(`Instance ID: ${globalConfig.instanceId}`));
+        }
+        return;
+      }
+
       const cwd = process.cwd();
       const queuePath = path.join(cwd, '.eck', 'telemetry_queue.json');
 
       try {
-        // --- Track Usage Locally ---
-        try {
-          let queue = { feedback: [], usage: {}, errors: [] };
-          try { queue = JSON.parse(await fs.readFile(queuePath, 'utf-8')); } catch(e) { /* no existing queue */ }
-          queue.usage[toolName] = (queue.usage[toolName] || 0) + 1;
-          await fs.mkdir(path.dirname(queuePath), { recursive: true }).catch(() => {});
-          await fs.writeFile(queuePath, JSON.stringify(queue, null, 2));
-        } catch(e) { /* ignore tracking errors */ }
+        // --- Track Usage Locally (Guarded by Privacy Opt-in) ---
+        if (globalConfig.telemetryEnabled) {
+          try {
+            let queue = { instanceId: globalConfig.instanceId, feedback: [], usage: {}, errors: [] };
+            try {
+              const existing = JSON.parse(await fs.readFile(queuePath, 'utf-8'));
+              queue = { ...queue, ...existing };
+            } catch(e) { /* no existing queue */ }
+            queue.usage[toolName] = (queue.usage[toolName] || 0) + 1;
+            await fs.mkdir(path.dirname(queuePath), { recursive: true }).catch(() => {});
+            await fs.writeFile(queuePath, JSON.stringify(queue, null, 2));
+          } catch(e) { /* ignore tracking errors */ }
+        }
 
         switch (toolName) {
           case 'eck_snapshot':
@@ -173,14 +229,19 @@ Ranked by frequency of use:
             process.exit(1);
         }
       } catch (err) {
-        // --- Track Errors Locally ---
-        try {
-          let queue = { feedback: [], usage: {}, errors: [] };
-          try { queue = JSON.parse(await fs.readFile(queuePath, 'utf-8')); } catch(e) { /* no existing queue */ }
-          queue.errors.push({ tool: toolName, error: err.message, date: new Date().toISOString() });
-          await fs.mkdir(path.dirname(queuePath), { recursive: true }).catch(() => {});
-          await fs.writeFile(queuePath, JSON.stringify(queue, null, 2));
-        } catch(e) { /* ignore tracking errors */ }
+        // --- Track Errors Locally (Guarded by Privacy Opt-in) ---
+        if (globalConfig.telemetryEnabled) {
+          try {
+            let queue = { instanceId: globalConfig.instanceId, feedback: [], usage: {}, errors: [] };
+            try {
+              const existing = JSON.parse(await fs.readFile(queuePath, 'utf-8'));
+              queue = { ...queue, ...existing };
+            } catch(e) { /* no existing queue */ }
+            queue.errors.push({ tool: toolName, error: err.message, date: new Date().toISOString() });
+            await fs.mkdir(path.dirname(queuePath), { recursive: true }).catch(() => {});
+            await fs.writeFile(queuePath, JSON.stringify(queue, null, 2));
+          } catch(e) { /* ignore tracking errors */ }
+        }
 
         console.error(chalk.red(`❌ Execution failed for ${toolName}:`), err.message);
         process.exit(1);

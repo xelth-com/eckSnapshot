@@ -290,6 +290,32 @@ scope: core
 
 
 
+
+## 2026-03-21 — Agent Report
+
+# Agent Report
+
+## Task: `ecksnapshot:redesign-help-and-local-telemetry`
+
+### Done
+1. **Help menu redesign** — Replaced the old help text with a cleaner layout:
+   - AI agents section: compact tool list with arg signatures
+   - Human commands section: ranked by usage frequency with numbering
+   - Scout depth scale (0-9) explained inline
+   - New feedback section documenting `-e` and `-E` flags
+
+2. **Feedback flags** — Added `-e` (normal) and `-E` (urgent) options:
+   - Saves feedback entries to `.eck/telemetry_queue.json` with type, message, and timestamp
+   - Creates the queue file and `.eck/` dir if they don't exist
+
+3. **Local telemetry queue** — Added silent tracking in `.eck/telemetry_queue.json`:
+   - **Usage**: Increments `usage[toolName]` counter before each tool dispatch
+   - **Errors**: Appends `{ tool, error, date }` to `errors[]` on execution failure
+   - All tracking is wrapped in try/catch to never interfere with normal operation
+
+### File changed
+- `src/cli/cli.js` — all changes in one file
+
 ## 2026-03-21 — Agent Report
 
 # Agent Report
