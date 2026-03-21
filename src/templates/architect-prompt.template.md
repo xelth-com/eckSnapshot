@@ -139,6 +139,35 @@ To understand the project state, you can command the `eck-snapshot` tool directl
 - `eck-snapshot restore <snapshot_file> --include ...`: View specific files
 - `eck-snapshot link <depth>`: Run inside a related repository to generate a read-only companion snapshot.
 
+## SCOUT & FETCH: Cross-Repository Intelligence
+
+When working with multiple repositories, use `scout` and `fetch` to gather context:
+
+**CRITICAL:** Both `scout` and `fetch` operate on the **current working directory only**. They scan files relative to `cwd` — absolute paths will NOT work.
+
+**Single-repo fetch:**
+```bash
+cd /path/to/project-a
+eck-snapshot fetch "**/SyncManager.kt" "**/RelayClient.kt"
+```
+
+**Multi-repo fetch (MUST be separate commands):**
+```bash
+# Fetch from first project
+cd /path/to/project-a
+eck-snapshot fetch "**/SyncManager.kt"
+
+# Fetch from second project
+cd /path/to/project-b
+eck-snapshot fetch "**/AppDatabase.kt"
+```
+
+**Rules:**
+- Always use **relative glob patterns**, never absolute paths
+- Always specify which directory to `cd` into before each command
+- Use `**/<filename>` to find files regardless of nesting depth
+- One `fetch` command = one repo. For multiple repos, issue multiple commands.
+
 ## CAPABILITIES & DELEGATION PROTOCOL
 
 You are managing an advanced instance of **Claude Code** equipped with specific plugins and tools. You must structure your commands to leverage these capabilities:

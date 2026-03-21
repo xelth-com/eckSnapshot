@@ -108,15 +108,19 @@ eck-snapshot scout 5    # skeleton mode
 eck-snapshot scout 9    # full content
 \`\`\`
 
-**Fetch specific files:**
+**Fetch specific files (run inside this repo's directory):**
 \`\`\`bash
+cd ${repoPath.replace(/\\/g, '/')}
 eck-snapshot fetch "src/**/*.js" "README.md"
 \`\`\`
 
-**⚠️ IMPORTANT: Tree paths are easy to misread.** If \`fetch\` returns fewer files than you requested, you likely got the path wrong. Do NOT guess exact paths from the tree — use glob patterns instead:
-- Instead of \`"plugins/mcp-integration/examples/stdio-server.json"\` use \`"**/mcp-integration/examples/stdio-server.json"\`
-- Instead of \`"src/utils/helper.js"\` use \`"**/helper.js"\`
-- Use \`"**/<filename>"\` to find a file anywhere in the tree regardless of nesting depth.
+**⚠️ CRITICAL FETCH RULES:**
+1. **\`fetch\` only works inside the repo it scans.** You MUST \`cd\` into the correct project directory first.
+2. **Use RELATIVE paths or glob patterns**, never absolute paths. Files are matched against the repo root.
+3. **If you need files from multiple repos**, issue SEPARATE fetch commands — one per repo, each with its own \`cd\`.
+4. **Prefer glob patterns over exact paths** — tree paths are easy to misread:
+   - Instead of \`"src/utils/helper.js"\` use \`"**/helper.js"\`
+   - Use \`"**/<filename>"\` to find a file anywhere in the tree.
 
 **Depth scale:**
 | Depth | Mode | Description |
