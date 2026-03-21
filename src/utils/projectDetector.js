@@ -289,9 +289,12 @@ async function getNodejsDetails(projectPath) {
   
   try {
     const packageJsonPath = path.join(projectPath, 'package.json');
+    if (!(await fileExists(packageJsonPath))) {
+      return details;
+    }
     const content = await fs.readFile(packageJsonPath, 'utf-8');
     const packageJson = JSON.parse(content);
-    
+
     details.name = packageJson.name;
     details.version = packageJson.version;
     details.hasTypescript = !!packageJson.devDependencies?.typescript || !!packageJson.dependencies?.typescript;
@@ -397,9 +400,12 @@ async function getReactNativeDetails(projectPath) {
   
   try {
     const packageJsonPath = path.join(projectPath, 'package.json');
+    if (!(await fileExists(packageJsonPath))) {
+      return details;
+    }
     const content = await fs.readFile(packageJsonPath, 'utf-8');
     const packageJson = JSON.parse(content);
-    
+
     details.name = packageJson.name;
     details.version = packageJson.version;
     details.reactNativeVersion = packageJson.dependencies?.['react-native'];
