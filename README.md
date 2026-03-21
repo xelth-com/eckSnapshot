@@ -1,4 +1,4 @@
-# 📸 eckSnapshot v6.2.8 (AI-Native Edition)
+# 📸 eckSnapshot v6.2.10 (AI-Native Edition)
 
 A specialized, AI-native CLI tool that creates single-file text snapshots of entire Git repositories and feeds them directly into LLM context windows. Instead of letting AI agents guess which files to read, eckSnapshot force-feeds the complete project into the model's context — giving it a "university degree" in your codebase from the very first prompt.
 
@@ -77,15 +77,35 @@ eck-snapshot '{"name": "eck_snapshot", "arguments": {"profile": "backend", "jas"
 eck-snapshot '{"name": "eck_update"}'
 ```
 
-### 🧑‍💻 Human Shims (For Convenience)
+### 🧑‍💻 Human Shorthands (Ranked by Usage)
 For humans typing in the terminal, short commands work too:
-- `eck-snapshot` — Full snapshot
-- `eck-snapshot update` — Delta update
-- `eck-snapshot scout` — Scout tree (depth 0, default)
-- `eck-snapshot scout 5` — Scout tree + skeleton content (depth 5)
-- `eck-snapshot fetch "src/**/*.rs"` — Fetch specific files by glob
-- `eck-snapshot link 5` — Generate a linked companion snapshot (depth 5)
-- `eck-snapshot setup-mcp` — Configure MCP servers
+
+| # | Command | Description |
+|---|---------|-------------|
+| 1 | `eck-snapshot snapshot` | Create a full project snapshot |
+| 2 | `eck-snapshot update` | Delta update (changed files only) |
+| 3 | `eck-snapshot scout [0-9]` | Scout external repo (see depth scale below) |
+| 4 | `eck-snapshot fetch "src/**/*.rs"` | Fetch specific files by glob |
+| 5 | `eck-snapshot link [0-9]` | Linked companion snapshot |
+| 6 | `eck-snapshot setup-mcp` | Configure MCP servers |
+| 7 | `eck-snapshot detect` | Detect project type and active filters |
+| 8 | `eck-snapshot doctor` | Check project health and stubs |
+
+Running `eck-snapshot` with no arguments defaults to a full snapshot.
+
+### ✉️ Feedback & Telemetry
+```bash
+eck-snapshot -e "Great tool, but scout could be faster"   # Normal feedback
+eck-snapshot -E "Crash on Windows when path has spaces"   # Urgent bug report
+eck-snapshot telemetry disable                             # Opt out completely
+eck-snapshot telemetry enable                              # Opt back in
+eck-snapshot telemetry                                     # Check current status
+```
+
+Feedback is saved locally to `.eck/telemetry_queue.json` and will be sent to developers during the next telemetry sync.
+
+#### 🔒 Datenschutz / Privacy
+By default, eck-snapshot collects **anonymous usage counts** and **crash logs** to improve the tool. **NO source code or sensitive data is ever sent.** Each CLI instance is identified by a random UUID stored in `~/.eck/cli-config.json`. You can completely disable telemetry at any time with `eck-snapshot telemetry disable`.
 
 ---
 
