@@ -291,6 +291,27 @@ scope: core
 
 
 
+
+## 2026-03-21 — Agent Report
+
+# Agent Report
+
+## Task: `ecksnapshot:telemetry-uuid-and-privacy`
+
+### Done
+1. **Persistent UUID** — `~/.eck/cli-config.json` stores `instanceId` (via `crypto.randomUUID()`) and `telemetryEnabled` flag. Created on first CLI run. The `instanceId` is injected into every `telemetry_queue.json` write.
+
+2. **Datenschutz/Privacy section** — Added to the help menu (`-h`) explaining what is collected (anonymous usage counts + crash logs only, no source code), and how to opt out.
+
+3. **Telemetry opt-out command** — `eck-snapshot telemetry disable/enable` toggles `telemetryEnabled` in global config. Running without an argument shows current status and instance ID. Added to `LEGACY_COMMANDS` for shorthand support.
+
+4. **Privacy guard** — All usage and error tracking is wrapped in `if (globalConfig.telemetryEnabled)` checks. Feedback (`-e`/`-E`) always saves locally regardless of telemetry setting (it's explicit user action).
+
+5. **Queue format updated** — `telemetry_queue.json` now includes `instanceId` at the root level, merged correctly with existing queue data.
+
+### Files changed
+- `src/cli/cli.js` — all changes in one file
+
 ## 2026-03-21 — Agent Report
 
 # Agent Report
