@@ -52,7 +52,8 @@ const LEGACY_COMMANDS = {
   'scout':       (args) => ({ name: 'eck_scout', arguments: { depth: args[0] ? parseInt(args[0], 10) : 0 } }),
   'fetch':       (args) => ({ name: 'eck_fetch', arguments: { patterns: args } }),
   'link':        (args) => ({ name: 'eck_snapshot', arguments: { isLinkedProject: true, linkDepth: args[0] ? parseInt(args[0], 10) : 0 } }),
-  'booklm':      () => ({ name: 'eck_snapshot', arguments: { notebooklm: true } }),
+  'booklm':      () => ({ name: 'eck_snapshot', arguments: { notebooklm: 'scout' } }),
+  'notelm':      () => ({ name: 'eck_snapshot', arguments: { notebooklm: 'architect' } }),
   'telemetry':   (args) => ({ name: 'eck_telemetry', arguments: { action: args[0] } }),
 };
 
@@ -99,7 +100,8 @@ Ranked by frequency of use:
   6. eck-snapshot setup-mcp     Configure AI agents (Claude Code, OpenCode)
   7. eck-snapshot detect        Detect project type and active filters
   8. eck-snapshot doctor        Check project health and stubs
-  9. eck-snapshot booklm        Export for NotebookLM (semantic chunking)
+  9. eck-snapshot booklm        Export for NotebookLM (Scout - fetch generator)
+ 10. eck-snapshot notelm        Export for NotebookLM (Architect - experimental)
 
 [FEEDBACK]
   eck-snapshot -e "message"     Send feedback/ideas to developers (read by AI)

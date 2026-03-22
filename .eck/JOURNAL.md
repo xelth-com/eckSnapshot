@@ -292,6 +292,42 @@ scope: core
 
 
 
+
+## 2026-03-21 — Agent Report
+
+# Agent Report
+
+## Task: `ecksnapshot:implement-notebooklm-chunking`
+
+### Done
+1. **`packFilesForNotebookLM` function** — Semantic bin-packing algorithm:
+   - Groups files by parent directory for locality
+   - Packs directory groups into chunks of max 2.5MB
+   - Falls back to per-file packing when a single directory exceeds the limit
+   - Returns array of `{ size, contentArray }` chunks
+
+2. **NotebookLM export branch in `createRepoSnapshot`** — When `options.notebooklm` is true:
+   - Generates multiple `eck_<repo>_booklm_part<N>.md` files
+   - Prepends the full directory tree to EVERY chunk for global context
+   - Each chunk gets a NotebookLM-specific header with role instructions
+   - Old `_booklm_part` files are cleaned up before re-export
+   - Exits early after export (skips CLAUDE.md/AGENTS.md generation)
+
+3. **CLI integration**:
+   - Added `booklm` to `LEGACY_COMMANDS` → maps to `{ notebooklm: true }`
+   - Added to help menu as command #9
+
+### Usage
+```bash
+eck-snapshot booklm
+# or JSON:
+eck-snapshot '{"name": "eck_snapshot", "arguments": {"notebooklm": true}}'
+```
+
+### Published
+- `@xelth/eck-snapshot@6.3.0` on npm
+- Old 6.2.14 removed, registry now: 4.2.4, 5.9.0, 6.3.0
+
 ## 2026-03-21 — Agent Report
 
 # Agent Report

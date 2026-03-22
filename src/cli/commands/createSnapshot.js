@@ -781,43 +781,89 @@ export async function createRepoSnapshot(repoPath, options) {
       let architectFilePath = null;
       let jaFilePath = null;
 
-      // --- NotebookLM Chunked Export ---
+      // --- NotebookLM Chunked Export (Brain + Body) ---
       if (options.notebooklm) {
-        console.log(chalk.blue('\n📚 Packing project for NotebookLM (Semantic Chunking)...'));
+        const isArchitectMode = options.notebooklm === 'architect';
+        const modeName = isArchitectMode ? 'Architect' : 'Scout';
+        console.log(chalk.blue(`\n📚 Packing project for NotebookLM (${modeName} Mode)...`));
+
         const chunks = packFilesForNotebookLM(successfulFileObjects);
-
-        const treeSection = directoryTree ? `\n## Directory Structure\n\n\`\`\`\n${directoryTree}\`\`\`\n\n` : '';
         const shortRepoName = getShortRepoName(repoName);
+        const absPath = processedRepoPath.replace(/\\/g, '/');
+        const filePrefix = isArchitectMode ? 'notelm' : 'booklm';
 
-        // Clean up old booklm chunks
+        // Clean up old notebooklm chunks
         try {
           const existingFiles = await fs.readdir(outputPath);
           for (const file of existingFiles) {
-            if (file.includes('_booklm_part')) {
+            if (file.includes('_booklm_part') || file.includes('_notelm_part')) {
               await fs.unlink(path.join(outputPath, file));
             }
           }
         } catch (e) { /* ignore */ }
 
+        // --- Part 0: The Brain (Instructions + Manifests + Tree) ---
+        let part0 = `# 🧠 NOTEBOOKLM KNOWLEDGE BASE — PART 0 (THE BRAIN)\n`;
+        part0 += `**Project:** ${repoName}\n\n`;
+
+        if (isArchitectMode) {
+          part0 += `## YOUR ROLE: THE ARCHITECT\n`;
+          part0 += `You are the Senior Software Architect for this project. You have access to the entire codebase across the source documents (Parts 1-${chunks.length}).\n`;
+          part0 += `Analyze the codebase to solve complex structural problems, design new features, and propose refactoring strategies. Provide high-level guidance and precise code modifications.\n\n`;
+        } else {
+          part0 += `## YOUR ROLE: THE SCOUT\n`;
+          part0 += `You are an expert code analyst and retrieval specialist. You have access to the entire codebase across the source documents (Parts 1-${chunks.length}). Your goal is NOT to write code, but to help the primary Architect find the exact files they need.\n`;
+          part0 += `When asked about a feature, bug, or module — analyze the project structure and codebase, then output precise bash commands using \`eck-snapshot fetch\` so the user can extract the relevant files for their Architect agent.\n\n`;
+          part0 += `**RULES FOR FETCH COMMANDS:**\n`;
+          part0 += `1. Always start with \`cd ${absPath}\`\n`;
+          part0 += `2. Use relative glob patterns: \`eck-snapshot fetch "**/auth.js" "**/userController.js"\`\n`;
+          part0 += `3. Output the commands in a bash code block, accompanied by a brief explanation of why you selected those files.\n`;
+          part0 += `4. Include both directly relevant files AND adjacent files that provide context (imports, shared types, config).\n\n`;
+        }
+
+        // Add .eck manifests
+        if (eckManifest) {
+          part0 += `## 📑 Project Context & Manifests\n\n`;
+          if (eckManifest.context) part0 += `### CONTEXT\n${eckManifest.context}\n\n`;
+          if (eckManifest.techDebt) part0 += `### TECH DEBT\n${eckManifest.techDebt}\n\n`;
+          if (eckManifest.roadmap) part0 += `### ROADMAP\n${eckManifest.roadmap}\n\n`;
+          if (eckManifest.operations) part0 += `### OPERATIONS\n${eckManifest.operations}\n\n`;
+          // Include any dynamic .eck files
+          if (eckManifest.dynamicFiles) {
+            for (const [name, content] of Object.entries(eckManifest.dynamicFiles)) {
+              part0 += `### ${name.replace('.md', '').toUpperCase()}\n${content}\n\n`;
+            }
+          }
+        }
+
+        // Add full directory tree
+        if (directoryTree) {
+          part0 += `## 🌳 Global Directory Structure\n\`\`\`text\n${directoryTree}\n\`\`\`\n`;
+        }
+
+        const part0Name = `eck_${shortRepoName}_${filePrefix}_part0_BRAIN.md`;
+        await fs.writeFile(path.join(outputPath, part0Name), part0);
+        console.log(chalk.magenta(`   🧠 Part 0 (Brain): ${part0Name}`));
+
+        // --- Parts 1-N: The Body (Source Code Only) ---
         for (let i = 0; i < chunks.length; i++) {
           const chunk = chunks[i];
-          const header = `# 📚 NOTEBOOKLM KNOWLEDGE BASE — PART ${i + 1} OF ${chunks.length}\n` +
-                         `**Project:** ${repoName}\n` +
-                         `**Role:** You are an expert code analyst. Use the directory structure below to understand the project layout. Answer questions using ONLY the code provided in this document. Do not hallucinate code that is not present.\n\n`;
+          const header = `--- NOTEBOOKLM SOURCE CODE — PART ${i + 1} OF ${chunks.length} ---\n\n`;
+          const body = header + chunk.contentArray.join('');
 
-          const body = treeSection + chunk.contentArray.join('');
-          const fname = `eck_${shortRepoName}_booklm_part${i + 1}.md`;
-          const fpath = path.join(outputPath, fname);
-
-          await fs.writeFile(fpath, header + body);
+          const fname = `eck_${shortRepoName}_${filePrefix}_part${i + 1}.md`;
+          await fs.writeFile(path.join(outputPath, fname), body);
           console.log(chalk.cyan(`   📄 Part ${i + 1}/${chunks.length}: ${fname} (${formatSize(chunk.size)})`));
         }
 
-        architectFilePath = path.join(outputPath, `eck_${shortRepoName}_booklm_part1.md`);
-        console.log(chalk.green(`\n✅ NotebookLM export complete: ${chunks.length} chunk(s) in ${outputPath}`));
-        console.log(chalk.gray(`   Upload all part files as separate sources in NotebookLM (max 50 sources).`));
+        console.log(chalk.green(`\n✅ NotebookLM export complete: 1 Brain + ${chunks.length} Source chunk(s) in ${outputPath}`));
+        console.log(chalk.gray(`   Upload all files as separate sources in NotebookLM (max 50 sources).`));
 
-        // Save git anchor and skip the rest of the snapshot logic
+        // Starter prompt for NotebookLM chat
+        console.log('\n🤖 STARTER PROMPT (paste as your FIRST message in NotebookLM):');
+        console.log('---------------------------------------------------');
+        console.log(chalk.cyan.bold('Read the source document ending in "_part0_BRAIN.md" completely before answering any questions. This document contains your core instructions, the project context, and the global directory tree. Acknowledge that you understand your role.\n'));
+
         await saveGitAnchor(processedRepoPath);
         return;
       }
