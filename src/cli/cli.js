@@ -52,6 +52,7 @@ const LEGACY_COMMANDS = {
   'scout':       (args) => ({ name: 'eck_scout', arguments: { depth: args[0] ? parseInt(args[0], 10) : 0 } }),
   'fetch':       (args) => ({ name: 'eck_fetch', arguments: { patterns: args } }),
   'link':        (args) => ({ name: 'eck_snapshot', arguments: { isLinkedProject: true, linkDepth: args[0] ? parseInt(args[0], 10) : 0 } }),
+  'profile':     (args) => args[0] ? ({ name: 'eck_snapshot', arguments: { profile: args.join(',') } }) : ({ name: 'eck_snapshot', arguments: { profile: true } }),
   'booklm':      () => ({ name: 'eck_snapshot', arguments: { notebooklm: 'scout' } }),
   'notelm':      () => ({ name: 'eck_snapshot', arguments: { notebooklm: 'architect' } }),
   'telemetry':   (args) => ({ name: 'eck_telemetry', arguments: { action: args[0] } }),
@@ -87,21 +88,25 @@ This CLI is designed to be operated by AI agents using JSON payloads.
 [HUMAN COMMANDS: SHORTHANDS]
 Ranked by frequency of use:
 
-  1. eck-snapshot snapshot      Create a full project snapshot
-  2. eck-snapshot update        Create a delta update (changed files only)
-  3. eck-snapshot scout [0-9]   Scout external repo. Depths:
-                                  0: Tree only (default)
-                                  1-4: Truncated (10, 30, 60, 100 lines)
-                                  5: Skeleton (Signatures only)
-                                  6: Skeleton + docs
-                                  7-9: Full content (500, 1000, unlimited)
-  4. eck-snapshot fetch <glob>  Fetch specific files (e.g., "src/**/*.js")
-  5. eck-snapshot link [0-9]    Create linked companion snapshot (same depths)
-  6. eck-snapshot setup-mcp     Configure AI agents (Claude Code, OpenCode)
-  7. eck-snapshot detect        Detect project type and active filters
-  8. eck-snapshot doctor        Check project health and stubs
-  9. eck-snapshot booklm        Export for NotebookLM (Scout - fetch generator)
- 10. eck-snapshot notelm        Export for NotebookLM (Architect - experimental)
+  1. eck-snapshot snapshot          Full project snapshot
+  2. eck-snapshot update            Delta update (changed files only)
+  3. eck-snapshot profile [name]    Snapshot filtered by profile (from .eck/profiles.json)
+                                     No arg = list available profiles
+                                     Example: eck-snapshot profile backend
+                                     Multiple: eck-snapshot profile backend,api
+  4. eck-snapshot scout [0-9]       Scout external repo. Depths:
+                                      0: Tree only (default)
+                                      1-4: Truncated (10, 30, 60, 100 lines)
+                                      5: Skeleton (Signatures only)
+                                      6: Skeleton + docs
+                                      7-9: Full content (500, 1000, unlimited)
+  5. eck-snapshot fetch <glob>      Fetch specific files (e.g., "src/**/*.js")
+  6. eck-snapshot link [0-9]        Linked companion snapshot (same depths)
+  7. eck-snapshot booklm            Export for NotebookLM (Scout - fetch generator)
+  8. eck-snapshot notelm            Export for NotebookLM (Architect - experimental)
+  9. eck-snapshot setup-mcp         Configure AI agents (Claude Code, OpenCode)
+ 10. eck-snapshot detect            Detect project type and active filters
+ 11. eck-snapshot doctor            Check project health and stubs
 
 [FEEDBACK]
   eck-snapshot -e "message"     Send feedback/ideas to developers (read by AI)
