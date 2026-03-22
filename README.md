@@ -1,4 +1,4 @@
-# 📸 eckSnapshot v6.3.0 (AI-Native Edition)
+# 📸 eckSnapshot v6.3.2 (AI-Native Edition)
 
 A specialized, AI-native CLI tool that creates single-file text snapshots of entire Git repositories and feeds them directly into LLM context windows. Instead of letting AI agents guess which files to read, eckSnapshot force-feeds the complete project into the model's context — giving it a "university degree" in your codebase from the very first prompt.
 
@@ -82,14 +82,17 @@ For humans typing in the terminal, short commands work too:
 
 | # | Command | Description |
 |---|---------|-------------|
-| 1 | `eck-snapshot snapshot` | Create a full project snapshot |
+| 1 | `eck-snapshot snapshot` | Full project snapshot |
 | 2 | `eck-snapshot update` | Delta update (changed files only) |
-| 3 | `eck-snapshot scout [0-9]` | Scout external repo (see depth scale below) |
-| 4 | `eck-snapshot fetch "src/**/*.rs"` | Fetch specific files by glob |
-| 5 | `eck-snapshot link [0-9]` | Linked companion snapshot |
-| 6 | `eck-snapshot setup-mcp` | Configure MCP servers |
-| 7 | `eck-snapshot detect` | Detect project type and active filters |
-| 8 | `eck-snapshot doctor` | Check project health and stubs |
+| 3 | `eck-snapshot profile [name]` | Snapshot filtered by profile (no arg = list profiles) |
+| 4 | `eck-snapshot scout [0-9]` | Scout external repo (see depth scale below) |
+| 5 | `eck-snapshot fetch "src/**/*.rs"` | Fetch specific files by glob |
+| 6 | `eck-snapshot link [0-9]` | Linked companion snapshot |
+| 7 | `eck-snapshot booklm` | Export for NotebookLM — Scout mode (see below) |
+| 8 | `eck-snapshot notelm` | Export for NotebookLM — Architect mode (see below) |
+| 9 | `eck-snapshot setup-mcp` | Configure MCP servers |
+| 10 | `eck-snapshot detect` | Detect project type and active filters |
+| 11 | `eck-snapshot doctor` | Check project health and stubs |
 
 Running `eck-snapshot` with no arguments defaults to a full snapshot.
 
@@ -160,13 +163,96 @@ Both `scout` and `link` use the same depth scale to control content granularity:
 
 ## 🌟 Core Features
 
-* **📚 NotebookLM Export (New in v6.3):** Semantically chunk massive repositories into ~2.5MB pieces for Google's NotebookLM. "Brain + Body" architecture: Part 0 holds instructions, manifests, and directory tree; Parts 1-N hold pure source code. Two modes: `booklm` (free RAG Scout that outputs `fetch` commands) and `notelm` (experimental Architect mode).
 * **🔄 Smart Delta Updates:** Tracks incremental changes via Git anchors. Accurately tracks and reports deleted files to prevent LLM hallucinations.
 * **🛡️ Security (SecretScanner):** Automatically redacts API keys and credentials before sending context to LLMs. Features both Regex matching and **Shannon Entropy** analysis.
 * **🔌 Native MCP Integration:** Instantly spins up Model Context Protocol (MCP) servers (`eck-core` and `glm-zai`) for Claude Code, OpenCode, and Codex.
 * **📁 The `.eck/` Manifest:** Automatically maintains project context files (`CONTEXT.md`, `ROADMAP.md`, `TECH_DEBT.md`). Dynamic scanning — any `.md` file you add to `.eck/` is automatically included in snapshots.
 * **☠️ Skeleton Mode:** Uses Tree-sitter and Babel to strip function bodies, drastically reducing token count for huge codebases.
-* **🧠 Multi-Agent Protocol:** Built-in support for delegating tasks from a Senior Architect to Junior Managers (`jas`, `jao`, `jaz`), who orchestrate specialized GLM workers via MCP.
+* **📚 NotebookLM Export:** Semantic chunking for Google's NotebookLM with "Brain + Body" architecture (see below).
+* **🧠 Multi-Agent Protocol:** Junior Architect delegation system for multi-agent coding workflows (see below).
+
+---
+
+## 📚 NotebookLM Integration (New in v6.3 — Testing)
+
+> **Status:** Active testing. The core chunking works, prompt tuning is ongoing.
+
+### The Problem
+Your project is 2M+ tokens. Your Architect (Gemini/Grok) has a limited context window and costs money per query. You can't afford to feed the full codebase on every question.
+
+### The Solution: Free RAG via NotebookLM
+Google's NotebookLM supports up to **50 sources** and uses **RAG** (Retrieval-Augmented Generation) to search across them for free. eckSnapshot splits your codebase into semantically packed chunks that NotebookLM can index and search.
+
+### Architecture: Brain + Body
+
+```
+Part 0 (Brain)    — Instructions, .eck/ manifests, full directory tree. No code.
+Part 1 (Body)     — Source code chunk (~2.5MB), grouped by directory.
+Part 2 (Body)     — Source code chunk (~2.5MB), grouped by directory.
+...
+Part N (Body)     — Source code chunk (~2.5MB), grouped by directory.
+```
+
+Files are packed using a **directory-aware bin packing** algorithm: files from the same folder stay together for better RAG retrieval. The directory tree lives only in Part 0 to avoid duplication across chunks.
+
+### Two Modes
+
+**`booklm` — The Scout (Primary Use Case)**
+```bash
+eck-snapshot booklm
+```
+NotebookLM becomes a free "code librarian" for your paid Architect. Ask it: *"I'm working on fiscalization, which files do I need?"* — it analyzes the entire codebase via RAG and returns precise `eck-snapshot fetch` commands:
+```bash
+cd /path/to/project
+eck-snapshot fetch "**/FiscalPrinter.kt" "**/TaxCalculator.kt" "**/receipt_config.json"
+```
+You run the fetch command locally, get a tiny focused snapshot, and hand *that* to your real Architect. This saves money and context window.
+
+**`notelm` — The Architect (Experimental)**
+```bash
+eck-snapshot notelm
+```
+Same chunking, but Part 0 instructs NotebookLM to act as the Senior Architect itself — analyzing architecture, proposing refactoring, designing features. This is experimental and results vary.
+
+### Quick Start
+1. Run `eck-snapshot booklm` (or `notelm`) inside your project
+2. Upload all generated `part*.md` files as sources in a new NotebookLM project
+3. Paste the **Starter Prompt** (printed in your terminal) as your first message
+4. Start asking questions
+
+---
+
+## 🧠 Multi-Agent Protocol: Junior Architects (Testing)
+
+> **Status:** Active testing. The delegation protocol works, prompt optimization is ongoing.
+
+### The Concept
+For large projects, a single AI can't hold the full context AND write code efficiently. eckSnapshot implements a **Royal Court** hierarchy:
+
+```
+Senior Architect (Gemini/Grok — Web LLM, huge context)
+    │
+    ├── Junior Architect Sonnet (jas) — Claude Code with Sonnet 4.6
+    ├── Junior Architect Opus  (jao) — Claude Code with Opus 4.6
+    ├── Junior Architect GLM   (jaz) — OpenCode with GLM-4.7
+    │       │
+    │       └── GLM Z.AI Workers (MCP) — cheap bulk coding
+    │
+    └── Coder (default) — standard developer mode
+```
+
+The Senior Architect reads the full snapshot, plans the work, and delegates tasks via the Eck-Protocol v2. Junior Architects receive filtered snapshots with role-specific `CLAUDE.md` / `AGENTS.md` instructions and execute the plan locally.
+
+### Usage
+```bash
+eck-snapshot '{"name": "eck_snapshot", "arguments": {"jas": true}}'   # Sonnet mode
+eck-snapshot '{"name": "eck_snapshot", "arguments": {"jao": true}}'   # Opus mode
+eck-snapshot '{"name": "eck_snapshot", "arguments": {"jaz": true}}'   # GLM/OpenCode mode
+```
+
+Each mode generates a snapshot with tailored AI headers and updates the corresponding agent config file (`CLAUDE.md` for jas/jao, `AGENTS.md` for jaz).
+
+---
 
 ## 💡 The Philosophy: Why force a full snapshot?
 
