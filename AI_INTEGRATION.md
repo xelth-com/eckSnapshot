@@ -212,6 +212,38 @@ This automatically:
 
 ---
 
+## The "Free RAG Scout" Workflow (NotebookLM)
+
+For massive repositories (>1M tokens), sending the entire codebase to Claude/OpenCode on every prompt is expensive. eckSnapshot provides a workflow to use Google's **NotebookLM** as a free, massive-context Scout.
+
+### Step 1: Export for NotebookLM
+```bash
+eck-snapshot booklm    # Scout mode (recommended)
+eck-snapshot notelm    # Architect mode (experimental)
+```
+This splits your repository into `<repo>_booklm_partN.md` files (max 2.5MB each) using directory-aware bin packing.
+* **Part 0 (Brain)** — AI instructions, `.eck/` manifests, full directory tree. No source code.
+* **Parts 1-N (Body)** — Pure source code only. No tree duplication, no instructions.
+
+### Step 2: Upload to NotebookLM
+Create a new NotebookLM project and upload all generated `partX.md` files as sources (NotebookLM supports up to 50 sources).
+
+### Step 3: Initialize the Scout
+Copy the "Starter Prompt" printed in your terminal during Step 1 and paste it as your first message in NotebookLM. This forces the AI to read Part 0 and understand its role before searching other sources.
+
+### Step 4: Search & Fetch
+Ask NotebookLM questions like: *"I need to implement a new billing provider. Which files should I modify?"*
+NotebookLM will analyze the entire codebase via RAG and reply with precise `eck-snapshot fetch` commands:
+```bash
+cd /path/to/project
+eck-snapshot fetch "**/BillingProvider.kt" "**/PaymentService.kt" "**/billing_config.json"
+```
+
+### Step 5: Execute Locally
+Run the `fetch` command in your terminal. This generates a tiny, focused snapshot containing only the necessary files. Hand *this* small snapshot to your primary Architect (Claude Code / Gemini / Grok) to actually analyze and plan the implementation.
+
+---
+
 ## Troubleshooting
 
 ### MCP tools not showing up

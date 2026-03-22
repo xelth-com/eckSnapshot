@@ -160,6 +160,7 @@ Both `scout` and `link` use the same depth scale to control content granularity:
 
 ## 🌟 Core Features
 
+* **📚 NotebookLM Export (New in v6.3):** Semantically chunk massive repositories into ~2.5MB pieces for Google's NotebookLM. "Brain + Body" architecture: Part 0 holds instructions, manifests, and directory tree; Parts 1-N hold pure source code. Two modes: `booklm` (free RAG Scout that outputs `fetch` commands) and `notelm` (experimental Architect mode).
 * **🔄 Smart Delta Updates:** Tracks incremental changes via Git anchors. Accurately tracks and reports deleted files to prevent LLM hallucinations.
 * **🛡️ Security (SecretScanner):** Automatically redacts API keys and credentials before sending context to LLMs. Features both Regex matching and **Shannon Entropy** analysis.
 * **🔌 Native MCP Integration:** Instantly spins up Model Context Protocol (MCP) servers (`eck-core` and `glm-zai`) for Claude Code, OpenCode, and Codex.

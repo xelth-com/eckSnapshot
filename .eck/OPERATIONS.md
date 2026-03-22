@@ -89,6 +89,17 @@ Link output saved to `.eck/links/` and `snapshots/`.
 | 8 | Full (standard) | Full content, truncated at 1000 lines |
 | 9 | Full (unlimited) | Everything, no limits |
 
+## NotebookLM Export
+```bash
+# Scout Mode — generates fetch commands for local agents
+eck-snapshot booklm
+
+# Architect Mode — NotebookLM acts as primary architect (experimental)
+eck-snapshot notelm
+```
+Uses "Brain + Body" architecture: Part 0 (instructions + manifests + tree), Parts 1-N (source code only).
+Upload all parts to a single NotebookLM project. Paste the starter prompt as your first chat message.
+
 ## MCP Setup / Restoration
 ```bash
 # Setup MCP servers for Claude Code (auto-detects Codex too)

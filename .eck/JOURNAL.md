@@ -293,6 +293,33 @@ scope: core
 
 
 
+
+## 2026-03-22 — Agent Report
+
+# Agent Report
+
+## Task: `ecksnapshot:refine-notebooklm-modes`
+
+### Done
+1. **Brain + Body architecture:**
+   - Part 0 (Brain): AI instructions + `.eck/` manifests (CONTEXT, TECH_DEBT, ROADMAP, OPERATIONS, dynamic files) + full directory tree. No source code.
+   - Parts 1-N (Body): Pure source code only. No tree, no instructions, no duplication.
+
+2. **Two modes:**
+   - `eck-snapshot booklm` → Scout mode. Part 0 instructs NotebookLM to find relevant files and output `eck-snapshot fetch` commands with `cd` prefix and glob patterns.
+   - `eck-snapshot notelm` → Architect mode (experimental). Part 0 instructs NotebookLM to act as Senior Architect.
+
+3. **Starter prompt output:**
+   Console prints a copy-paste prompt after export: "Read the source document ending in `_part0_BRAIN.md` completely before answering any questions..."
+
+4. **Cleanup:**
+   - Old chunks (both `_booklm_part` and `_notelm_part`) are cleaned up before re-export.
+   - File naming: `eck_<repo>_booklm_part0_BRAIN.md` / `eck_<repo>_notelm_part0_BRAIN.md`
+
+### Files changed
+- `src/cli/cli.js` — added `notelm` to LEGACY_COMMANDS and help menu, changed `booklm` to pass `'scout'`
+- `src/cli/commands/createSnapshot.js` — replaced entire NotebookLM block with Brain+Body architecture
+
 ## 2026-03-21 — Agent Report
 
 # Agent Report
