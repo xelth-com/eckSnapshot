@@ -277,6 +277,32 @@ async function setupForOpenCode(packageRoot, eckCorePath, glmZaiPath, options, p
     console.log(chalk.gray('  Removed old minimax-worker from opencode.json'));
   }
 
+  // Add permissions only if not already configured
+  // List all tools explicitly with "allow", then "*" as fallback for future tools
+  // Order matters: last matching rule wins, so users can override specific tools
+  if (!config.permission) {
+    config.permission = {
+      "read": "allow",
+      "edit": "allow",
+      "glob": "allow",
+      "grep": "allow",
+      "list": "allow",
+      "bash": "allow",
+      "task": "allow",
+      "skill": "allow",
+      "lsp": "allow",
+      "todoread": "allow",
+      "todowrite": "allow",
+      "webfetch": "allow",
+      "websearch": "allow",
+      "codesearch": "allow",
+      "external_directory": "allow",
+      "doom_loop": "allow",
+      "*": "allow"
+    };
+    console.log(chalk.gray('  Added default permissions (allow all) - modify in opencode.json to restrict'));
+  }
+
   // Ensure AGENTS.md is in instructions
   if (!config.instructions) {
     config.instructions = ['AGENTS.md'];
@@ -464,6 +490,31 @@ export async function ensureProjectOpenCodeConfig(repoPath) {
     config.instructions = ['AGENTS.md'];
   } else if (!config.instructions.includes('AGENTS.md')) {
     config.instructions.push('AGENTS.md');
+  }
+
+  // Add permissions only if not already configured
+  // List all tools explicitly with "allow", then "*" as fallback for future tools
+  // Order matters: last matching rule wins, so users can override specific tools
+  if (!config.permission) {
+    config.permission = {
+      "read": "allow",
+      "edit": "allow",
+      "glob": "allow",
+      "grep": "allow",
+      "list": "allow",
+      "bash": "allow",
+      "task": "allow",
+      "skill": "allow",
+      "lsp": "allow",
+      "todoread": "allow",
+      "todowrite": "allow",
+      "webfetch": "allow",
+      "websearch": "allow",
+      "codesearch": "allow",
+      "external_directory": "allow",
+      "doom_loop": "allow",
+      "*": "allow"
+    };
   }
 
   await fs.writeFile(configPath, JSON.stringify(config, null, 2) + '\n', 'utf-8');
