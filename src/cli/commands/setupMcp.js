@@ -271,13 +271,6 @@ async function setupForOpenCode(packageRoot, eckCorePath, glmZaiPath, options, p
     timeout: 120000,
   };
 
-  // Preserve ZAI_API_KEY in environment if it was set before
-  if (process.env.ZAI_API_KEY) {
-    config.mcp['glm-zai'].environment = {
-      ZAI_API_KEY: process.env.ZAI_API_KEY,
-    };
-  }
-
   // Remove old minimax entries if present
   if (config.mcp['minimax-worker']) {
     delete config.mcp['minimax-worker'];

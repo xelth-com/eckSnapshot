@@ -916,7 +916,9 @@ export async function createRepoSnapshot(repoPath, options) {
         fname += `_${sizeKB}kb.${fileExtension}`;
         const fpath = path.join(outputPath, fname);
         await fs.writeFile(fpath, fullContent);
-        console.log(`📄 Generated Snapshot: ${fname}`);
+        const approxTokens = Math.round(fullContent.length / 4);
+        const tokensStr = approxTokens < 1000 ? `${approxTokens}` : `${(approxTokens / 1000).toFixed(1)}k`;
+        console.log(`📄 Generated Snapshot: ${fname} (${sizeKB} KB | ~${tokensStr} tokens)`);
 
         // --- FEATURE: Active Snapshot ---
         if (!isAgentMode) {
@@ -926,7 +928,10 @@ export async function createRepoSnapshot(repoPath, options) {
               const linksDir = path.join(originalCwd, '.eck', 'links');
               await fs.mkdir(linksDir, { recursive: true });
               await fs.writeFile(path.join(linksDir, fname), fullContent);
+              const approxTokens = Math.round(fullContent.length / 4);
+              const tokensStr = approxTokens < 1000 ? `${approxTokens}` : `${(approxTokens / 1000).toFixed(1)}k`;
               console.log(chalk.cyan(`🔗 Link saved to .eck/links/${fname}`));
+              console.log(chalk.gray(`   Size: ${sizeKB} KB | ~${tokensStr} tokens`));
             } else {
               // Main snapshots go to .eck/lastsnapshot/
               const snapDir = path.join(originalCwd, '.eck', 'lastsnapshot');

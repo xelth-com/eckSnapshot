@@ -294,6 +294,23 @@ scope: core
 
 
 
+
+## 2026-03-22 — Agent Report
+
+# Agent Report
+
+## Task: `ecksnapshot:update-notebooklm-docs`
+
+### Done
+1. **README.md** — Added NotebookLM Export as first core feature with description of Brain+Body architecture, both modes (booklm/notelm)
+2. **AI_INTEGRATION.md** — Added full "Free RAG Scout" workflow section (5 steps: export → upload → initialize → search → execute locally) with examples
+3. **`.eck/OPERATIONS.md`** — Added NotebookLM Export quick reference with both commands
+
+### Files changed
+- `README.md`
+- `AI_INTEGRATION.md`
+- `.eck/OPERATIONS.md`
+
 ## 2026-03-22 — Agent Report
 
 # Agent Report

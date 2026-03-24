@@ -141,7 +141,13 @@ ${directoryTree}
     const outputPath = path.join(repoPath, '.eck', 'scouts', filename);
     await fs.writeFile(outputPath, outputContent, 'utf-8');
 
+    const sizeBytes = Buffer.byteLength(outputContent, 'utf-8');
+    const sizeStr = sizeBytes < 1024 ? `${sizeBytes} B` : sizeBytes < 1048576 ? `${(sizeBytes / 1024).toFixed(1)} KB` : `${(sizeBytes / 1048576).toFixed(1)} MB`;
+    const approxTokens = Math.round(outputContent.length / 4);
+    const tokensStr = approxTokens < 1000 ? `${approxTokens}` : `${(approxTokens / 1000).toFixed(1)}k`;
+
     console.log(chalk.green(`✅ Scout complete. Saved to: .eck/scouts/${filename}`));
+    console.log(chalk.gray(`   Size: ${sizeStr} | ~${tokensStr} tokens`));
   } catch (error) {
     console.error(chalk.red(`❌ Scout failed: ${error.message}`));
   }
@@ -225,7 +231,13 @@ ${fileContentStr}
     const outputPath = path.join(repoPath, '.eck', 'scouts', filename);
     await fs.writeFile(outputPath, finalContent, 'utf-8');
 
+    const sizeBytes = Buffer.byteLength(finalContent, 'utf-8');
+    const sizeStr = sizeBytes < 1024 ? `${sizeBytes} B` : sizeBytes < 1048576 ? `${(sizeBytes / 1024).toFixed(1)} KB` : `${(sizeBytes / 1048576).toFixed(1)} MB`;
+    const approxTokens = Math.round(finalContent.length / 4);
+    const tokensStr = approxTokens < 1000 ? `${approxTokens}` : `${(approxTokens / 1000).toFixed(1)}k`;
+
     console.log(chalk.green(`✅ Fetched ${fetchedCount} files. Saved to: .eck/scouts/${filename}`));
+    console.log(chalk.gray(`   Size: ${sizeStr} | ~${tokensStr} tokens`));
   } catch (error) {
     console.error(chalk.red(`❌ Fetch failed: ${error.message}`));
   }
