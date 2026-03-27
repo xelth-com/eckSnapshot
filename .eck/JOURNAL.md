@@ -295,6 +295,30 @@ scope: core
 
 
 
+
+## 2026-03-27 — Agent Report
+
+# Agent Report
+
+## Task Completed: `.eckignore` and Context Hygiene Protocol
+
+### Changes Made
+
+**1. `src/utils/fileUtils.js`**
+- **Expanded GLOBAL_HARD_IGNORE_DIRS** in `scanDirectoryRecursively` (lines 208-211): Added `.gradle`, `build`, and `__pycache__` to the zero-config safety skip list.
+- **Added `.eckignore` support** in `loadGitignore` (lines 272-292): Refactored to always create an `ignore()` instance first, then load `.gitignore` (with warning on missing), then load `.eckignore` (silently optional). The `ig` instance now contains rules from both files.
+
+**2. `setup.json`**
+- **Expanded `extensionsToIgnore`** (lines 345-375): Added 4 new entries: `.wal`, `.pcapng`, `.jsonl`, `.csv` — blocking SQLite WAL files, network captures, JSONL logs, and CSV data dumps.
+
+**3. `src/templates/multiAgent.md`**
+- **Added Context Hygiene Protocol** (lines 37-44): Inserted between MANIFEST MAINTENANCE PROTOCOL and CRITICAL WORKFLOW sections. Instructs the Architect AI to proactively detect bloated snapshots and order creation/update of `.eckignore`.
+
+### Verification
+- `fileUtils.js` loads without syntax errors (Node.js import test passed)
+- `setup.json` is valid JSON with 30 extension entries (was 26, now 30)
+- All new patterns confirmed present via grep
+
 ## 2026-03-22 — Agent Report
 
 # Agent Report

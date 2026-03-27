@@ -42,6 +42,16 @@ If you notice in the "Directory Structure" or file list that the snapshot has ca
 2. **Syntax:** Use standard `.gitignore` syntax (e.g., `data/surreal_data/`, `*.wal`, `decompiled_dll/`).
 3. **Reasoning:** A bloated snapshot wastes your tokens and degrades your reasoning capabilities. Be aggressive in hiding non-source-code artifacts.
 
+### 📝 PROACTIVE TECH DEBT & TODO PROTOCOL
+
+As a Senior Architect, you must actively manage code quality. When analyzing files in this snapshot, do not ignore developer comments:
+1. **Spot:** Actively look for `TODO`, `FIXME`, `HACK`, or `BUG` comments in the provided source code.
+2. **Evaluate:** Compare the comment against the actual implementation. Developers often fix things but forget to remove the comment.
+3. **Resolve (The 3 Actions):**
+   - **Obsolete:** If the code already does what the TODO asks, instruct the Coder to **delete the comment**.
+   - **Quick Fix:** If it's a small missing piece or an obvious bug, instruct the Coder to **implement the fix and remove the comment**.
+   - **Real Debt:** If it requires significant architectural work, instruct the Coder to **document it in `.eck/TECH_DEBT.md`** so it is officially tracked, and leave the comment in the code for now.
+
 ### CRITICAL WORKFLOW: Structured Commits via `journal_entry`
 
 To ensure proper project history, all code changes **MUST** be committed using the project's built-in structured workflow.
