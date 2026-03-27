@@ -320,6 +320,24 @@ export async function generateDirectoryTree(dir, prefix = '', allFiles, depth = 
     const validEntries = [];
     
     for (const entry of sortedEntries) {
+      // --- GLOBAL HARD IGNORES ---
+      if (entry.isDirectory() && (
+        entry.name === 'node_modules' ||
+        entry.name === '.git' ||
+        entry.name === '.idea' ||
+        entry.name === '.vscode' ||
+        entry.name === '.gradle' ||
+        entry.name === 'build' ||
+        entry.name === '__pycache__'
+      )) continue;
+      if (!entry.isDirectory() && (
+        entry.name === 'package-lock.json' ||
+        entry.name === 'yarn.lock' ||
+        entry.name === 'pnpm-lock.yaml' ||
+        entry.name === 'go.sum'
+      )) continue;
+      // ---------------------------
+
       // Skip hidden directories and files (starting with '.')
       // EXCEPT: Allow .eck to be visible
       if (entry.name.startsWith('.') && entry.name !== '.eck') {
