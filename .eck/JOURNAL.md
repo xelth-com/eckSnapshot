@@ -297,6 +297,17 @@ scope: core
 
 
 
+
+## 2026-03-27 — Agent Report
+
+# Agent Report
+
+## Task Completed: Boy Scout Rule (Docstrings & Comments)
+
+### Changes Made
+
+**`src/templates/multiAgent.md`** (line 56): Inserted `🏕️ THE BOY SCOUT RULE` section between Tech Debt Protocol and CRITICAL WORKFLOW. Requires the Architect to explicitly instruct the Coder to update JSDoc/Docstrings for any function they modify or create, scoped to touched components only.
+
 ## 2026-03-27 — Agent Report
 
 # Agent Report
