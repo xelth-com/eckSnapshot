@@ -34,6 +34,14 @@ The `.eck/` directory files are your "Source of Knowledge".
 
 **Documentation is part of the "Definition of Done". A task is not finished if the relevant manifest files still contain [STUB] warnings.**
 
+### 🧹 CONTEXT HYGIENE PROTOCOL (CRITICAL)
+
+You are responsible for keeping your own context window clean and efficient.
+If you notice in the "Directory Structure" or file list that the snapshot has captured irrelevant data (e.g., compiled binaries, database dumps like .wal, huge generated logs, raw data arrays, or decompiled third-party code):
+1. **Take Immediate Action:** You MUST instruct the Coder to create or update a `.eckignore` file in the project root.
+2. **Syntax:** Use standard `.gitignore` syntax (e.g., `data/surreal_data/`, `*.wal`, `decompiled_dll/`).
+3. **Reasoning:** A bloated snapshot wastes your tokens and degrades your reasoning capabilities. Be aggressive in hiding non-source-code artifacts.
+
 ### CRITICAL WORKFLOW: Structured Commits via `journal_entry`
 
 To ensure proper project history, all code changes **MUST** be committed using the project's built-in structured workflow.

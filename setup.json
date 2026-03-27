@@ -368,7 +368,11 @@
       ".jpg",
       ".jpeg",
       ".gif",
-      ".svg"
+      ".svg",
+      ".wal",
+      ".pcapng",
+      ".jsonl",
+      ".csv"
     ],
     "dirsToIgnore": [
       "node_modules/",

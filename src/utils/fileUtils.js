@@ -205,7 +205,10 @@ export async function scanDirectoryRecursively(dirPath, config, relativeTo = dir
         if (entry.name === 'node_modules' ||
             entry.name === '.git' ||
             entry.name === '.idea' ||
-            entry.name === '.vscode') {
+            entry.name === '.vscode' ||
+            entry.name === '.gradle' ||
+            entry.name === 'build' ||
+            entry.name === '__pycache__') {
           continue;
         }
       } else {
@@ -270,14 +273,23 @@ export async function scanDirectoryRecursively(dirPath, config, relativeTo = dir
 }
 
 export async function loadGitignore(repoPath) {
+  const ig = ignore();
+
   try {
     const gitignoreContent = await fs.readFile(path.join(repoPath, '.gitignore'), 'utf-8');
-    const ig = ignore().add(gitignoreContent);
-    return ig;
+    ig.add(gitignoreContent);
   } catch {
     console.log('ℹ️ No .gitignore file found or could not be read');
-    return ignore();
   }
+
+  try {
+    const eckignoreContent = await fs.readFile(path.join(repoPath, '.eckignore'), 'utf-8');
+    ig.add(eckignoreContent);
+  } catch {
+    // .eckignore is optional, silently skip if missing
+  }
+
+  return ig;
 }
 
 export async function readFileWithSizeCheck(filePath, maxFileSize) {
