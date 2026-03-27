@@ -3,6 +3,7 @@
 ## Active
 - [ ] `LEGACY_COMMANDS` shim in `cli.js` translates old positional commands to JSON — should be removed once all documentation and muscle memory is updated
 - [ ] `src/templates/claude-code/mcp-server-template.js` still references `eck-snapshot update-auto` in description string (non-functional, documentation only)
+- [ ] Hard-coded ignore lists (`node_modules`, `.git`, `__pycache__`, etc.) are duplicated between `scanDirectoryRecursively` and `generateDirectoryTree` in `fileUtils.js` — should be extracted to shared constants to prevent drift
 
 ## Resolved
 - [x] `claudeCliService.js` removed — `fileUtils.js` now uses static stub templates (2026-03-15)

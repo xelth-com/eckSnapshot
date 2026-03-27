@@ -1,4 +1,22 @@
 ---
+task_id: fix-tree-generator-hard-ignores
+date: 2026-03-27
+type: fix
+scope: fileUtils,tree-generator
+summary: Apply global hard ignore filters in generateDirectoryTree to match scanDirectoryRecursively
+---
+
+# Fix generateDirectoryTree missing global hard ignores
+
+- `generateDirectoryTree` did not apply the same `GLOBAL_HARD_IGNORE_DIRS`/`GLOBAL_HARD_IGNORE_FILES` filters as `scanDirectoryRecursively`
+- Directories like `__pycache__`, `build`, `.gradle` appeared in the visual tree even though their files were excluded from content
+- Added identical hard-ignore block before hidden-file and config checks in the entry loop
+- Now both scan and tree functions share the same zero-config safety filter list
+
+**Modified Files**:
+- `src/utils/fileUtils.js`: lines 323-339, `generateDirectoryTree` entry loop
+
+---
 task_id: fix-directory-tree-substring-match
 date: 2026-03-17
 type: fix
@@ -297,6 +315,23 @@ scope: core
 
 
 
+
+
+## 2026-03-27 — Agent Report
+
+# Agent Report
+
+## Task: `ecksnapshot:fix-tree-generator-ignores`
+
+**Fixed:** `generateDirectoryTree` in `src/utils/fileUtils.js` now applies the same global hard ignore filters as `scanDirectoryRecursively`.
+
+**Change:** Added a block at line 323-339 in the entry loop that skips:
+- **Directories:** `node_modules`, `.git`, `.idea`, `.vscode`, `.gradle`, `build`, `__pycache__`
+- **Files:** `package-lock.json`, `yarn.lock`, `pnpm-lock.yaml`, `go.sum`
+
+These filters run before the hidden-file and `config.dirsToIgnore` checks, ensuring directories like `__pycache__` never appear in the visual tree even though they pass the `entry.name.startsWith('.')` check (since `__pycache__` doesn't start with a dot).
+
+**Journal entry:** type=fix, scope=tree-generator, summary="Apply global hard ignores to directory tree generation"
 
 ## 2026-03-27 — Agent Report
 
