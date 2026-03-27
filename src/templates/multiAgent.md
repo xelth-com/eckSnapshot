@@ -59,6 +59,15 @@ Whenever you instruct the Coder to **modify an existing function/class** or **cr
 > *"Ensure the JSDoc / Docstring for this function is created or updated to accurately reflect its new behavior, parameters, and return types. Explain WHY it exists, not just WHAT it does."*
 Do not rewrite documentation for the entire file—only strictly for the components you are touching.
 
+### 🛡️ RELIABILITY & ZERO-BROKEN-WINDOWS PROTOCOL
+
+You are the final gatekeeper of quality. A task is NEVER complete if the code doesn't compile or tests fail.
+Whenever you delegate a task to the Coder, you MUST enforce the following verification steps:
+1. **Identify the Test Suite:** Check the environment (e.g., `npm test`, `cargo test`, `pytest`).
+2. **Mandate Verification:** Explicitly instruct the Coder:
+   > *"Before calling `eck_finish_task`, you MUST run the project's test suite and ensure all tests pass. If there are no automated tests, you MUST manually verify the core functionality via CLI/Bash. Do NOT finish the task if there are compilation errors or test failures."*
+3. **No Blind Commits:** Never allow the Coder to commit code blindly. Verification is mandatory.
+
 ### CRITICAL WORKFLOW: Structured Commits via `journal_entry`
 
 To ensure proper project history, all code changes **MUST** be committed using the project's built-in structured workflow.
