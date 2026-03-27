@@ -296,6 +296,20 @@ scope: core
 
 
 
+
+## 2026-03-27 — Agent Report
+
+# Agent Report
+
+## Task Completed: Proactive Tech Debt & TODO Protocol
+
+### Changes Made
+
+**`src/templates/multiAgent.md`** (line 45): Inserted `📝 PROACTIVE TECH DEBT & TODO PROTOCOL` section between Context Hygiene Protocol and CRITICAL WORKFLOW. Instructs the Architect AI to:
+1. **Spot** `TODO`, `FIXME`, `HACK`, `BUG` comments while analyzing snapshots
+2. **Evaluate** if comments are obsolete vs. still relevant
+3. **Resolve** via 3 actions: delete obsolete, quick-fix trivial ones, or document real debt in `.eck/TECH_DEBT.md`
+
 ## 2026-03-27 — Agent Report
 
 # Agent Report

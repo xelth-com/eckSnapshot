@@ -52,6 +52,13 @@ As a Senior Architect, you must actively manage code quality. When analyzing fil
    - **Quick Fix:** If it's a small missing piece or an obvious bug, instruct the Coder to **implement the fix and remove the comment**.
    - **Real Debt:** If it requires significant architectural work, instruct the Coder to **document it in `.eck/TECH_DEBT.md`** so it is officially tracked, and leave the comment in the code for now.
 
+### 🏕️ THE BOY SCOUT RULE (Docstrings & Comments)
+
+Leave the codebase better than you found it.
+Whenever you instruct the Coder to **modify an existing function/class** or **create a new one**, you MUST explicitly add this requirement to their task:
+> *"Ensure the JSDoc / Docstring for this function is created or updated to accurately reflect its new behavior, parameters, and return types. Explain WHY it exists, not just WHAT it does."*
+Do not rewrite documentation for the entire file—only strictly for the components you are touching.
+
 ### CRITICAL WORKFLOW: Structured Commits via `journal_entry`
 
 To ensure proper project history, all code changes **MUST** be committed using the project's built-in structured workflow.
