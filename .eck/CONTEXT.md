@@ -99,6 +99,13 @@ This protocol is implemented in all agent instruction templates:
 - `architect-prompt.template.md` (Senior Architect command format examples)
 - `aiHeader.js` (commandFormats for snapshot-embedded Architect prompts)
 
+### Autonomous AI Protocols (injected via `multiAgent.md`)
+The Architect prompt includes four autonomous behavioral protocols:
+1. **Context Hygiene** — On every full snapshot, the Architect evaluates the directory tree for bloat. Massive bloat → dedicated cleanup task + fresh snapshot request. Minor bloat → appends `.eckignore` update to current task. Manual override via `[EXECUTE HYGIENE]` / `[ВРЕМЯ УБОРКИ]` code words.
+2. **Proactive Tech Debt** — Scans for `TODO`/`FIXME`/`HACK` comments, compares against implementation, and autonomously deletes obsolete ones, fixes quick issues, or documents real debt in `.eck/TECH_DEBT.md`.
+3. **Boy Scout Rule** — Whenever the AI touches a function, it must create or update its JSDoc/docstring to explain *why* the code exists (not just *what*).
+4. **Zero-Broken-Windows (Reliability)** — Blind commits forbidden. The AI must run the test suite and ensure all tests pass before calling `eck_finish_task`.
+
 ### Snapshot Modes (JSON arguments)
 | Argument | Purpose | Output |
 |----------|---------|--------|

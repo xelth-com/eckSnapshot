@@ -171,6 +171,13 @@ Both `scout` and `link` use the same depth scale to control content granularity:
 * **📚 NotebookLM Export:** Semantic chunking for Google's NotebookLM with "Brain + Body" architecture (see below).
 * **🧠 Multi-Agent Protocol:** Junior Architect delegation system for multi-agent coding workflows (see below).
 
+### 🤖 Autonomous AI Protocols
+`eckSnapshot` automatically injects strict behavioral protocols into the AI Architect's prompt (`multiAgent.md`) to ensure high code quality and prevent context degradation:
+1. **Context Hygiene Protocol:** The AI actively monitors the directory tree for bloat (logs, DB dumps, binaries). If detected, it autonomously constructs an `.eckignore` file to hide the garbage, saving tokens and context space.
+2. **Proactive Tech Debt:** The AI scans for `TODO`, `FIXME`, and `HACK` comments, evaluating them against the actual code. It will autonomously delete obsolete comments, fix quick bugs, or document major issues in `.eck/TECH_DEBT.md`.
+3. **The Boy Scout Rule:** Whenever the AI modifies or creates a function, it is forced to write or update its JSDoc/Docstring to explain *why* the code exists, keeping documentation perfectly synced.
+4. **Zero-Broken-Windows (Reliability):** Blind commits are strictly forbidden. The AI must run the project's test suite (e.g., `npm test`, `cargo test`) and ensure all tests pass before calling the task completion tool.
+
 ---
 
 ## 📚 NotebookLM Integration (New in v6.3 — Testing)

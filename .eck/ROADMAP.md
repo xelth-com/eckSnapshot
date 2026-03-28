@@ -10,6 +10,7 @@
 - [ ] Per-project telemetry isolation (project_id in reports)
 
 ## Completed
+- [x] **Autonomous AI Protocols** — Context Hygiene (smart bloat detection with severity-based response + manual override code words), Proactive Tech Debt scanning, Boy Scout Rule (forced docstring updates), Zero-Broken-Windows (mandatory test pass before commit). Documented in README and `.eck/CONTEXT.md` (2026-03-28)
 - [x] **Polyglot Monorepo Filtering** — `getProjectSpecificFiltering` merges ignore rules from all detected project types (Rust+Android, etc.). Fixed `generateDirectoryTree` substring match bug hiding `build.gradle` files (2026-03-17)
 - [x] **v6.2.1: Refined Depth Scale (0-9)** — Granular 10-level depth for both `scout` and `link`: tree → truncated(10/30/60/100) → skeleton → skeleton+docs → full(500/1000/unlimited). Shared via `depthConfig.js`. Skeletonizer now supports `preserveDocs` option (2026-03-16)
 - [x] **v6.2: Cross-Context Protocol** — `eck-snapshot link [depth]` generates standalone companion snapshots
