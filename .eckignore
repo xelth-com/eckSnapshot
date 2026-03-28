@@ -1,0 +1,14 @@
+# Тестовые и временные артефакты
+test_verify_std/
+test_verify_ja/
+test.txt
+
+# Вложенные папки от тестирования eck_finish_task
+eck-finish-task/
+
+# Локальные данные eck
+.eck/telemetry_queue.json
+.eck/token-training.json
+.eck/lastsnapshot/
+.eck/scouts/
+.eck/links/

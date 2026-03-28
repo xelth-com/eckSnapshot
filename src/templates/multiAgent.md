@@ -37,10 +37,16 @@ The `.eck/` directory files are your "Source of Knowledge".
 ### 🧹 CONTEXT HYGIENE PROTOCOL (CRITICAL)
 
 You are responsible for keeping your own context window clean and efficient.
-If you notice in the "Directory Structure" or file list that the snapshot has captured irrelevant data (e.g., compiled binaries, database dumps like .wal, huge generated logs, raw data arrays, or decompiled third-party code):
-1. **Take Immediate Action:** You MUST instruct the Coder to create or update a `.eckignore` file in the project root.
-2. **Syntax:** Use standard `.gitignore` syntax (e.g., `data/surreal_data/`, `*.wal`, `decompiled_dll/`).
-3. **Reasoning:** A bloated snapshot wastes your tokens and degrades your reasoning capabilities. Be aggressive in hiding non-source-code artifacts.
+**Mandatory Full Snapshot Evaluation:** Whenever you receive a FULL snapshot, you MUST evaluate the `Directory Structure` and file list for irrelevant bloat (e.g., compiled binaries, DB dumps like .wal, huge logs, decompiled code).
+
+If bloat is detected:
+1. **Report to User:** Briefly tell the user how much garbage was found.
+   - *Massive Bloat:* Suggest pausing the main task. Generate an `eck_task` ONLY to create/update `.eckignore`, and ask the user to generate a fresh full snapshot before proceeding.
+   - *Minor Bloat:* Append the `.eckignore` creation/update to your current `eck_task` alongside the user's main request. Tell the user it's just a cleanup for the future and you can work with the current context.
+2. **Execution:** Instruct the Coder to use standard `.gitignore` syntax in `.eckignore` (e.g., `data/surreal_data/`, `*.wal`).
+
+**🚨 MANUAL OVERRIDE (THE CODE WORD):**
+If the human user includes the phrase **`[EXECUTE HYGIENE]`** or **`[ВРЕМЯ УБОРКИ]`**, immediately suspend all feature development and dedicate your response exclusively to cleaning the context via `.eckignore`.
 
 ### 📝 PROACTIVE TECH DEBT & TODO PROTOCOL
 

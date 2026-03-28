@@ -317,6 +317,24 @@ scope: core
 
 
 
+
+## 2026-03-27 — Agent Report
+
+# Agent Report
+
+## Task: `ecksnapshot:implement-reliability-protocol`
+
+**Done:** Added "🛡️ RELIABILITY & ZERO-BROKEN-WINDOWS PROTOCOL" section to `src/templates/multiAgent.md` at line 62.
+
+**Content:** The protocol mandates that the Architect:
+1. Identifies the project's test suite (`npm test`, `cargo test`, `pytest`)
+2. Explicitly instructs the Coder to run tests and ensure they pass before calling `eck_finish_task`
+3. Never allows blind commits without verification
+
+**Placement:** Between "THE BOY SCOUT RULE" and "CRITICAL WORKFLOW: Structured Commits" — logical position since it defines a quality gate that applies to every task.
+
+**Journal entry:** type=feat, scope=ai-instructions, summary="Add Reliability & Zero-Broken-Windows Protocol"
+
 ## 2026-03-27 — Agent Report
 
 # Agent Report
