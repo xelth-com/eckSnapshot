@@ -318,6 +318,33 @@ scope: core
 
 
 
+
+## 2026-04-01 — Agent Report
+
+# Agent Report
+
+## Task: `ecksnapshot:add-custom-update-base`
+
+### Changes Made
+
+**1. `src/cli/cli.js`** — Added `--base <hash>` flag parsing for `update` and `update-auto` legacy command shims:
+- Both shims now extract the value after `--base` and pass it as `arguments.base` in the JSON payload
+- Updated help text to document the `--base` flag under the `update` command
+
+**2. `src/cli/commands/updateSnapshot.js`** — Updated both `updateSnapshot()` and `updateSnapshotJson()`:
+- Added `isCustomBase = !!options.base` detection
+- Anchor resolution: `options.base || await getGitAnchor(repoPath)` — uses the provided hash or falls back to the stored anchor
+- When `isCustomBase` is true: the `.eck/update_seq` counter file is **not** read or written, preventing disruption of the automatic sequence tracker
+- Filename suffix: custom-base snapshots use `_upcustom_` instead of `_upN_` (where N is the sequence number)
+- In `updateSnapshot()` (interactive mode), a spinner message shows the custom base commit being used
+
+### Verification
+- Both modules import without errors
+- `--base` flag parsing logic verified manually — correctly extracts the hash value and passes `fail` + `base` in the payload
+
+I learned some things about the architecture during this task. Want me to update the `.eck/` manifests before I lose this context?
+**[DEBUG] Context info available to me:** none, no context metrics visible
+
 ## 2026-03-27 — Agent Report
 
 # Agent Report

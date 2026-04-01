@@ -36,6 +36,8 @@ Pass the Architect's technical plan to your local **Coder agent** (Claude Code /
 ### 3. Auto-Updates
 When the Coder agent finishes a task, it automatically calls the built-in MCP tool (`eck_finish_task`), which commits the code and generates an incremental delta update snapshot. Feed that update back to the Architect to keep it in sync.
 
+> **Custom base:** Use `eck-snapshot update --base <snapshot.md>` to generate a delta relative to any past snapshot file. Pass the filename (e.g. `eckRepo26-04-01_f2e1bd4_up1_29kb.md`) — the anchor hash is extracted automatically. This doesn't disturb the automatic sequence counter — custom-base snapshots get a `_upcustom` suffix. A raw git hash (7+ hex chars) also works.
+
 ---
 
 ## 🧠 Which Models to Use
@@ -83,7 +85,7 @@ For humans typing in the terminal, short commands work too:
 | # | Command | Description |
 |---|---------|-------------|
 | 1 | `eck-snapshot snapshot` | Full project snapshot |
-| 2 | `eck-snapshot update` | Delta update (changed files only) |
+| 2 | `eck-snapshot update` | Delta update (changed files only). Supports `--base <snapshot.md>` to compare against an old snapshot file. |
 | 3 | `eck-snapshot profile [name]` | Snapshot filtered by profile (no arg = list profiles) |
 | 4 | `eck-snapshot scout [0-9]` | Scout external repo (see depth scale below) |
 | 5 | `eck-snapshot fetch "src/**/*.rs"` | Fetch specific files by glob |

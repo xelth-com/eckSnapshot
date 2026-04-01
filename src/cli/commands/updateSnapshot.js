@@ -37,6 +37,15 @@ async function autoCommit(repoPath) {
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+function resolveBaseHash(base) {
+  if (!base) return null;
+  const basename = path.basename(base, '.md');
+  const match = basename.match(/_([0-9a-f]{7,40})_/);
+  if (match) return match[1];
+  if (/^[0-9a-f]{7,40}$/i.test(base)) return base;
+  throw new Error(`Invalid --base value: "${base}". Expected a snapshot filename or a git commit hash.`);
+}
+
 // Shared logic to generate the snapshot content string
 async function generateSnapshotContent(repoPath, changedFiles, anchor, config, gitignore) {
   let contentOutput = '';
@@ -161,7 +170,7 @@ export async function updateSnapshot(repoPath, options) {
   const spinner = ora('Generating update snapshot...').start();
   try {
     const isCustomBase = !!options.base;
-    const anchor = options.base || await getGitAnchor(repoPath);
+    const anchor = resolveBaseHash(options.base) || await getGitAnchor(repoPath);
 
     if (!anchor) {
       throw new Error('No snapshot anchor found. Run a full snapshot first: eck-snapshot snapshot');
@@ -179,7 +188,7 @@ export async function updateSnapshot(repoPath, options) {
     }
 
     if (isCustomBase) {
-      spinner.info(`Using custom base commit: ${anchor.substring(0, 7)}`);
+      spinner.info(`Using custom base: ${anchor.substring(0, 7)} (from ${path.basename(options.base)})`);
     }
 
     spinner.start('Generating update snapshot...');
@@ -279,7 +288,7 @@ export async function updateSnapshot(repoPath, options) {
 export async function updateSnapshotJson(repoPath, options = {}) {
   try {
     const isCustomBase = !!options.base;
-    const anchor = options.base || await getGitAnchor(repoPath);
+    const anchor = resolveBaseHash(options.base) || await getGitAnchor(repoPath);
     
     if (!anchor) {
       console.log(JSON.stringify({ status: "error", message: "No snapshot anchor found" }));

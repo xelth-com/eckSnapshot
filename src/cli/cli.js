@@ -98,7 +98,7 @@ Ranked by frequency of use:
 
   1. eck-snapshot snapshot          Full project snapshot
   2. eck-snapshot update            Delta update (changed files only)
-                                     --base <hash> : Compare against specific old commit
+                                     --base <snapshot.md> : Compare against an old snapshot file
   3. eck-snapshot profile [name]    Snapshot filtered by profile (from .eck/profiles.json)
                                      No arg = list available profiles
                                      Example: eck-snapshot profile backend
