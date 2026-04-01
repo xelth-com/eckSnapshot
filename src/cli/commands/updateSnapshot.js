@@ -160,7 +160,9 @@ async function generateSnapshotContent(repoPath, changedFiles, anchor, config, g
 export async function updateSnapshot(repoPath, options) {
   const spinner = ora('Generating update snapshot...').start();
   try {
-    const anchor = await getGitAnchor(repoPath);
+    const isCustomBase = !!options.base;
+    const anchor = options.base || await getGitAnchor(repoPath);
+
     if (!anchor) {
       throw new Error('No snapshot anchor found. Run a full snapshot first: eck-snapshot snapshot');
     }
@@ -175,6 +177,11 @@ export async function updateSnapshot(repoPath, options) {
     } else {
       spinner.info('Fail flag passed: skipping auto-commit.');
     }
+
+    if (isCustomBase) {
+      spinner.info(`Using custom base commit: ${anchor.substring(0, 7)}`);
+    }
+
     spinner.start('Generating update snapshot...');
 
     const changedFiles = await getChangedFiles(repoPath, anchor, options.fail);
@@ -203,24 +210,28 @@ export async function updateSnapshot(repoPath, options) {
     const { fullContent, includedCount, agentReport } = await generateSnapshotContent(repoPath, changedFiles, anchor, config, gitignore);
 
     // Determine sequence number
-    let seqNum = 1;
-    const counterPath = path.join(repoPath, '.eck', 'update_seq');
-    try {
-      const seqData = await fs.readFile(counterPath, 'utf-8');
-      const [savedHash, savedCount] = seqData.split(':');
-      if (savedHash && savedHash.trim() === anchor.substring(0, 7).trim()) {
-        seqNum = parseInt(savedCount || '0') + 1;
-      }
-    } catch (e) {}
+    let seqStr = 'custom';
+    if (!isCustomBase) {
+      let seqNum = 1;
+      const counterPath = path.join(repoPath, '.eck', 'update_seq');
+      try {
+        const seqData = await fs.readFile(counterPath, 'utf-8');
+        const [savedHash, savedCount] = seqData.split(':');
+        if (savedHash && savedHash.trim() === anchor.substring(0, 7).trim()) {
+          seqNum = parseInt(savedCount || '0') + 1;
+        }
+      } catch (e) {}
 
-    try {
-      await fs.writeFile(counterPath, `${anchor.substring(0, 7)}:${seqNum}`);
-    } catch (e) {}
+      try {
+        await fs.writeFile(counterPath, `${anchor.substring(0, 7)}:${seqNum}`);
+      } catch (e) {}
+      seqStr = seqNum.toString();
+    }
 
     const timestamp = generateTimestamp();
     const shortRepoName = getShortRepoName(path.basename(repoPath));
     const sizeKB = Math.max(1, Math.round(Buffer.byteLength(fullContent, 'utf-8') / 1024));
-    const outputFilename = `eck${shortRepoName}${timestamp}_${anchor.substring(0, 7)}_up${seqNum}_${sizeKB}kb.md`;
+    const outputFilename = `eck${shortRepoName}${timestamp}_${anchor.substring(0, 7)}_up${seqStr}_${sizeKB}kb.md`;
     const outputPath = path.join(repoPath, '.eck', 'snapshots', outputFilename);
 
     await fs.mkdir(path.dirname(outputPath), { recursive: true });
@@ -267,7 +278,9 @@ export async function updateSnapshot(repoPath, options) {
 // New Silent/JSON command for Agents
 export async function updateSnapshotJson(repoPath, options = {}) {
   try {
-    const anchor = await getGitAnchor(repoPath);
+    const isCustomBase = !!options.base;
+    const anchor = options.base || await getGitAnchor(repoPath);
+    
     if (!anchor) {
       console.log(JSON.stringify({ status: "error", message: "No snapshot anchor found" }));
       return;
@@ -303,24 +316,28 @@ export async function updateSnapshotJson(repoPath, options = {}) {
 
     const { fullContent, includedCount, agentReport } = await generateSnapshotContent(repoPath, changedFiles, anchor, config, gitignore);
 
-    let seqNum = 1;
-    const counterPath = path.join(repoPath, '.eck', 'update_seq');
-    try {
-      const seqData = await fs.readFile(counterPath, 'utf-8');
-      const [savedHash, savedCount] = seqData.split(':');
-      if (savedHash && savedHash.trim() === anchor.substring(0, 7).trim()) {
-        seqNum = parseInt(savedCount || '0') + 1;
-      }
-    } catch (e) {}
+    let seqStr = 'custom';
+    if (!isCustomBase) {
+      let seqNum = 1;
+      const counterPath = path.join(repoPath, '.eck', 'update_seq');
+      try {
+        const seqData = await fs.readFile(counterPath, 'utf-8');
+        const [savedHash, savedCount] = seqData.split(':');
+        if (savedHash && savedHash.trim() === anchor.substring(0, 7).trim()) {
+          seqNum = parseInt(savedCount || '0') + 1;
+        }
+      } catch (e) {}
 
-    try {
-      await fs.writeFile(counterPath, `${anchor.substring(0, 7)}:${seqNum}`);
-    } catch (e) {}
+      try {
+        await fs.writeFile(counterPath, `${anchor.substring(0, 7)}:${seqNum}`);
+      } catch (e) {}
+      seqStr = seqNum.toString();
+    }
 
     const timestamp = generateTimestamp();
     const shortRepoName = getShortRepoName(path.basename(repoPath));
     const sizeKB = Math.max(1, Math.round(Buffer.byteLength(fullContent, 'utf-8') / 1024));
-    const outputFilename = `eck${shortRepoName}${timestamp}_${anchor.substring(0, 7)}_up${seqNum}_${sizeKB}kb.md`;
+    const outputFilename = `eck${shortRepoName}${timestamp}_${anchor.substring(0, 7)}_up${seqStr}_${sizeKB}kb.md`;
     const outputPath = path.join(repoPath, '.eck', 'snapshots', outputFilename);
     await fs.mkdir(path.dirname(outputPath), { recursive: true });
     await fs.writeFile(outputPath, fullContent);

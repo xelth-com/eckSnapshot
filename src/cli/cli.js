@@ -43,9 +43,17 @@ import { runTokenTools } from './commands/trainTokens.js';
 // Legacy command shims: translate old positional commands to JSON payloads
 // so internal callers (mcp-eck-core.js) keep working after the JSON migration.
 const LEGACY_COMMANDS = {
-  'update-auto': (args) => ({ name: 'eck_update_auto', arguments: { fail: args.includes('--fail') || args.includes('-f') } }),
+  'update-auto': (args) => {
+    const baseIdx = args.indexOf('--base');
+    const base = baseIdx !== -1 && args[baseIdx + 1] ? args[baseIdx + 1] : undefined;
+    return { name: 'eck_update_auto', arguments: { fail: args.includes('--fail') || args.includes('-f'), base } };
+  },
   'snapshot':    () => ({ name: 'eck_snapshot', arguments: {} }),
-  'update':      (args) => ({ name: 'eck_update', arguments: { fail: args.includes('--fail') || args.includes('-f') } }),
+  'update':      (args) => {
+    const baseIdx = args.indexOf('--base');
+    const base = baseIdx !== -1 && args[baseIdx + 1] ? args[baseIdx + 1] : undefined;
+    return { name: 'eck_update', arguments: { fail: args.includes('--fail') || args.includes('-f'), base } };
+  },
   'setup-mcp':   (args) => ({ name: 'eck_setup_mcp', arguments: { opencode: args.includes('--opencode'), both: args.includes('--both') } }),
   'detect':      () => ({ name: 'eck_detect', arguments: {} }),
   'doctor':      () => ({ name: 'eck_doctor', arguments: {} }),
@@ -90,6 +98,7 @@ Ranked by frequency of use:
 
   1. eck-snapshot snapshot          Full project snapshot
   2. eck-snapshot update            Delta update (changed files only)
+                                     --base <hash> : Compare against specific old commit
   3. eck-snapshot profile [name]    Snapshot filtered by profile (from .eck/profiles.json)
                                      No arg = list available profiles
                                      Example: eck-snapshot profile backend
