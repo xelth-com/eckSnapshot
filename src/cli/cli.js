@@ -63,6 +63,7 @@ const LEGACY_COMMANDS = {
   'profile':     (args) => args[0] ? ({ name: 'eck_snapshot', arguments: { profile: args.join(',') } }) : ({ name: 'eck_snapshot', arguments: { profile: true } }),
   'booklm':      () => ({ name: 'eck_snapshot', arguments: { notebooklm: 'scout' } }),
   'notelm':      () => ({ name: 'eck_snapshot', arguments: { notebooklm: 'architect' } }),
+  'notebook':    () => ({ name: 'eck_snapshot', arguments: { notebooklm: 'hybrid' } }),
   'telemetry':   (args) => ({ name: 'eck_telemetry', arguments: { action: args[0] } }),
 };
 
@@ -113,7 +114,8 @@ Ranked by frequency of use:
   6. eck-snapshot link [0-9]        Linked companion snapshot (same depths)
   7. eck-snapshot booklm            Export for NotebookLM (Scout - fetch generator)
   8. eck-snapshot notelm            Export for NotebookLM (Architect - experimental)
-  9. eck-snapshot setup-mcp         Configure AI agents (Claude Code, OpenCode)
+  9. eck-snapshot notebook          Export for NotebookLM (Hybrid: Architect + Scout)
+ 10. eck-snapshot setup-mcp         Configure AI agents (Claude Code, OpenCode)
  10. eck-snapshot detect            Detect project type and active filters
  11. eck-snapshot doctor            Check project health and stubs
 

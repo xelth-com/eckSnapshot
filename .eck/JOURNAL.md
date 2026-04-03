@@ -1,4 +1,25 @@
 ---
+task_id: ecksnapshot:notebooklm-hybrid-mode
+date: 2026-04-03
+type: feat
+scope: export
+summary: Optimize NotebookLM export with direct console system prompts
+---
+
+# NotebookLM Hybrid Mode + Console System Prompts
+
+- Added `notebook` legacy command mapping to `hybrid` mode in `LEGACY_COMMANDS`
+- Added `hybrid` mode alongside existing `scout` and `architect` for multi-repo orchestration
+- Removed hardcoded AI role instructions from `part0_BRAIN.md` (replaced with pointer to Custom Instructions)
+- Each mode now outputs a tailored System Prompt directly to console for copy-paste into NotebookLM's Custom Instructions field
+- Hybrid mode teaches NotebookLM to distinguish Primary (`part*`), Linked (`link_*`), and Scouted (`scout_*`) sources
+- Cleanup now also removes `_hybrid_part` files
+
+**Modified Files**:
+- `src/cli/cli.js`: Added `notebook` shim, updated help text numbering
+- `src/cli/commands/createSnapshot.js`: Replaced notebooklm block (lines 784-883)
+
+---
 task_id: fix-tree-generator-hard-ignores
 date: 2026-03-27
 type: fix
