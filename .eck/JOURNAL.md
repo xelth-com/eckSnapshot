@@ -362,6 +362,44 @@ scope: core
 
 
 
+
+## 2026-04-03 — Agent Report
+
+# Agent Report
+
+## Task: `ecksnapshot:notebooklm-chunked-links`
+
+### Changes Applied
+
+**`src/cli/cli.js`** (2 edits):
+- Updated `notebook` shim from `() => ...` to `(args) => ...` with link/scout sub-command routing
+  - `notebook link 5` → `{ notebooklm: 'link', linkDepth: 5 }`
+  - `notebook scout 5` → `{ notebooklm: 'scout', linkDepth: 5 }`
+  - `notebook` (no args) → `{ notebooklm: 'hybrid' }` (unchanged)
+- Updated help text with sub-command examples
+
+**`src/cli/commands/createSnapshot.js`** (2 edits):
+
+1. **Depth config guard** (line 588-590): Extended from `options.isLinkedProject` to also trigger on `options.notebooklm && options.linkDepth !== undefined`, so skeleton/truncation/skipContent settings apply when running `notebook link/scout`
+
+2. **NotebookLM block rewrite** (lines 784-893):
+   - `mode` now covers 4 values: `hybrid`, `link`, `scout`, `architect`
+   - Fixed skipContent bug: `const chunks = options.skipContent ? [] : packFilesForNotebookLM(...)`
+   - `filePrefix` simplified to just `mode` (no more conditional mapping)
+   - Cleanup is now prefix-scoped: only removes `_${filePrefix}_part*` files
+   - Part 0 header generates mode-specific text:
+     - `link`: "Linked Companion Project" + modifiable note
+     - `scout`: "Scouted External Project" + read-only warning
+     - `hybrid`/`architect`: "Primary Project" + custom instructions pointer
+   - System prompt only generated for `hybrid` and `architect` modes
+   - Console output bifurcated: primary modes show full prompt + copy instructions; secondary modes show simple upload instructions without prompt
+
+**`.eck/JOURNAL.md`**: Added journal entry
+
+### Verification
+- No linter or tests in project
+- Manual code review confirms all diffs match specification
+
 ## 2026-04-03 — Agent Report
 
 # Agent Report

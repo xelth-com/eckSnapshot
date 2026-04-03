@@ -1,4 +1,4 @@
-# 📸 eckSnapshot v6.3.2 (AI-Native Edition)
+# 📸 eckSnapshot v6.4.4 (AI-Native Edition)
 
 A specialized, AI-native CLI tool that creates single-file text snapshots of entire Git repositories and feeds them directly into LLM context windows. Instead of letting AI agents guess which files to read, eckSnapshot force-feeds the complete project into the model's context — giving it a "university degree" in your codebase from the very first prompt.
 
@@ -90,9 +90,12 @@ For humans typing in the terminal, short commands work too:
 | 4 | `eck-snapshot scout [0-9]` | Scout external repo (see depth scale below) |
 | 5 | `eck-snapshot fetch "src/**/*.rs"` | Fetch specific files by glob |
 | 6 | `eck-snapshot link [0-9]` | Linked companion snapshot |
-| 7 | `eck-snapshot booklm` | Export for NotebookLM — Scout mode (see below) |
-| 8 | `eck-snapshot notelm` | Export for NotebookLM — Architect mode (see below) |
-| 9 | `eck-snapshot setup-mcp` | Configure MCP servers |
+| 7 | `eck-snapshot notebook` | NotebookLM: Primary project (Hybrid mode) |
+| 7a | `eck-snapshot notebook link 5` | NotebookLM: Linked project (chunked, depth-controlled) |
+| 7b | `eck-snapshot notebook scout 3` | NotebookLM: Scouted project (chunked, read-only) |
+| 8 | `eck-snapshot booklm` | NotebookLM: Scout mode (fetch generator) |
+| 9 | `eck-snapshot notelm` | NotebookLM: Architect mode (experimental) |
+| 10 | `eck-snapshot setup-mcp` | Configure MCP servers |
 | 10 | `eck-snapshot detect` | Detect project type and active filters |
 | 11 | `eck-snapshot doctor` | Check project health and stubs |
 
@@ -182,52 +185,67 @@ Both `scout` and `link` use the same depth scale to control content granularity:
 
 ---
 
-## 📚 NotebookLM Integration (New in v6.3 — Testing)
+## 📚 NotebookLM Integration
 
-> **Status:** Active testing. The core chunking works, prompt tuning is ongoing.
+Google's NotebookLM provides **free RAG** (Retrieval-Augmented Generation) over up to **50 sources**, making it a perfect companion for your paid Architect LLM. Instead of feeding your entire codebase into Gemini or Grok on every question, you let NotebookLM index it and answer targeted queries.
 
-### The Problem
-Your project is 2M+ tokens. Your Architect (Gemini/Grok) has a limited context window and costs money per query. You can't afford to feed the full codebase on every question.
-
-### The Solution: Free RAG via NotebookLM
-Google's NotebookLM supports up to **50 sources** and uses **RAG** (Retrieval-Augmented Generation) to search across them for free. eckSnapshot splits your codebase into semantically packed chunks that NotebookLM can index and search.
-
-### Architecture: Brain + Body
+eckSnapshot exports your repository as semantically packed chunks using a **Brain + Body** architecture:
 
 ```
-Part 0 (Brain)    — Instructions, .eck/ manifests, full directory tree. No code.
+Part 0 (Brain)    — Project metadata, .eck/ manifests, full directory tree. No code.
 Part 1 (Body)     — Source code chunk (~2.5MB), grouped by directory.
 Part 2 (Body)     — Source code chunk (~2.5MB), grouped by directory.
 ...
 Part N (Body)     — Source code chunk (~2.5MB), grouped by directory.
 ```
 
-Files are packed using a **directory-aware bin packing** algorithm: files from the same folder stay together for better RAG retrieval. The directory tree lives only in Part 0 to avoid duplication across chunks.
+Files from the same directory stay together for better RAG retrieval. The directory tree lives only in Part 0 to avoid wasting tokens across chunks.
 
-### Two Modes
+### System Prompts
 
-**`booklm` — The Scout (Primary Use Case)**
+NotebookLM now supports **Custom Instructions** (system prompts) with a 10,000-character limit. eckSnapshot prints a tailored system prompt to your terminal after every export — copy it into NotebookLM's `Chat konfigurieren → Benutzerdefiniert` field. The Brain file no longer embeds role instructions, so the AI won't "forget" them.
+
+### Three Modes
+
+**`notebook` — Hybrid (Primary Project)**
+```bash
+eck-snapshot notebook
+```
+The main export for your primary repository. The system prompt instructs NotebookLM to act as a Senior Architect managing a multi-repo ecosystem, distinguishing between Primary sources (editable), Linked sources (cross-project companions), and Scouted sources (read-only reference).
+
+**`booklm` — Scout (Fetch Generator)**
 ```bash
 eck-snapshot booklm
 ```
-NotebookLM becomes a free "code librarian" for your paid Architect. Ask it: *"I'm working on fiscalization, which files do I need?"* — it analyzes the entire codebase via RAG and returns precise `eck-snapshot fetch` commands:
+NotebookLM becomes a free "code librarian". Ask *"I'm working on fiscalization, which files do I need?"* — it analyzes the codebase via RAG and returns precise fetch commands:
 ```bash
 cd /path/to/project
-eck-snapshot fetch "**/FiscalPrinter.kt" "**/TaxCalculator.kt" "**/receipt_config.json"
+eck-snapshot fetch "**/FiscalPrinter.kt" "**/TaxCalculator.kt"
 ```
-You run the fetch command locally, get a tiny focused snapshot, and hand *that* to your real Architect. This saves money and context window.
 
-**`notelm` — The Architect (Experimental)**
+**`notelm` — Architect (Experimental)**
 ```bash
 eck-snapshot notelm
 ```
-Same chunking, but Part 0 instructs NotebookLM to act as the Senior Architect itself — analyzing architecture, proposing refactoring, designing features. This is experimental and results vary.
+NotebookLM acts as the Senior Architect itself — analyzing architecture, proposing refactoring, designing features.
+
+### Chunked Links & Scouts
+
+Secondary projects (linked companions or external repositories you're scouting) can also be chunked and uploaded to the same NotebookLM project:
+
+```bash
+eck-snapshot notebook link 5    # Linked project: skeleton depth, modifiable
+eck-snapshot notebook scout 3   # Scouted project: truncated, read-only
+```
+
+The depth scale (0–9) from the `scout`/`link` commands applies — depth 0 produces a brain-only export (tree + manifests, no code), depth 5 skeletonizes, depth 9 includes everything. Each secondary project's Part 0 header explicitly labels its role so the AI knows whether it can modify the code or must treat it as read-only reference.
 
 ### Quick Start
-1. Run `eck-snapshot booklm` (or `notelm`) inside your project
-2. Upload all generated `part*.md` files as sources in a new NotebookLM project
-3. Paste the **Starter Prompt** (printed in your terminal) as your first message
-4. Start asking questions
+1. Run `eck-snapshot notebook` inside your primary project
+2. Copy the system prompt printed in your terminal into NotebookLM's Custom Instructions
+3. Upload all generated `part*.md` files as sources
+4. (Optional) Run `eck-snapshot notebook link 5` / `notebook scout 3` for secondary projects and upload those too
+5. Start asking questions
 
 ---
 
