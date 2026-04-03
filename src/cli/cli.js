@@ -63,7 +63,11 @@ const LEGACY_COMMANDS = {
   'profile':     (args) => args[0] ? ({ name: 'eck_snapshot', arguments: { profile: args.join(',') } }) : ({ name: 'eck_snapshot', arguments: { profile: true } }),
   'booklm':      () => ({ name: 'eck_snapshot', arguments: { notebooklm: 'scout' } }),
   'notelm':      () => ({ name: 'eck_snapshot', arguments: { notebooklm: 'architect' } }),
-  'notebook':    () => ({ name: 'eck_snapshot', arguments: { notebooklm: 'hybrid' } }),
+  'notebook':    (args) => {
+    if (args[0] === 'link') return { name: 'eck_snapshot', arguments: { notebooklm: 'link', linkDepth: args[1] ? parseInt(args[1], 10) : 5 } };
+    if (args[0] === 'scout') return { name: 'eck_snapshot', arguments: { notebooklm: 'scout', linkDepth: args[1] ? parseInt(args[1], 10) : 5 } };
+    return { name: 'eck_snapshot', arguments: { notebooklm: 'hybrid' } };
+  },
   'telemetry':   (args) => ({ name: 'eck_telemetry', arguments: { action: args[0] } }),
 };
 
@@ -114,7 +118,9 @@ Ranked by frequency of use:
   6. eck-snapshot link [0-9]        Linked companion snapshot (same depths)
   7. eck-snapshot booklm            Export for NotebookLM (Scout - fetch generator)
   8. eck-snapshot notelm            Export for NotebookLM (Architect - experimental)
-  9. eck-snapshot notebook          Export for NotebookLM (Hybrid: Architect + Scout)
+  9. eck-snapshot notebook          Export for NotebookLM (Primary Project)
+       eck-snapshot notebook link 5   Export Linked Project for NotebookLM (chunked)
+       eck-snapshot notebook scout 5  Export Scouted Project for NotebookLM (chunked)
  10. eck-snapshot setup-mcp         Configure AI agents (Claude Code, OpenCode)
  10. eck-snapshot detect            Detect project type and active filters
  11. eck-snapshot doctor            Check project health and stubs

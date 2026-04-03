@@ -1,4 +1,25 @@
 ---
+task_id: ecksnapshot:notebooklm-chunked-links
+date: 2026-04-03
+type: feat
+scope: export
+summary: Add link/scout chunking support for NotebookLM
+---
+
+# NotebookLM Chunked Links & Scouts
+
+- Extended `notebook` command to support `link [depth]` and `scout [depth]` sub-commands
+- Fixed bug where `skipContent` (depth 0) ignored NotebookLM chunking — now returns empty chunks
+- Depth config (`linkDepth`) now also triggers for notebooklm modes (skeleton, truncation, skipContent)
+- Part 0 header explicitly identifies repo role: Primary / Linked (modifiable) / Scouted (read-only)
+- System prompt generation suppressed for link/scout secondary modes
+- Cleanup now prefix-scoped (only cleans `_${filePrefix}_part*` files)
+
+**Modified Files**:
+- `src/cli/cli.js`: Updated `notebook` shim with link/scout args, help text
+- `src/cli/commands/createSnapshot.js`: Depth config guard, full NotebookLM block rewrite
+
+---
 task_id: ecksnapshot:notebooklm-hybrid-mode
 date: 2026-04-03
 type: feat
@@ -339,6 +360,38 @@ scope: core
 
 
 
+
+
+## 2026-04-03 — Agent Report
+
+# Agent Report
+
+## Task: `ecksnapshot:notebooklm-hybrid-mode`
+
+### Changes Applied
+
+**`src/cli/cli.js`** (2 edits):
+- Added `'notebook'` shim to `LEGACY_COMMANDS` mapping → `{ notebooklm: 'hybrid' }` (line 66)
+- Updated help text: added entry `9. eck-snapshot notebook` and renumbered `setup-mcp` to 10 (lines 115-118)
+
+**`src/cli/commands/createSnapshot.js`** (1 large edit, lines 784-883):
+- Replaced binary `isArchitectMode` with `mode = options.notebooklm` supporting `'scout'`, `'architect'`, `'hybrid'`
+- File prefix now resolves: `architect→notelm`, `hybrid→hybrid`, `scout→booklm`
+- Cleanup also removes `_hybrid_part*` files
+- Removed all AI role instructions from `part0_BRAIN.md` — now contains only manifests + tree + a note pointing to Custom Instructions
+- Each mode generates a `systemPrompt` string output to console with copy-paste boundaries:
+  - **Scout**: fetch-focused commands with `eck-snapshot fetch` patterns
+  - **Architect**: Eck-Protocol v2 code generation rules
+  - **Hybrid**: Multi-repo orchestration distinguishing Primary/Linked/Scouted sources
+- Replaced old "STARTER PROMPT" output with structured "SYSTEM PROMPT CONFIGURATION" section including step-by-step instructions
+- Hybrid mode prints extra step 4 about uploading `link_*.md` and `scout_*.md` files
+
+**`.eck/JOURNAL.md`**: Added journal entry for this task
+
+### Verification
+- No linter configured in project
+- No test files exist (vitest found none)
+- Manual code review confirms all diffs match the specification exactly
 
 ## 2026-04-01 — Agent Report
 

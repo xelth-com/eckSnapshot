@@ -585,8 +585,8 @@ function packFilesForNotebookLM(successfulFileObjects, maxChunkSizeBytes = 2.5 *
 }
 
 export async function createRepoSnapshot(repoPath, options) {
-  // Handle linked project depth settings before processing
-  if (options.isLinkedProject) {
+  // Handle linked/scout project depth settings before processing
+  if (options.isLinkedProject || (options.notebooklm && options.linkDepth !== undefined)) {
     const depthCfg = getDepthConfig(options.linkDepth !== undefined ? options.linkDepth : 0);
     if (depthCfg.skipContent) options.skipContent = true;
     if (depthCfg.skeleton !== undefined) options.skeleton = depthCfg.skeleton;
@@ -783,36 +783,27 @@ export async function createRepoSnapshot(repoPath, options) {
 
       // --- NotebookLM Chunked Export (Brain + Body) ---
       if (options.notebooklm) {
-        const mode = options.notebooklm; // 'scout', 'architect', or 'hybrid'
+        const mode = options.notebooklm; // 'hybrid', 'link', 'scout', 'architect'
         console.log(chalk.blue(`\n📚 Packing project for NotebookLM (${mode.toUpperCase()} Mode)...`));
 
-        const chunks = packFilesForNotebookLM(successfulFileObjects);
+        // If options.skipContent is true (Depth 0), chunks will be empty, only part0_BRAIN is generated
+        const chunks = options.skipContent ? [] : packFilesForNotebookLM(successfulFileObjects);
         const shortRepoName = getShortRepoName(repoName);
         const absPath = processedRepoPath.replace(/\\/g, '/');
-        const filePrefix = mode === 'architect' ? 'notelm' : (mode === 'hybrid' ? 'hybrid' : 'booklm');
+        const filePrefix = mode; // e.g. hybrid, link, scout
 
-        // Clean up old notebooklm chunks
+        // Clean up old notebooklm chunks for this prefix
         try {
           const existingFiles = await fs.readdir(outputPath);
           for (const file of existingFiles) {
-            if (file.includes('_booklm_part') || file.includes('_notelm_part') || file.includes('_hybrid_part')) {
+            if (file.includes(`_${filePrefix}_part`)) {
               await fs.unlink(path.join(outputPath, file));
             }
           }
         } catch (e) { /* ignore */ }
 
-        // Generate Console System Prompt based on Mode
         let systemPrompt = '';
-        if (mode === 'scout') {
-          systemPrompt += `You are an expert code analyst and retrieval specialist.\n`;
-          systemPrompt += `Your goal is NOT to write code, but to help the primary Architect find exact files in this repository.\n`;
-          systemPrompt += `When asked about a feature, bug, or module, analyze the provided sources and output precise bash commands to extract them.\n\n`;
-          systemPrompt += `RULES FOR FETCH COMMANDS:\n`;
-          systemPrompt += `1. Always start with: \`cd ${absPath}\`\n`;
-          systemPrompt += `2. Use relative glob patterns: \`eck-snapshot fetch "**/auth.js" "**/userController.js"\`\n`;
-          systemPrompt += `3. Output commands in a bash block with a brief explanation of why you selected those files.\n`;
-        } 
-        else if (mode === 'architect') {
+        if (mode === 'architect') {
           systemPrompt += `You are the Senior Software Architect for this project.\n`;
           systemPrompt += `Analyze the provided source documents to solve complex structural problems, design new features, and propose refactoring strategies.\n\n`;
           systemPrompt += `RULES FOR CODE GENERATION:\n`;
@@ -820,23 +811,30 @@ export async function createRepoSnapshot(repoPath, options) {
           systemPrompt += `2. Wrap the entire response in quadruple backticks (\`\`\`\`).\n`;
           systemPrompt += `3. Use \`<file path="..." action="replace">\` XML tags for files.\n`;
           systemPrompt += `4. Always consult the BRAIN document (part 0) before answering to understand project constraints.\n`;
-        } 
-        else if (mode === 'hybrid') {
+        } else if (mode === 'hybrid') {
           systemPrompt += `You are a Senior Software Architect managing a multi-repository ecosystem.\n\n`;
           systemPrompt += `YOUR DATA SOURCES:\n`;
           systemPrompt += `1. Primary Project (part0_BRAIN, part1, etc.): The main repository you are actively developing.\n`;
-          systemPrompt += `2. Linked Projects (link_*.md): Companion repositories (e.g., backend + mobile). You CAN modify code here if cross-project sync is needed.\n`;
-          systemPrompt += `3. Scouted Projects (scout_*.md): External repositories loaded STRICTLY for read-only reference. NEVER write code for scouted projects.\n\n`;
+          systemPrompt += `2. Linked Projects (link_part*): Companion repositories (e.g., backend + mobile). You CAN modify code here if cross-project sync is needed.\n`;
+          systemPrompt += `3. Scouted Projects (scout_part*): External repositories loaded STRICTLY for read-only reference. NEVER write code for scouted projects.\n\n`;
           systemPrompt += `RULES:\n`;
           systemPrompt += `- Use Eck-Protocol v2 format (quadruple backticks \`\`\`\`, <file> tags) for ALL code generation.\n`;
-          systemPrompt += `- If modifying a Linked Project, clearly specify the project path.\n`;
-          systemPrompt += `- If you need missing file contents from linked/scouted projects, output bash commands to fetch them: \`cd /path/to/project && eck-snapshot fetch "**/api.rs"\`.\n`;
+          systemPrompt += `- If modifying a Linked Project, clearly specify the absolute project path in the <file> tag.\n`;
+          systemPrompt += `- If you need missing file contents from linked/scouted projects (because they were truncated/skeletonized), output bash commands to fetch them: \`cd /path/to/project && eck-snapshot fetch "**/api.rs"\`.\n`;
         }
 
         // --- Part 0: The Brain (Manifests + Tree ONLY) ---
         let part0 = `# 🧠 NOTEBOOKLM KNOWLEDGE BASE — PART 0 (THE BRAIN)\n`;
-        part0 += `**Primary Project:** ${repoName}\n**Absolute Path:** ${absPath}\n\n`;
-        part0 += `*(Note: Your core instructions are configured in the Chat Settings / Custom Instructions)*\n\n`;
+        if (mode === 'link') {
+          part0 += `**Linked Companion Project:** ${repoName}\n**Absolute Path:** ${absPath}\n`;
+          part0 += `*(Note: This is a linked project. You can modify code here if necessary for cross-project integration.)*\n\n`;
+        } else if (mode === 'scout') {
+          part0 += `**Scouted External Project:** ${repoName}\n**Absolute Path:** ${absPath}\n`;
+          part0 += `*(Note: STRICTLY READ-ONLY reference project. Do not write code for this project.)*\n\n`;
+        } else {
+          part0 += `**Primary Project:** ${repoName}\n**Absolute Path:** ${absPath}\n\n`;
+          part0 += `*(Note: Your core instructions are configured in the Chat Settings / Custom Instructions)*\n\n`;
+        }
 
         // Add .eck manifests
         if (eckManifest) {
@@ -845,7 +843,6 @@ export async function createRepoSnapshot(repoPath, options) {
           if (eckManifest.techDebt) part0 += `### TECH DEBT\n${eckManifest.techDebt}\n\n`;
           if (eckManifest.roadmap) part0 += `### ROADMAP\n${eckManifest.roadmap}\n\n`;
           if (eckManifest.operations) part0 += `### OPERATIONS\n${eckManifest.operations}\n\n`;
-          // Include any dynamic .eck files
           if (eckManifest.dynamicFiles) {
             for (const [name, content] of Object.entries(eckManifest.dynamicFiles)) {
               part0 += `### ${name.replace('.md', '').toUpperCase()}\n${content}\n\n`;
@@ -876,18 +873,23 @@ export async function createRepoSnapshot(repoPath, options) {
         console.log(chalk.green(`\n✅ NotebookLM export complete in ${outputPath}`));
         
         // --- CONSOLE OUTPUT INSTRUCTIONS ---
-        console.log('\n⚙️  ' + chalk.yellow.bold(`NOTEBOOKLM SYSTEM PROMPT CONFIGURATION (${mode.toUpperCase()} MODE):`));
+        console.log('\n⚙️  ' + chalk.yellow.bold(`NOTEBOOKLM UPLOAD INSTRUCTIONS (${mode.toUpperCase()} MODE):`));
         console.log('---------------------------------------------------');
-        console.log(`1. Open NotebookLM and go to: ${chalk.bold('Chat konfigurieren -> Benutzerdefiniert')} (Configure Chat -> Custom)`);
-        console.log(`2. Copy the text below and paste it into the prompt window:`);
         
-        console.log('\n' + chalk.bgWhite.black(' --- COPY BELOW THIS LINE --- '));
-        console.log(chalk.cyan(systemPrompt));
-        console.log(chalk.bgWhite.black(' --- COPY ABOVE THIS LINE --- ') + '\n');
-        
-        console.log(`3. Upload Part 0 and Parts 1-${chunks.length} as sources.`);
-        if (mode === 'hybrid') {
-          console.log(`4. Upload your 'link_*.md' and 'scout_*.md' files as additional sources.`);
+        if (mode === 'hybrid' || mode === 'architect') {
+          console.log(`1. Open NotebookLM and go to: ${chalk.bold('Chat konfigurieren -> Benutzerdefiniert')} (Configure Chat -> Custom)`);
+          console.log(`2. Copy the text below and paste it into the prompt window:`);
+          console.log('\n' + chalk.bgWhite.black(' --- COPY BELOW THIS LINE --- '));
+          console.log(chalk.cyan(systemPrompt));
+          console.log(chalk.bgWhite.black(' --- COPY ABOVE THIS LINE --- ') + '\n');
+          console.log(`3. Upload Part 0 and Parts 1-${chunks.length} as sources.`);
+          if (mode === 'hybrid') {
+            console.log(`4. Upload your linked/scouted files as additional sources.`);
+          }
+        } else {
+          // Link or Scout mode
+          console.log(`1. Upload Part 0${chunks.length > 0 ? ` and Parts 1-${chunks.length}` : ''} as sources to your EXISTING NotebookLM project.`);
+          console.log(`2. No new System Prompt is needed. The primary project's prompt already handles ${mode} files.`);
         }
 
         await saveGitAnchor(processedRepoPath);
