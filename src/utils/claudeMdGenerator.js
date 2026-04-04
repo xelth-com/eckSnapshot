@@ -78,7 +78,15 @@ The tool may be registered as a **deferred tool**. Before falling back, you MUST
 5. Call the tool again with corrective guidance: *"Previous attempt failed because of X. Try again using pattern Y."*
 6. If the worker fails twice, take over and implement the fix yourself.
 
-## 6. 🧠 KNOWLEDGE DISTILLATION (POST-FINISH)
+## 6. 🚨 MAGIC WORD: [SYNC] / [SYNC MANIFESTS]
+If the human user types **\`[SYNC]\`** or **\`[SYNC MANIFESTS]\`**, immediately suspend feature development and switch to Project Manager mode:
+1. Find all \`.eck/*.md\` files with \`[STUB]\` markers. Analyze the codebase to resolve them.
+2. Review \`ROADMAP.md\` and \`TECH_DEBT.md\`. Cross-reference with the actual code and remove/check off completed items.
+3. Update \`CONTEXT.md\` and \`ARCHITECTURE.md\` if the system has evolved.
+4. Use the **\`eck_manifest_edit\`** tool to apply these updates atomically. Do not read \`JOURNAL.md\`.
+5. Call \`eck_finish_task\` when the audit is complete.
+
+## 7. 🧠 KNOWLEDGE DISTILLATION (POST-FINISH)
 **ONLY** after tasks that changed the project's architecture, added major features, or revealed non-obvious system behavior (e.g., multi-file refactors, new subsystems, tricky debugging sessions that uncovered hidden dependencies).
 Do NOT offer this for routine fixes, config tweaks, or small edits — those don't produce insights worth documenting.
 **Call \`eck_finish_task\` first** — never delay the finish. Then, in the same response, offer:
@@ -87,7 +95,7 @@ Do NOT offer this for routine fixes, config tweaks, or small edits — those don
 Include this offer in your \`eck_finish_task\` status so the Architect sees it too.
 If the user says yes — just edit the files and commit. Do NOT call \`eck_finish_task\` again for it.
 
-## 7. OPERATIONAL RULES
+## 8. OPERATIONAL RULES
 - **Manifests:** If you see [STUB] in .eck/ files, update them.
 `;
 }
@@ -132,6 +140,14 @@ The \`.eck/\` directory contains critical project documentation.
 2. **Read** files ONLY if you absolutely need architectural context. Do NOT read large files blindly.
 3. **DO NOT READ \`JOURNAL.md\`**. It is extremely large and auto-updates when you use \`eck_finish_task\`.
 4. **BLIND EDITS:** If you need to check off a TODO in \`TECH_DEBT.md\` or add an item to \`ROADMAP.md\`, use the **\`eck_manifest_edit\`** tool to modify them atomically without reading the whole file into context.
+
+## 🚨 MAGIC WORD: [SYNC] / [SYNC MANIFESTS]
+If the human user types **\`[SYNC]\`** or **\`[SYNC MANIFESTS]\`**, immediately suspend feature development and switch to Project Manager mode:
+1. Find all \`.eck/*.md\` files with \`[STUB]\` markers. Analyze the codebase to resolve them.
+2. Review \`ROADMAP.md\` and \`TECH_DEBT.md\`. Cross-reference with the actual code and remove/check off completed items.
+3. Update \`CONTEXT.md\` and \`ARCHITECTURE.md\` if the system has evolved.
+4. Use the **\`eck_manifest_edit\`** tool to apply these updates atomically. Do not read \`JOURNAL.md\`.
+5. Call \`eck_finish_task\` when the audit is complete.
 
 ## 🧠 KNOWLEDGE DISTILLATION (POST-FINISH)
 **ONLY** after tasks that changed the project's architecture, added major features, or revealed non-obvious system behavior (e.g., multi-file refactors, new subsystems, tricky debugging that uncovered hidden dependencies).

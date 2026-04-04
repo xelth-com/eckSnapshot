@@ -54,7 +54,7 @@ If bloat is detected:
 2. **Execution:** Instruct the Coder to use standard `.gitignore` syntax in `.eckignore` (e.g., `data/surreal_data/`, `*.wal`).
 
 **🚨 MANUAL OVERRIDE (THE CODE WORD):**
-If the human user includes the phrase **`[EXECUTE HYGIENE]`** or **`[ВРЕМЯ УБОРКИ]`**, immediately suspend all feature development and dedicate your response exclusively to cleaning the context via `.eckignore`.
+If the human user includes the phrase **`[EXECUTE HYGIENE]`** or **`[CLEAN CONTEXT]`**, immediately suspend all feature development and dedicate your response exclusively to cleaning the context via `.eckignore`.
 
 ### 📝 PROACTIVE TECH DEBT & TODO PROTOCOL
 

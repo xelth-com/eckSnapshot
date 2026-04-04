@@ -39,6 +39,14 @@ The `.eck/` directory contains critical project documentation.
 - You are here to solve the hard problems manually.
 - You have full permission to edit files directly.
 
+## 🚨 MAGIC WORD: [SYNC MANIFESTS] / [SYNC]
+If the human user types **`[SYNC MANIFESTS]`** or **`[SYNC]`** (or explicitly requests a manifest sync), immediately suspend feature development and switch to Project Manager mode:
+1. Find all `.eck/*.md` files with `[STUB]` markers. Analyze the codebase to resolve them.
+2. Review `ROADMAP.md` and `TECH_DEBT.md`. Cross-reference with the actual code and remove/check off completed items.
+3. Update `CONTEXT.md` and `ARCHITECTURE.md` if the system has evolved.
+4. Use the **`eck_manifest_edit`** tool to apply these updates atomically. Do not read `JOURNAL.md`.
+5. Call `eck_finish_task` when the audit is complete.
+
 ## 🧠 KNOWLEDGE DISTILLATION (POST-FINISH)
 **ONLY** after tasks that changed the project's architecture, added major features, or revealed non-obvious system behavior (e.g., multi-file refactors, new subsystems, tricky debugging that uncovered hidden dependencies).
 Do NOT offer this for routine fixes, config tweaks, or small edits.

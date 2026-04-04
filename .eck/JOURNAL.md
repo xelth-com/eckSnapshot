@@ -1,4 +1,25 @@
 ---
+task_id: ecksnapshot:execution-agent-sync-codeword
+date: 2026-04-04
+type: feat
+scope: ai-instructions
+summary: Add [SYNC MANIFESTS] trigger to terminal Execution Agents
+---
+
+# Execution Agent Sync Codeword
+
+- Added `[СИНХРОНИЗАЦИЯ]` / `[SYNC MANIFESTS]` magic word to coder.template.md
+- Added same magic word to junior-architect.template.md (as section 6, renumbered subsequent sections)
+- Added magic word to claudeMdGenerator.js JA instructions (section 6, renumbered 7→8 for operational rules)
+- Added magic word to claudeMdGenerator.js CODER_INSTRUCTIONS
+- All trigger the same flow: resolve stubs, audit ROADMAP/TECH_DEBT, update CONTEXT/ARCHITECTURE, use eck_manifest_edit
+
+**Modified Files**:
+- `src/templates/opencode/coder.template.md`
+- `src/templates/opencode/junior-architect.template.md`
+- `src/utils/claudeMdGenerator.js`
+
+---
 task_id: ecksnapshot:manifest-token-optimization
 date: 2026-04-04
 type: perf
@@ -408,6 +429,48 @@ scope: core
 
 
 
+
+
+## 2026-04-04 — Agent Report
+
+# Agent Report
+
+## Task: `ecksnapshot:manifest-token-optimization`
+
+### Changes Applied
+
+**`scripts/mcp-eck-core.js`** (2 edits):
+1. Added `eck_manifest_edit` tool definition to `ListToolsRequestSchema` handler with:
+   - `file`: manifest file name (e.g., `TECH_DEBT.md`)
+   - `action`: `append_to_section` or `replace_text`
+   - `section_header`: header to append under (for `append_to_section`)
+   - `content`: text to insert or replacement text
+   - `target_text`: old text to find (for `replace_text`)
+2. Added `eck_manifest_edit` handler in `CallToolRequestSchema`:
+   - Reads file (or creates stub if missing)
+   - `replace_text`: finds exact text and replaces
+   - `append_to_section`: regex-matches header, inserts content after it; if header not found, appends header+content to end
+   - Writes updated content back atomically
+
+**`src/templates/opencode/coder.template.md`**:
+- Replaced "Read all files" instructions with token-optimized version
+- Explicitly forbids reading `JOURNAL.md`
+- Instructs to use `eck_manifest_edit` for blind edits to `TECH_DEBT.md`/`ROADMAP.md`
+
+**`src/templates/opencode/junior-architect.template.md`**:
+- Replaced "Read all files" with token-optimized instructions
+- Forbids reading `JOURNAL.md`
+- Mandates `eck_manifest_edit` for manifest updates
+
+**`src/templates/multiAgent.md`**:
+- Updated "Maintain Documentation" section to "Maintain Documentation (TOKEN OPTIMIZATION)"
+- Instructs Architect to tell Coder NOT to read `JOURNAL.md` and to use `eck_manifest_edit`
+
+**`src/utils/claudeMdGenerator.js`**:
+- Updated CODER_INSTRUCTIONS block with token-optimized `.eck/` guidance
+- Forbids reading `JOURNAL.md`, mandates `eck_manifest_edit` for blind edits
+
+**`.eck/JOURNAL.md`**: Added journal entry
 
 ## 2026-04-04 — Agent Report
 

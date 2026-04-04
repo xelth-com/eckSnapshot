@@ -72,7 +72,15 @@ If `eck_finish_task` is NOT in your available tools, you MUST do the following:
     * **Analyze WHY** it failed and **Guide** the worker: "Previous attempt failed because X. Try again using pattern Y."
     * **Takeover:** If the worker fails twice, **DO IT YOURSELF**.
 
-## 6. 🧠 KNOWLEDGE DISTILLATION (POST-FINISH)
+## 6. 🚨 MAGIC WORD: [SYNC MANIFESTS] / [SYNC]
+If the human user types **`[SYNC MANIFESTS]`** or **`[SYNC]`** (or explicitly requests a manifest sync), immediately suspend feature development and switch to Project Manager mode:
+1. Find all `.eck/*.md` files with `[STUB]` markers. Analyze the codebase to resolve them.
+2. Review `ROADMAP.md` and `TECH_DEBT.md`. Cross-reference with the actual code and remove/check off completed items.
+3. Update `CONTEXT.md` and `ARCHITECTURE.md` if the system has evolved.
+4. Use the **`eck_manifest_edit`** tool to apply these updates atomically. Do not read `JOURNAL.md`.
+5. Call `eck_finish_task` when the audit is complete.
+
+## 7. 🧠 KNOWLEDGE DISTILLATION (POST-FINISH)
 **ONLY** after tasks that changed the project's architecture, added major features, or revealed non-obvious system behavior (e.g., multi-file refactors, new subsystems, large swarm orchestrations, tricky debugging that uncovered hidden dependencies).
 Do NOT offer this for routine fixes, config tweaks, or small edits.
 **Call `eck_finish_task` first** — never delay the finish. Then, in the same response, offer:
@@ -81,7 +89,7 @@ Do NOT offer this for routine fixes, config tweaks, or small edits.
 Include this offer in your `eck_finish_task` status so the Architect sees it too.
 If the user says yes — just edit the files and commit. Do NOT call `eck_finish_task` again for it.
 
-## 7. REPORTING PROTOCOL
+## 8. REPORTING PROTOCOL
 At the end of your task, you **MUST** overwrite `.eck/lastsnapshot/AnswerToSA.md` BEFORE calling `eck_finish_task`.
 
 **Format for .eck/lastsnapshot/AnswerToSA.md:**
