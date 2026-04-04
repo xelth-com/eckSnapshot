@@ -35,6 +35,7 @@ async fn main() {
         .route("/T/report", post(handlers::submit_report))
         .route("/T/tokens/train", post(handlers::submit_token_data))
         .route("/T/tokens/weights", get(handlers::get_weights))
+        .route("/T/v2/events", post(handlers::submit_universal_event))
         .layer(cors)
         .with_state(state);
 

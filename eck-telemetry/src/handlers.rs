@@ -9,6 +9,7 @@ use uuid::Uuid;
 
 use crate::models::{
     HealthResponse, ReportRequest, ReportResponse, TokenTrainRequest, TokenTrainResponse,
+    UniversalEventRequest, UniversalEventResponse,
 };
 
 #[derive(Clone)]
@@ -178,4 +179,58 @@ pub async fn get_weights(State(state): State<AppState>) -> Result<Json<WeightsRe
     }
 
     Ok(Json(WeightsResponse { coefficients }))
+}
+
+pub async fn submit_universal_event(
+    State(state): State<AppState>,
+    Json(req): Json<UniversalEventRequest>,
+) -> Result<Json<UniversalEventResponse>, StatusCode> {
+    let id = Uuid::new_v4();
+
+    let _ = sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS universal_telemetry (
+            id UUID PRIMARY KEY,
+            app_id VARCHAR(255) NOT NULL,
+            app_version VARCHAR(50),
+            instance_id VARCHAR(255) NOT NULL,
+            event_type VARCHAR(100),
+            severity VARCHAR(50),
+            title TEXT,
+            details JSONB,
+            tags TEXT[],
+            created_at TIMESTAMPTZ DEFAULT NOW()
+        )
+        "#,
+    )
+    .execute(&state.pool)
+    .await;
+
+    sqlx::query(
+        r#"
+        INSERT INTO universal_telemetry (id, app_id, app_version, instance_id, event_type, severity, title, details, tags)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        "#,
+    )
+    .bind(id)
+    .bind(&req.app_id)
+    .bind(&req.app_version)
+    .bind(&req.instance_id)
+    .bind(&req.event_type)
+    .bind(&req.severity)
+    .bind(&req.title)
+    .bind(&req.details)
+    .bind(&req.tags)
+    .execute(&state.pool)
+    .await
+    .map_err(|e| {
+        tracing::error!("Failed to insert universal event: {e}");
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+
+    tracing::info!("Universal Event saved: {} [{}]", id, req.severity);
+    Ok(Json(UniversalEventResponse {
+        ok: true,
+        event_id: id,
+    }))
 }

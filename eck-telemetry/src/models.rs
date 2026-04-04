@@ -34,3 +34,21 @@ pub struct HealthResponse {
     pub status: &'static str,
     pub version: &'static str,
 }
+
+#[derive(Debug, Deserialize)]
+pub struct UniversalEventRequest {
+    pub app_id: String,
+    pub app_version: String,
+    pub instance_id: String,
+    pub event_type: String,
+    pub severity: String,
+    pub title: String,
+    pub details: serde_json::Value,
+    pub tags: Vec<String>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct UniversalEventResponse {
+    pub ok: bool,
+    pub event_id: Uuid,
+}
