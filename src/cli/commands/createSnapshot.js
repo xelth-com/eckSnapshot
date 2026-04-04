@@ -811,6 +811,7 @@ export async function createRepoSnapshot(repoPath, options) {
           systemPrompt += `2. Wrap the entire response in quadruple backticks (\`\`\`\`).\n`;
           systemPrompt += `3. Use \`<file path="..." action="replace">\` XML tags for files.\n`;
           systemPrompt += `4. Always consult the BRAIN document (part 0) before answering to understand project constraints.\n`;
+          systemPrompt += `5. ANTI-CONTAMINATION: Verify that any new file uploads belong to this project context. If not, WARN the user and stop.\n`;
         } else if (mode === 'hybrid') {
           systemPrompt += `You are a Senior Software Architect managing a multi-repository ecosystem.\n\n`;
           systemPrompt += `YOUR DATA SOURCES:\n`;
@@ -821,6 +822,7 @@ export async function createRepoSnapshot(repoPath, options) {
           systemPrompt += `- Use Eck-Protocol v2 format (quadruple backticks \`\`\`\`, <file> tags) for ALL code generation.\n`;
           systemPrompt += `- If modifying a Linked Project, clearly specify the absolute project path in the <file> tag.\n`;
           systemPrompt += `- If you need missing file contents from linked/scouted projects (because they were truncated/skeletonized), output bash commands to fetch them: \`cd /path/to/project && eck-snapshot fetch "**/api.rs"\`.\n`;
+          systemPrompt += `- ANTI-CONTAMINATION: Verify that any new file uploads belong to your known primary/linked contexts. If not, WARN the user and stop.\n`;
         }
 
         // --- Part 0: The Brain (Manifests + Tree ONLY) ---

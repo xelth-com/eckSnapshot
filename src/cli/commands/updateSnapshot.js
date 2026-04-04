@@ -152,7 +152,10 @@ async function generateSnapshotContent(repoPath, changedFiles, anchor, config, g
     reportSection = `\n---\n### 📨 MESSAGE FROM EXECUTION AGENT\n\n${agentReport}\n---\n\n`;
   }
 
-  header = header.replace('{{anchor}}', anchor.substring(0, 7))
+  const repoName = path.basename(repoPath);
+
+  header = header.replace('{{repoName}}', repoName)
+    .replace('{{anchor}}', anchor.substring(0, 7))
     .replace('{{timestamp}}', new Date().toLocaleString())
     .replace('{{fileList}}', fileList.join('\n'));
 

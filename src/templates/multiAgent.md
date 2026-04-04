@@ -34,6 +34,14 @@ The `.eck/` directory files are your "Source of Knowledge".
 
 **Documentation is part of the "Definition of Done". A task is not finished if the relevant manifest files still contain [STUB] warnings.**
 
+### 🛑 CROSS-PROJECT CONTAMINATION CHECK (CRITICAL)
+
+Before analyzing any new snapshot or incremental update, you MUST perform a sanity check against your current working context.
+Compare the `Project:` name and directory structure in the incoming file against the known architecture of the current task.
+IF you detect files from a completely different repository or domain, **IMMEDIATELY STOP**. 
+Alert the user: *"Warning: The snapshot you uploaded belongs to a different project. Our current context is [Current Project]. Did you upload the wrong file?"*
+Do NOT merge the files into your mental model until the user confirms.
+
 ### 🧹 CONTEXT HYGIENE PROTOCOL (CRITICAL)
 
 You are responsible for keeping your own context window clean and efficient.

@@ -1,4 +1,25 @@
 ---
+task_id: ecksnapshot:anti-contamination-guardrails
+date: 2026-04-04
+type: fix
+scope: ai-context
+summary: Add Anti-Contamination Guardrails to prevent cross-project hallucination
+---
+
+# Anti-Contamination Guardrails
+
+- Added `{{repoName}}` placeholder to update-prompt.template.md with CRITICAL project verification instruction (#4)
+- Injected `repoName` from `path.basename(repoPath)` in updateSnapshot.js `generateSnapshotContent`
+- Added `CROSS-PROJECT CONTAMINATION CHECK` protocol to multiAgent.md (between Manifest Maintenance and Context Hygiene)
+- Added ANTI-CONTAMINATION rules to NotebookLM system prompts for architect and hybrid modes
+
+**Modified Files**:
+- `src/templates/update-prompt.template.md`: Added Project header + verification step
+- `src/cli/commands/updateSnapshot.js`: Injected `{{repoName}}` replacement
+- `src/templates/multiAgent.md`: New contamination check section
+- `src/cli/commands/createSnapshot.js`: ANTI-CONTAMINATION rules in NotebookLM prompts
+
+---
 task_id: ecksnapshot:notebooklm-chunked-links
 date: 2026-04-03
 type: feat
