@@ -54,6 +54,37 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
           },
           required: ["status", "message"]
         }
+      },
+      {
+        name: "eck_manifest_edit",
+        description: "Atomically edits an .eck manifest file (like TECH_DEBT.md, ROADMAP.md) WITHOUT reading the entire file into context. Use this to save tokens.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            file: {
+              type: "string",
+              description: "Name of the file in .eck/ (e.g., 'TECH_DEBT.md')"
+            },
+            action: {
+              type: "string",
+              enum: ["append_to_section", "replace_text"],
+              description: "Action to perform: append bullet to a section, or replace specific text."
+            },
+            section_header: {
+              type: "string",
+              description: "For 'append_to_section': The exact markdown header to append under (e.g., '## Active', '# Sprint 1')."
+            },
+            content: {
+              type: "string",
+              description: "The text to append (e.g., '- [ ] Fix memory leak'), or the new text for replace_text."
+            },
+            target_text: {
+              type: "string",
+              description: "For 'replace_text': The exact old text you want to find and replace (e.g., '- [ ] Bug 123')."
+            }
+          },
+          required: ["file", "action", "content"]
+        }
       }
     ]
   };
@@ -91,6 +122,57 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       };
     } catch (error) {
       return { content: [{ type: "text", text: `❌ Error: ${error.message}\n${error.stderr || ''}` }], isError: true };
+    }
+  }
+
+  if (request.params.name === "eck_manifest_edit") {
+    const { file, action, section_header, content, target_text } = request.params.arguments;
+    const workDir = process.cwd();
+    const manifestPath = path.join(workDir, '.eck', file);
+
+    try {
+      let fileContent = '';
+      try {
+        fileContent = await fs.readFile(manifestPath, 'utf-8');
+      } catch (e) {
+        if (e.code === 'ENOENT') {
+          fileContent = `# ${file.replace('.md', '')}\n\n`;
+        } else {
+          throw e;
+        }
+      }
+
+      let updatedContent = fileContent;
+
+      if (action === 'replace_text') {
+        if (!target_text) throw new Error("target_text is required for replace_text action");
+        if (!fileContent.includes(target_text)) throw new Error(`Target text not found in ${file}`);
+        updatedContent = fileContent.replace(target_text, content);
+      } else if (action === 'append_to_section') {
+        if (!section_header) throw new Error("section_header is required for append_to_section action");
+        
+        const regex = new RegExp(`^(${section_header.replace(/[.*+?^$\\{}()|[\\]\\\\]/g, '\\$&')}\\s*\\r?\\n)`, 'm');
+        const match = regex.exec(fileContent);
+        
+        if (match) {
+          const insertPos = match.index + match[0].length;
+          updatedContent = fileContent.slice(0, insertPos) + content + '\n' + fileContent.slice(insertPos);
+        } else {
+          const suffix = fileContent.endsWith('\n') ? '' : '\n';
+          updatedContent = fileContent + suffix + '\n' + section_header + '\n' + content + '\n';
+        }
+      }
+
+      await fs.writeFile(manifestPath, updatedContent, 'utf-8');
+      return {
+        content: [{ type: "text", text: `✅ Successfully edited ${file}` }]
+      };
+
+    } catch (error) {
+      return {
+        content: [{ type: "text", text: `❌ Error editing manifest: ${error.message}` }],
+        isError: true
+      };
     }
   }
 

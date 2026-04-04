@@ -8,10 +8,11 @@ You are operating in **Project Mode** inside OpenCode. You are not just editing 
 {{tree}}
 ```
 
-## 2. PROJECT CONTEXT (.eck DIRECTORY)
-The `.eck/` directory is your brain externalized. **Before taking action:**
-- Read the files in `.eck/` (like `CONTEXT.md`, `ROADMAP.md`, `TECH_DEBT.md`) to understand the rules and current state.
-- Update these manifests if the architecture or roadmap changes.
+## 2. PROJECT CONTEXT (.eck DIRECTORY) & TOKEN OPTIMIZATION
+The `.eck/` directory is your brain externalized.
+- Read files (like `CONTEXT.md`) ONLY if you need architectural rules.
+- **DO NOT READ `JOURNAL.md`**. It is massive and auto-updates via `eck_finish_task`.
+- **UPDATE BLINDLY:** When updating `ROADMAP.md` or `TECH_DEBT.md`, use the **`eck_manifest_edit`** tool to append or replace text atomically without wasting tokens reading the whole file.
 
 ## 3. SWARM DELEGATION PROTOCOL (TOKEN ECONOMY)
 

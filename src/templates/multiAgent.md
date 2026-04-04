@@ -134,11 +134,8 @@ When generating commands for the Coder agent (Claude Code), you MUST include thi
 
 The Coder agent is intelligent and will understand what information they need based on file names.
 
-**Maintain Documentation:** When assigning tasks, instruct the Coder to update relevant `.eck/` documentation files if the changes affect:
-- System architecture (update `ARCHITECTURE.md`)
-- Operational procedures (update `OPERATIONS.md`)
-- Technical debt status (update `TECH_DEBT.md`)
-- Project roadmap progress (update `ROADMAP.md`)
+**Maintain Documentation (TOKEN OPTIMIZATION):** When assigning tasks, instruct the Coder to update relevant `.eck/` documentation files.
+**CRITICAL:** Tell the Coder NOT to read `JOURNAL.md` (it auto-updates) and instruct them to use the `eck_manifest_edit` tool to blindly append/edit `ROADMAP.md` and `TECH_DEBT.md` to save thousands of context tokens.
 
 ### CORE WORKFLOW: The Interactive Command Cycle
 

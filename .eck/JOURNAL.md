@@ -1,4 +1,28 @@
 ---
+task_id: ecksnapshot:manifest-token-optimization
+date: 2026-04-04
+type: perf
+scope: context
+summary: Implement atomic manifest editing to save tokens
+---
+
+# Manifest Token Optimization
+
+- Added `eck_manifest_edit` MCP tool with `append_to_section` and `replace_text` actions
+- Tool reads/writes files atomically, creates file if missing, escapes regex in section headers
+- Updated coder.template.md: forbid reading JOURNAL.md, mandate `eck_manifest_edit` for blind edits
+- Updated junior-architect.template.md: same token optimization instructions
+- Updated claudeMdGenerator.js CODER_INSTRUCTIONS: same token optimization instructions
+- Updated multiAgent.md: Architect instructs Coder to use `eck_manifest_edit` instead of reading whole files
+
+**Modified Files**:
+- `scripts/mcp-eck-core.js`: New tool definition + handler
+- `src/templates/opencode/coder.template.md`
+- `src/templates/opencode/junior-architect.template.md`
+- `src/templates/multiAgent.md`
+- `src/utils/claudeMdGenerator.js`
+
+---
 task_id: ecksnapshot:anti-contamination-guardrails
 date: 2026-04-04
 type: fix
@@ -383,6 +407,39 @@ scope: core
 
 
 
+
+
+## 2026-04-04 — Agent Report
+
+# Agent Report
+
+## Task: `ecksnapshot:anti-contamination-guardrails`
+
+### Changes Applied
+
+**`src/templates/update-prompt.template.md`** (full rewrite):
+- Added `**Project:** \`{{repoName}}\`` to the header
+- Added instruction #4: `PROJECT VERIFICATION (CRITICAL)` — tells AI to verify the project name matches current context, stop and warn if mismatch
+
+**`src/cli/commands/updateSnapshot.js`** (line ~155):
+- Added `const repoName = path.basename(repoPath)` before template substitution
+- Added `.replace('{{repoName}}', repoName)` to the template replacement chain
+
+**`src/templates/multiAgent.md`** (between Manifest Maintenance and Context Hygiene sections):
+- New `### 🛑 CROSS-PROJECT CONTAMINATION CHECK (CRITICAL)` protocol
+- Instructs Architect to verify `Project:` name and directory structure against current task
+- Must STOP and alert user if files belong to a different project
+- Must NOT merge files into mental model until user confirms
+
+**`src/cli/commands/createSnapshot.js`** (NotebookLM system prompt block):
+- Architect mode: added rule #5 `ANTI-CONTAMINATION: Verify that any new file uploads belong to this project context. If not, WARN the user and stop.`
+- Hybrid mode: added bullet `- ANTI-CONTAMINATION: Verify that any new file uploads belong to your known primary/linked contexts. If not, WARN the user and stop.`
+
+**`.eck/JOURNAL.md`**: Added journal entry
+
+### Verification
+- No linter or tests in project
+- All four edits verified against specification
 
 ## 2026-04-03 — Agent Report
 

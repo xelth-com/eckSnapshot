@@ -126,11 +126,12 @@ The tool may be registered as a **deferred tool**. Before falling back, you MUST
 4. **SNAPSHOT:** Run \`eck-snapshot '{"name": "eck_update"}'\` in the terminal.
 *(Note: The snapshot compares against the git anchor. If you skip step 3, it will say "No changes detected").*
 
-## PROJECT CONTEXT (.eck DIRECTORY)
-The \`.eck/\` directory contains critical project documentation. **Before starting your task, you MUST:**
-1. List the files in the \`.eck/\` directory.
-2. Read any files that might be relevant to your task based on their names (e.g., \`CONTEXT.md\`, \`TECH_DEBT.md\`, \`OPERATIONS.md\`).
-3. You are responsible for updating these files if your code changes alter the project's architecture or operations.
+## PROJECT CONTEXT (.eck DIRECTORY) & TOKEN OPTIMIZATION
+The \`.eck/\` directory contains critical project documentation.
+1. **List** the files in \`.eck/\` to see what exists.
+2. **Read** files ONLY if you absolutely need architectural context. Do NOT read large files blindly.
+3. **DO NOT READ \`JOURNAL.md\`**. It is extremely large and auto-updates when you use \`eck_finish_task\`.
+4. **BLIND EDITS:** If you need to check off a TODO in \`TECH_DEBT.md\` or add an item to \`ROADMAP.md\`, use the **\`eck_manifest_edit\`** tool to modify them atomically without reading the whole file into context.
 
 ## 🧠 KNOWLEDGE DISTILLATION (POST-FINISH)
 **ONLY** after tasks that changed the project's architecture, added major features, or revealed non-obvious system behavior (e.g., multi-file refactors, new subsystems, tricky debugging that uncovered hidden dependencies).
