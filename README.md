@@ -1,4 +1,4 @@
-# 📸 eckSnapshot v6.4.5 (AI-Native Edition)
+# 📸 eckSnapshot v6.5.0 (AI-Native Edition)
 
 A specialized, AI-native CLI tool that creates single-file text snapshots of entire Git repositories and feeds them directly into LLM context windows. Instead of letting AI agents guess which files to read, eckSnapshot force-feeds the complete project into the model's context — giving it a "university degree" in your codebase from the very first prompt.
 
@@ -9,7 +9,7 @@ It also serves as the coordination hub for multi-agent AI coding workflows: gene
 
 ---
 
-> **v6.4.5 Breakthrough:** By analyzing Claude Code's internal source architecture, eckSnapshot now features **native integration** with Anthropic's flagship tool. It no longer generates a monolithic markdown file; it natively wires into Claude's `.claude/` topology — Async Hooks, Native Skills, and Subagents. Claude Code is the recommended environment for eckSnapshot.
+> **v6.5.0 Breakthrough:** By analyzing Claude Code's internal source architecture, eckSnapshot now features **native integration** with Anthropic's flagship tool. It no longer generates a monolithic markdown file; it natively wires into Claude's `.claude/` topology — Async Hooks, Native Skills, and Subagents. Claude Code is the recommended environment for eckSnapshot.
 
 ## 📦 Installation
 
@@ -169,7 +169,7 @@ Both `scout` and `link` use the same depth scale to control content granularity:
 
 ---
 
-## 🤖 The Claude Code Native Ecosystem (New in v6.4.5)
+## 🤖 The Claude Code Native Ecosystem (New in v6.5.0)
 
 By analyzing Claude Code's internal architecture, eckSnapshot replaces the old monolithic `CLAUDE.md` approach with a natively injected ecosystem inside your `.claude/` directory:
 
