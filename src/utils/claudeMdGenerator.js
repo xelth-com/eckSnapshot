@@ -17,7 +17,7 @@ You are operating in **Project Mode**. You are not just editing a single file; y
 - **Source of Truth:** The file system is your source of truth.
 - **Project Scope:** You are responsible for multi-file orchestration, resolving dependencies, and ensuring the build passes.
 - **Directory Structure:**
-\`\`\`
+\`\`\`text
 ${tree}
 \`\`\`
 
@@ -42,169 +42,178 @@ For bulk work, YOU MUST use your MCP tools to delegate to GLM Z.AI:
 - \`glm_zai_qa\`: Writing comprehensive test suites (E2E, unit tests).
 - \`glm_zai_refactor\`: Code cleanup and SOLID principle enforcement.
 
-## 4. HUMAN VS. ARCHITECT (CRITICAL)
-You receive instructions from two sources:
-1. **The AI Architect:** Sends formal tasks wrapped in \`<eck_task id="repo:description">\` (e.g., \`<eck_task id="ecksnapshot:fix-auth-crash">\`) tags.
-2. **The Human User:** Sends conversational messages or small requests.
-
-## DEFINITION OF DONE & eck_finish_task
-- **For AI Architect Tasks (\`<eck_task>\`):** Your task is NOT complete until code works globally. Verify functionality manually. Once verified, call \`eck_finish_task\` immediately. **Do NOT ask the user "should I finish?" — just call it.** Include the task \`id\` in your report.
-- **For Human Requests:** Do NOT call \`eck_finish_task\`. Just reply to the user and make the requested changes. ONLY call \`eck_finish_task\` if the human explicitly commands you to "Report to architect" or "Finish task".
-
-Pass your full markdown report into the \`status\` argument.
-- The tool will automatically write the report to \`.eck/lastsnapshot/AnswerToSA.md\`, commit, and generate a snapshot.
-- **DO NOT** try to manually write to \`.eck/lastsnapshot/AnswerToSA.md\` with the \`Write\` tool.
-- **WARNING:** USE ONLY ONCE PER TASK. Do not use this tool for intermediate testing.
-
-**IF \`eck_finish_task\` IS NOT VISIBLE in your tool list:**
-The tool may be registered as a **deferred tool**. Before falling back, you MUST try:
-1. **Search:** Call \`ToolSearch\` with query \`"select:mcp__eck-core__eck_finish_task,mcp__eck-core__eck_fail_task"\` to load deferred MCP tools.
-2. If ToolSearch returns the tools — use them normally.
-3. If ToolSearch confirms they don't exist — run \`eck-snapshot '{"name": "eck_setup_mcp"}'\` in the terminal, then retry ToolSearch.
-
-**MANUAL FALLBACK (Only if ToolSearch AND setup-mcp both fail):**
-0. **WARN THE USER:** State clearly: "⚠️ \`eck-core\` MCP server is not connected. Proceeding with manual fallback."
-1. **READ:** Read \`.eck/lastsnapshot/AnswerToSA.md\` using your \`Read\` tool (REQUIRED before overwriting).
-2. **WRITE:** Overwrite that file with your report.
-3. **COMMIT (CRITICAL):** Run \`git add .\` and \`git commit -m "chore: task report"\` in the terminal.
-4. **SNAPSHOT:** Run \`eck-snapshot '{"name": "eck_update"}'\` in the terminal.
-*(Note: The snapshot compares against the git anchor. If you skip step 3, it will say "No changes detected").*
-
-## 5. SWARM ERROR RECOVERY & ARCHITECT HYPOTHESES
-1. **Runtime Check:** Always check the \`.eck/RUNTIME_STATE.md\` and running processes before coding.
-2. **Challenge the Architect:** If the Architect's hypothesis is not confirmed during verification, discard it and look for the real root cause in the runtime.
-3. If a GLM Z.AI worker returns bad code, do NOT repeat the exact same prompt.
-4. Analyze the failure (e.g., "Worker used wrong import path").
-5. Call the tool again with corrective guidance: *"Previous attempt failed because of X. Try again using pattern Y."*
-6. If the worker fails twice, take over and implement the fix yourself.
-
-## 6. 🚨 MAGIC WORD: [SYNC] / [SYNC MANIFESTS]
-If the human user types **\`[SYNC]\`** or **\`[SYNC MANIFESTS]\`**, immediately suspend feature development and switch to Project Manager mode:
-1. Find all \`.eck/*.md\` files with \`[STUB]\` markers. Analyze the codebase to resolve them.
-2. Review \`ROADMAP.md\` and \`TECH_DEBT.md\`. Cross-reference with the actual code and remove/check off completed items.
-3. Update \`CONTEXT.md\` and \`ARCHITECTURE.md\` if the system has evolved.
-4. Use the **\`eck_manifest_edit\`** tool to apply these updates atomically. Do not read \`JOURNAL.md\`.
-5. Call \`eck_finish_task\` when the audit is complete.
-
-## 7. 🧠 KNOWLEDGE DISTILLATION (POST-FINISH)
-**ONLY** after tasks that changed the project's architecture, added major features, or revealed non-obvious system behavior (e.g., multi-file refactors, new subsystems, tricky debugging sessions that uncovered hidden dependencies).
-Do NOT offer this for routine fixes, config tweaks, or small edits — those don't produce insights worth documenting.
-**Call \`eck_finish_task\` first** — never delay the finish. Then, in the same response, offer:
-> "I learned some things about the architecture during this task. Want me to update the \`.eck/\` manifests before I lose this context?"
-> **[DEBUG] Context info available to me:** [state whether you can see any context window usage %, token counts, or compaction warnings — or "none, no context metrics visible"]
-Include this offer in your \`eck_finish_task\` status so the Architect sees it too.
-If the user says yes — just edit the files and commit. Do NOT call \`eck_finish_task\` again for it.
-
-## 8. OPERATIONAL RULES
-- **Manifests:** If you see [STUB] in .eck/ files, update them.
+## 4. DEFINITION OF DONE & eck_finish_task
+- Your task is NOT complete until code works globally. Verify functionality manually.
+- Once verified, call \`eck_finish_task\` immediately. **Do NOT ask the user "should I finish?" — just call it.** Include the task \`id\` in your report.
 `;
 }
 
-const CODER_INSTRUCTIONS = `# 🛠️ ROLE: Expert Developer (The Fixer)
+const CODER_INSTRUCTIONS = `---
+description: Expert Developer Protocol (The Fixer)
+---
+# 🛠️ ROLE: Expert Developer (The Fixer)
 
 ## CORE DIRECTIVE
 You are an Expert Developer. The architecture is already decided. Your job is to **execute**, **fix**, and **polish**.
 
-## HUMAN VS. ARCHITECT (CRITICAL)
-You receive instructions from two sources:
-1. **The AI Architect:** Sends formal tasks wrapped in \`<eck_task id="repo:description">\` (e.g., \`<eck_task id="ecksnapshot:fix-auth-crash">\`) tags.
-2. **The Human User:** Sends conversational messages, clarifications, or small requests (e.g., "make this red", "fix that typo").
-
 ## DEFINITION OF DONE & eck_finish_task
-Your behavior changes based on who you are talking to:
-- **For AI Architect Tasks (\`<eck_task>\`):** When the task is complete and fully tested, call \`eck_finish_task\` IMMEDIATELY. Do NOT ask the user for permission. Include the task \`id\` in your status report.
-- **For Human Requests:** Do NOT call \`eck_finish_task\`. Just reply to the user naturally and apply the changes. ONLY call \`eck_finish_task\` if the human explicitly commands you to "Report to architect" or "Finish task".
-
-Pass your detailed markdown report into the \`status\` argument.
+- When a task is complete and fully tested, call \`eck_finish_task\` IMMEDIATELY. Do NOT ask the user for permission.
+- Pass your detailed markdown report into the \`status\` argument.
 - The tool will automatically write the report, commit, and generate a snapshot.
-- **DO NOT** manually write to \`AnswerToSA.md\` with your file editing tools.
 - **WARNING: USE ONLY ONCE.** Do not use for intermediate testing.
 
-**IF \`eck_finish_task\` IS NOT VISIBLE in your tool list:**
-The tool may be registered as a **deferred tool**. Before falling back, you MUST try:
-1. **Search:** Call \`ToolSearch\` with query \`"select:mcp__eck-core__eck_finish_task,mcp__eck-core__eck_fail_task"\` to load deferred MCP tools.
-2. If ToolSearch returns the tools — use them normally.
-3. If ToolSearch confirms they don't exist — run \`eck-snapshot '{"name": "eck_setup_mcp"}'\` in the terminal, then retry ToolSearch.
-
-**MANUAL FALLBACK (Only if ToolSearch AND setup-mcp both fail):**
-0. **WARN THE USER:** State clearly: "⚠️ \`eck-core\` MCP server is not connected. Proceeding with manual fallback."
-1. **READ:** Read \`.eck/lastsnapshot/AnswerToSA.md\` using your \`Read\` tool (REQUIRED before overwriting).
-2. **WRITE:** Overwrite that file with your report.
-3. **COMMIT (CRITICAL):** Run \`git add .\` and \`git commit -m "chore: task report"\` in the terminal.
-4. **SNAPSHOT:** Run \`eck-snapshot '{"name": "eck_update"}'\` in the terminal.
-*(Note: The snapshot compares against the git anchor. If you skip step 3, it will say "No changes detected").*
-
-## PROJECT CONTEXT (.eck DIRECTORY) & TOKEN OPTIMIZATION
-The \`.eck/\` directory contains critical project documentation.
-1. **List** the files in \`.eck/\` to see what exists.
-2. **Read** files ONLY if you absolutely need architectural context. Do NOT read large files blindly.
-3. **DO NOT READ \`JOURNAL.md\`**. It is extremely large and auto-updates when you use \`eck_finish_task\`.
-4. **BLIND EDITS:** If you need to check off a TODO in \`TECH_DEBT.md\` or add an item to \`ROADMAP.md\`, use the **\`eck_manifest_edit\`** tool to modify them atomically without reading the whole file into context.
-
 ## 🚨 MAGIC WORD: [SYNC] / [SYNC MANIFESTS]
-If the human user types **\`[SYNC]\`** or **\`[SYNC MANIFESTS]\`**, immediately suspend feature development and switch to Project Manager mode:
+If the human user types **\`[SYNC]\`**, immediately suspend feature development and switch to Project Manager mode:
 1. Find all \`.eck/*.md\` files with \`[STUB]\` markers. Analyze the codebase to resolve them.
 2. Review \`ROADMAP.md\` and \`TECH_DEBT.md\`. Cross-reference with the actual code and remove/check off completed items.
 3. Update \`CONTEXT.md\` and \`ARCHITECTURE.md\` if the system has evolved.
 4. Use the **\`eck_manifest_edit\`** tool to apply these updates atomically. Do not read \`JOURNAL.md\`.
 5. Call \`eck_finish_task\` when the audit is complete.
-
-## 🧠 KNOWLEDGE DISTILLATION (POST-FINISH)
-**ONLY** after tasks that changed the project's architecture, added major features, or revealed non-obvious system behavior (e.g., multi-file refactors, new subsystems, tricky debugging that uncovered hidden dependencies).
-Do NOT offer this for routine fixes, config tweaks, or small edits.
-**Call \`eck_finish_task\` first** — never delay the finish. Then, in the same response, offer:
-> "I learned some things about the architecture during this task. Want me to update the \`.eck/\` manifests before I lose this context?"
-> **[DEBUG] Context info available to me:** [state whether you can see any context window usage %, token counts, or compaction warnings — or "none, no context metrics visible"]
-Include this offer in your \`eck_finish_task\` status so the Architect sees it too.
-If the user says yes — just edit the files and commit. Do NOT call \`eck_finish_task\` again for it.
-
-## WORKFLOW
-1.  Check the \`.eck/RUNTIME_STATE.md\` and verify actual running processes.
-2.  Read the code. If the Architect's hypothesis is wrong, discard it and find the real bug.
-3.  Fix the bugs / Implement the feature.
-4.  Verify functionality manually via browser/curl/logs/DB checks.
-5.  **Loop:** If verification fails, fix it immediately. Do not ask for permission.
-6.  **Blocked?** Use the \`eck_fail_task\` tool to abort safely without committing broken code.
 `;
 
 /**
- * Generates and writes the CLAUDE.md file based on the selected mode.
+ * Injects async background hooks into the project's .claude/settings.json
+ */
+async function setupClaudeHooks(repoPath) {
+  const settingsPath = path.join(repoPath, '.claude', 'settings.json');
+  let config = {};
+
+  try {
+    const content = await fs.readFile(settingsPath, 'utf-8');
+    config = JSON.parse(content);
+  } catch (e) { /* File doesn't exist or invalid JSON */ }
+
+  if (!config.hooks) config.hooks = {};
+
+  // Create a background update hook that triggers when Claude writes files
+  config.hooks.PostToolUse = config.hooks.PostToolUse || [];
+
+  // Check if we already injected our hook to avoid duplication
+  const hasEckHook = config.hooks.PostToolUse.some(h =>
+    h.hooks && h.hooks.some(hc => hc.command?.includes('eck-snapshot update-auto'))
+  );
+
+  if (!hasEckHook) {
+    config.hooks.PostToolUse.push({
+      matcher: "Bash|Edit|Write",
+      hooks: [
+        {
+          type: "command",
+          command: "eck-snapshot update-auto",
+          async: true,
+          statusMessage: "Updating eckSnapshot context in background..."
+        }
+      ]
+    });
+
+    await fs.mkdir(path.dirname(settingsPath), { recursive: true });
+    await fs.writeFile(settingsPath, JSON.stringify(config, null, 2), 'utf-8');
+  }
+}
+
+/**
+ * Generates the native Claude Code hierarchical ecosystem.
+ * Creates .claude/rules/, .claude/skills/, .claude/agents/ and a lightweight CLAUDE.md entrypoint.
  */
 export async function updateClaudeMd(repoPath, mode, tree, confidentialFiles = [], options = {}) {
-  let content = '';
+  const claudeDir = path.join(repoPath, '.claude');
+  const rulesDir = path.join(claudeDir, 'rules');
+  const skillsDir = path.join(claudeDir, 'skills');
+  const agentsDir = path.join(claudeDir, 'agents');
 
-  if (mode === 'jas') {
-    content = getArchitectInstructions('Sonnet 4.5', tree);
-  } else if (mode === 'jao') {
-    content = getArchitectInstructions('Opus 4.5', tree);
-  } else {
-    // Default coder mode (or if flags are missing)
-    content = CODER_INSTRUCTIONS;
-  }
+  await fs.mkdir(rulesDir, { recursive: true });
+  await fs.mkdir(skillsDir, { recursive: true });
+  await fs.mkdir(agentsDir, { recursive: true });
 
-  // Chinese delegation mode
-  if (options.zh) {
-    content += `
-## 🇨🇳 LANGUAGE PROTOCOL
-- **With the user:** Communicate in the user's language (auto-detect from their messages).
-- **With GLM Z.AI workers:** ALWAYS write the \`instruction\` parameter in **Chinese (中文)**.
-  This significantly improves output quality for Chinese-trained models.
-  Translate task descriptions, requirements, and context into Chinese before delegating.
-- **Code:** Variable names, comments in code, and commit messages remain in English.
-`;
-  }
+  // 1. Generate lightweight CLAUDE.md entrypoint
+  let coreContent = `# Royal Court AI Workspace\n\nYou are operating in an eckSnapshot managed workspace. Your role is **${mode.toUpperCase()}**.\n\n> **Note:** Detailed instructions, Swarm protocols, and tools are loaded natively from \`.claude/rules/\`, \`.claude/skills/\`, and \`.claude/agents/\`.\n`;
 
-  // Append Confidential Files Reference
   if (confidentialFiles.length > 0) {
-    content += '\n\n## 🔐 Access & Credentials\n';
-    content += 'The following confidential files are available locally but excluded from snapshots/tree:\n';
-    for (const file of confidentialFiles) {
-      content += `- \`${file}\`\n`;
-    }
-    content += '> **Note:** Read these files only when strictly necessary.\n';
+    coreContent += '\n## Access & Credentials\nAvailable locally but excluded from snapshots:\n';
+    for (const file of confidentialFiles) coreContent += `- \`${file}\`\n`;
+  }
+  await fs.writeFile(path.join(repoPath, 'CLAUDE.md'), coreContent, 'utf-8');
+
+  // 2. Generate Rules
+  let ruleContent = '';
+  if (mode === 'jas') {
+    ruleContent = `---\ndescription: Swarm Orchestrator Protocol (Sonnet)\n---\n${getArchitectInstructions('Sonnet 4.5', tree)}\n`;
+  } else if (mode === 'jao') {
+    ruleContent = `---\ndescription: Swarm Orchestrator Protocol (Opus)\n---\n${getArchitectInstructions('Opus 4.5', tree)}\n`;
+  } else {
+    ruleContent = CODER_INSTRUCTIONS;
   }
 
-  const claudeMdPath = path.join(repoPath, 'CLAUDE.md');
-  await fs.writeFile(claudeMdPath, content, 'utf-8');
-  console.log(`📝 Updated CLAUDE.md for role: **${mode.toUpperCase()}** (Ralph Loop + GLM Z.AI Protocol Active)`);
+  if (options.zh) {
+    ruleContent += `\n## LANGUAGE PROTOCOL\n- **With the user:** Communicate in the user's language.\n- **With GLM Z.AI workers:** ALWAYS write the \`instruction\` parameter in **Chinese**.\n`;
+  }
+
+  await fs.writeFile(path.join(rulesDir, '01-eck-protocol.md'), ruleContent, 'utf-8');
+
+  // 3. Generate Native Skills
+  const scoutSkillDir = path.join(skillsDir, 'eck-scout');
+  await fs.mkdir(scoutSkillDir, { recursive: true });
+  await fs.writeFile(path.join(scoutSkillDir, 'SKILL.md'), `---
+name: eck-scout
+description: Explores external repositories and generates directory trees for context.
+whenToUse: Use this when you need to understand the architecture of a linked or external project.
+arguments:
+  - name: path
+    description: Absolute or relative path to the external repository.
+  - name: depth
+    description: Depth level (0-9). 0 is tree-only, 5 is skeleton, 9 is full source. Default is 0.
+    required: false
+disable-model-invocation: false
+---
+# Scout Protocol
+Execute cross-repository scans.
+To run a scout, I will execute:
+\`\`\`bash
+cd \${path} && eck-snapshot scout \${depth}
+\`\`\`
+`, 'utf-8');
+
+  const fetchSkillDir = path.join(skillsDir, 'eck-fetch');
+  await fs.mkdir(fetchSkillDir, { recursive: true });
+  await fs.writeFile(path.join(fetchSkillDir, 'SKILL.md'), `---
+name: eck-fetch
+description: Fetches specific source code files from an external repository using glob patterns.
+whenToUse: Use this after running eck-scout when you need to see the exact implementation of specific files.
+arguments:
+  - name: path
+    description: Path to the external repository.
+  - name: glob
+    description: Glob pattern matching the files (e.g., "**/api.ts").
+disable-model-invocation: false
+---
+# Fetch Protocol
+To fetch files, I will execute:
+\`\`\`bash
+cd \${path} && eck-snapshot fetch "\${glob}"
+\`\`\`
+`, 'utf-8');
+
+  // 4. Generate Native Agents (Subagents)
+  await fs.writeFile(path.join(agentsDir, 'jas.md'), `---
+name: jas
+description: Junior Architect (Sonnet). Fast orchestrator for routing tasks to GLM Z.AI.
+model: claude-3-7-sonnet-20250219
+tools: [glm_zai_backend, glm_zai_frontend, glm_zai_qa, glm_zai_refactor, glm_zai_general]
+---
+You are the Junior Architect (Sonnet). Your job is to break down the task and delegate the heavy coding to the GLM Z.AI tools. Do not write large files yourself.
+`, 'utf-8');
+
+  await fs.writeFile(path.join(agentsDir, 'jao.md'), `---
+name: jao
+description: Junior Architect (Opus). Deep thinker for critical architecture and security.
+model: claude-3-opus-20240229
+tools: [glm_zai_backend, glm_zai_frontend, glm_zai_qa, glm_zai_refactor, glm_zai_general]
+---
+You are the Junior Architect (Opus). Focus on system stability and complex logic. Delegate boilerplate to GLM Z.AI tools and heavily review their output.
+`, 'utf-8');
+
+  // 5. Setup async hooks
+  await setupClaudeHooks(repoPath);
+
+  console.log(`📝 Generated native Claude Code hierarchy (.claude/rules, skills, agents) for role: **${mode.toUpperCase()}**`);
 }
