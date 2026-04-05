@@ -480,7 +480,6 @@ async function processProjectFiles(repoPath, options, config, projectTypes = nul
         }
 
         stats.includedFiles++;
-        stats.processedSize += fileStats.size;
 
         // Apply skeletonization if enabled
         if (options.skeleton) {
@@ -502,10 +501,14 @@ async function processProjectFiles(repoPath, options, config, projectTypes = nul
           }
         }
 
+        const formattedContent = `--- File: /${normalizedPath} ---\n\n${outputBody}\n\n`;
+        const finalSize = Buffer.byteLength(formattedContent, 'utf-8');
+        stats.processedSize += finalSize;
+
         return {
-          content: `--- File: /${normalizedPath} ---\n\n${outputBody}\n\n`,
+          content: formattedContent,
           path: normalizedPath,
-          size: fileStats.size
+          size: finalSize
         };
       } catch (error) {
         stats.errors.push(`${normalizedPath}: ${error.message}`);

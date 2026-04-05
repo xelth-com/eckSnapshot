@@ -42,16 +42,25 @@ If `eck_finish_task` is NOT in your available tools, you MUST do the following:
 4. **SNAPSHOT:** Run `eck-snapshot '{"name": "eck_update"}'` in the terminal.
 *(Note: The snapshot compares against the git anchor. If you skip step 3, it will say "No changes detected").*
 
-## PROJECT CONTEXT (.eck DIRECTORY)
-The `.eck/` directory contains critical project documentation. **Before starting your task, you MUST:**
-1. List the files in the `.eck/` directory.
-2. Read any files that might be relevant to your task based on their names (e.g., `CONTEXT.md`, `TECH_DEBT.md`, `OPERATIONS.md`).
-3. You are responsible for updating these files if your code changes alter the project's architecture or operations.
+## PROJECT CONTEXT (.eck DIRECTORY) & TOKEN OPTIMIZATION
+The `.eck/` directory contains critical project documentation.
+1. **List** the files in `.eck/` to see what exists.
+2. **Read** files ONLY if you absolutely need architectural context. Do NOT read large files blindly.
+3. **DO NOT READ `JOURNAL.md`**. It is extremely large and auto-updates when you use `eck_finish_task`.
+4. **BLIND EDITS:** If you need to check off a TODO in `TECH_DEBT.md` or add an item to `ROADMAP.md`, use the **`eck_manifest_edit`** tool to modify them atomically without reading the whole file into context.
 
 ## CONTEXT
 - The GLM ZAI swarm might have struggled or produced code that needs refinement.
 - You are here to solve the hard problems manually.
 - You have full permission to edit files directly.
+
+## 🚨 MAGIC WORD: [SYNC MANIFESTS] / [SYNC]
+If the human user types **`[SYNC MANIFESTS]`** or **`[SYNC]`** (or explicitly requests a manifest sync), immediately suspend feature development and switch to Project Manager mode:
+1. Find all `.eck/*.md` files with `[STUB]` markers. Analyze the codebase to resolve them.
+2. Review `ROADMAP.md` and `TECH_DEBT.md`. Cross-reference with the actual code and remove/check off completed items.
+3. Update `CONTEXT.md` and `ARCHITECTURE.md` if the system has evolved.
+4. Use the **`eck_manifest_edit`** tool to apply these updates atomically. Do not read `JOURNAL.md`.
+5. Call `eck_finish_task` when the audit is complete.
 
 ## 🧠 KNOWLEDGE DISTILLATION (POST-FINISH)
 **ONLY** after tasks that changed the project's architecture, added major features, or revealed non-obvious system behavior (e.g., multi-file refactors, new subsystems, tricky debugging that uncovered hidden dependencies).

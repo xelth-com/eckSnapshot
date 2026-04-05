@@ -57,15 +57,15 @@ const LEGACY_COMMANDS = {
   'setup-mcp':   (args) => ({ name: 'eck_setup_mcp', arguments: { opencode: args.includes('--opencode'), both: args.includes('--both') } }),
   'detect':      () => ({ name: 'eck_detect', arguments: {} }),
   'doctor':      () => ({ name: 'eck_doctor', arguments: {} }),
-  'scout':       (args) => ({ name: 'eck_scout', arguments: { depth: args[0] ? parseInt(args[0], 10) : 0 } }),
+  'scout':       (args) => ({ name: 'eck_scout', arguments: { depth: args[0] !== undefined ? parseInt(args[0], 10) : 0 } }),
   'fetch':       (args) => ({ name: 'eck_fetch', arguments: { patterns: args } }),
-  'link':        (args) => ({ name: 'eck_snapshot', arguments: { isLinkedProject: true, linkDepth: args[0] ? parseInt(args[0], 10) : 0 } }),
+  'link':        (args) => ({ name: 'eck_snapshot', arguments: { isLinkedProject: true, linkDepth: args[0] !== undefined ? parseInt(args[0], 10) : 0 } }),
   'profile':     (args) => args[0] ? ({ name: 'eck_snapshot', arguments: { profile: args.join(',') } }) : ({ name: 'eck_snapshot', arguments: { profile: true } }),
   'booklm':      () => ({ name: 'eck_snapshot', arguments: { notebooklm: 'scout' } }),
   'notelm':      () => ({ name: 'eck_snapshot', arguments: { notebooklm: 'architect' } }),
   'notebook':    (args) => {
-    if (args[0] === 'link') return { name: 'eck_snapshot', arguments: { notebooklm: 'link', linkDepth: args[1] ? parseInt(args[1], 10) : 5 } };
-    if (args[0] === 'scout') return { name: 'eck_snapshot', arguments: { notebooklm: 'scout', linkDepth: args[1] ? parseInt(args[1], 10) : 5 } };
+    if (args[0] === 'link') return { name: 'eck_snapshot', arguments: { notebooklm: 'link', linkDepth: args[1] !== undefined ? parseInt(args[1], 10) : 0 } };
+    if (args[0] === 'scout') return { name: 'eck_snapshot', arguments: { notebooklm: 'scout', linkDepth: args[1] !== undefined ? parseInt(args[1], 10) : 0 } };
     return { name: 'eck_snapshot', arguments: { notebooklm: 'hybrid' } };
   },
   'telemetry':   (args) => ({ name: 'eck_telemetry', arguments: { action: args[0] } }),
