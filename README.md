@@ -1,4 +1,4 @@
-# 📸 eckSnapshot v6.4.4 (AI-Native Edition)
+# 📸 eckSnapshot v6.4.5 (AI-Native Edition)
 
 A specialized, AI-native CLI tool that creates single-file text snapshots of entire Git repositories and feeds them directly into LLM context windows. Instead of letting AI agents guess which files to read, eckSnapshot force-feeds the complete project into the model's context — giving it a "university degree" in your codebase from the very first prompt.
 
@@ -98,6 +98,7 @@ For humans typing in the terminal, short commands work too:
 | 10 | `eck-snapshot setup-mcp` | Configure MCP servers |
 | 10 | `eck-snapshot detect` | Detect project type and active filters |
 | 11 | `eck-snapshot doctor` | Check project health and stubs |
+| 12 | `eck-snapshot telemetry` | Check telemetry status (also: `enable` / `disable`) |
 
 Running `eck-snapshot` with no arguments defaults to a full snapshot.
 
@@ -170,7 +171,7 @@ Both `scout` and `link` use the same depth scale to control content granularity:
 
 * **🔄 Smart Delta Updates:** Tracks incremental changes via Git anchors. Accurately tracks and reports deleted files to prevent LLM hallucinations.
 * **🛡️ Security (SecretScanner):** Automatically redacts API keys and credentials before sending context to LLMs. Features both Regex matching and **Shannon Entropy** analysis.
-* **🔌 Native MCP Integration:** Instantly spins up Model Context Protocol (MCP) servers (`eck-core` and `glm-zai`) for Claude Code, OpenCode, and Codex.
+* **🔌 Native MCP Integration:** Instantly spins up Model Context Protocol (MCP) servers (`eck-core` and `glm-zai`) for Claude Code, OpenCode, and Codex. Includes `eck_manifest_edit` for atomic `.eck/` file editing without loading full files into context.
 * **📁 The `.eck/` Manifest:** Automatically maintains project context files (`CONTEXT.md`, `ROADMAP.md`, `TECH_DEBT.md`). Dynamic scanning — any `.md` file you add to `.eck/` is automatically included in snapshots.
 * **☠️ Skeleton Mode:** Uses Tree-sitter and Babel to strip function bodies, drastically reducing token count for huge codebases.
 * **📚 NotebookLM Export:** Semantic chunking for Google's NotebookLM with "Brain + Body" architecture (see below).

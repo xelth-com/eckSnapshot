@@ -91,14 +91,24 @@ Link output saved to `.eck/links/` and `snapshots/`.
 
 ## NotebookLM Export
 ```bash
-# Scout Mode — generates fetch commands for local agents
-eck-snapshot booklm
+# Primary project — Hybrid mode (Brain + Body chunks)
+eck-snapshot notebook
 
-# Architect Mode — NotebookLM acts as primary architect (experimental)
-eck-snapshot notelm
+# Linked project — chunked companion with depth control (default: depth 0)
+eck-snapshot notebook link 5    # skeleton depth
+eck-snapshot notebook link 0    # tree-only
+
+# Scouted project — chunked read-only with depth control (default: depth 0)
+eck-snapshot notebook scout 3   # truncated 60 lines
+eck-snapshot notebook scout 0   # tree-only
+
+# Legacy modes
+eck-snapshot booklm             # Scout mode (fetch command generator)
+eck-snapshot notelm             # Architect mode (experimental)
 ```
-Uses "Brain + Body" architecture: Part 0 (instructions + manifests + tree), Parts 1-N (source code only).
-Upload all parts to a single NotebookLM project. Paste the starter prompt as your first chat message.
+Uses "Brain + Body" architecture: Part 0 (instructions + manifests + tree), Parts 1-N (source code only, ~2.5MB each).
+Upload all parts to a single NotebookLM project. Copy the system prompt printed in terminal into NotebookLM's Custom Instructions.
+Chunk sizes are calculated from post-truncation/skeletonization byte length for efficient packing.
 
 ## MCP Setup / Restoration
 ```bash

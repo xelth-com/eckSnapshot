@@ -42,6 +42,7 @@ All tools are dispatched via a single JSON payload argument:
 | `eck_setup_mcp` | Configure MCP servers | `setupMcp.js` |
 | `eck_detect` | Detect project type | `detectProject.js` |
 | `eck_doctor` | Project health check | `doctor.js` |
+| `eck_telemetry` | Enable/disable/check telemetry | `cli.js` (inline) |
 | `eck_train_tokens` | Calibrate token estimator | `trainTokens.js` |
 | `eck_token_stats` | Show estimation accuracy | `trainTokens.js` |
 
@@ -113,6 +114,10 @@ The Architect prompt includes four autonomous behavioral protocols:
 | `{"jao": true}` | Configure for JAO (Opus 4.6) | `CLAUDE.md` with Enhanced verification rules |
 | `{"jaz": true}` | Configure for JAZ (GLM-4.7) | `AGENTS.md` with YAML frontmatter + GLM swarm config |
 | `{"isLinkedProject": true, "linkDepth": N}` | Cross-context companion snapshot | Standalone `link_*.md` with depth-scaled content |
+| `{"notebooklm": "hybrid"}` | NotebookLM primary project | Chunked Brain+Body parts for RAG |
+| `{"notebooklm": "link", "linkDepth": N}` | NotebookLM linked project | Chunked companion with depth control |
+| `{"notebooklm": "scout", "linkDepth": N}` | NotebookLM scouted project | Chunked read-only with depth control |
+| `{"notebooklm": "architect"}` | NotebookLM architect mode | Experimental: NLM as Senior Architect |
 | (none) | Standard coder snapshot | Standalone `.md` for any LLM |
 
 ## Important Notes

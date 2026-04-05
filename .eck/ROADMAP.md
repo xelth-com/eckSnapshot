@@ -1,7 +1,6 @@
 # Project Roadmap
 
 ## Current Sprint
-- [ ] NotebookLM-optimized snapshot profiles
 - [ ] Remove `LEGACY_COMMANDS` shim from `cli.js` once all callers use JSON natively
 
 ## Next Phase
@@ -10,6 +9,9 @@
 - [ ] Per-project telemetry isolation (project_id in reports)
 
 ## Completed
+- [x] **NotebookLM Chunked Export** — `notebook` (hybrid), `notebook link N` (linked project), `notebook scout N` (read-only) with Brain+Body architecture, depth-controlled chunking, and system prompt generation. Fixed depth=0 default and chunk size calculation using post-truncation byte length (v6.4.5, 2026-04-05)
+- [x] **Atomic Manifest Editing** — `eck_manifest_edit` MCP tool for token-efficient `.eck/` file editing without reading full files into context (2026-04-04)
+- [x] **Anti-Contamination Guardrails** — Cross-project hallucination prevention in AI context generation (2026-04-04)
 - [x] **Autonomous AI Protocols** — Context Hygiene (smart bloat detection with severity-based response + manual override code words), Proactive Tech Debt scanning, Boy Scout Rule (forced docstring updates), Zero-Broken-Windows (mandatory test pass before commit). Documented in README and `.eck/CONTEXT.md` (2026-03-28)
 - [x] **Polyglot Monorepo Filtering** — `getProjectSpecificFiltering` merges ignore rules from all detected project types (Rust+Android, etc.). Fixed `generateDirectoryTree` substring match bug hiding `build.gradle` files (2026-03-17)
 - [x] **v6.2.1: Refined Depth Scale (0-9)** — Granular 10-level depth for both `scout` and `link`: tree → truncated(10/30/60/100) → skeleton → skeleton+docs → full(500/1000/unlimited). Shared via `depthConfig.js`. Skeletonizer now supports `preserveDocs` option (2026-03-16)
