@@ -431,6 +431,29 @@ scope: core
 
 
 
+
+## 2026-04-05 — Agent Report
+
+# Agent Report
+
+# Task: fix-notebook-depth-and-size
+
+## Changes Applied
+
+### 1. cli.js — Fixed depth argument parsing (lines 60-69)
+- Changed `args[0] ?` / `args[1] ?` to `args[0] !== undefined ?` / `args[1] !== undefined ?` for `scout`, `link`, and `notebook` commands
+- Default depth changed from `5` to `0` for `notebook link` and `notebook scout`
+- **Why:** Truthy check treated `"0"` as falsy, falling back to default. Strict undefined check handles all valid numeric args including 0.
+
+### 2. createSnapshot.js — Fixed chunk size calculation (lines 482-509)
+- Moved `stats.processedSize +=` to AFTER skeletonization and truncation
+- Now uses `Buffer.byteLength(formattedContent, 'utf-8')` instead of `fileStats.size`
+- **Why:** Original code used raw file size from disk. When skeleton mode or truncation reduced content, bin-packing still saw huge sizes, creating many near-empty 2.5MB chunks.
+
+## Verification
+- CLI imports successfully without errors
+- No other files modified
+
 ## 2026-04-04 — Agent Report
 
 # Agent Report
