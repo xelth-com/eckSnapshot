@@ -9,6 +9,8 @@ It also serves as the coordination hub for multi-agent AI coding workflows: gene
 
 ---
 
+> **v6.4.5 Breakthrough:** By analyzing Claude Code's internal source architecture, eckSnapshot now features **native integration** with Anthropic's flagship tool. It no longer generates a monolithic markdown file; it natively wires into Claude's `.claude/` topology — Async Hooks, Native Skills, and Subagents. Claude Code is the recommended environment for eckSnapshot.
+
 ## 📦 Installation
 
 ```bash
@@ -58,9 +60,9 @@ The Coder needs **tool access** (file editing, terminal, MCP) and works locally 
 
 | Tool | Engine | Best For |
 |------|--------|----------|
-| **Claude Code** | Claude Sonnet/Opus 4.6 (1M context) | Primary choice. Deep tool integration, native MCP support, context compaction for long sessions. |
-| **OpenCode** | GLM-4.7 / any model | Cost-effective alternative. AGENTS.md support, GLM Z.AI worker swarm via MCP. |
-| **Codex CLI** | GPT models | OpenAI's coding agent. Auto-configured via `.codex/config.toml`. |
+| **Claude Code** | Claude Sonnet/Opus 4.6 | **Recommended.** Natively integrated into the `.claude/` architecture. Silent background context-syncing, native slash skills (`/eck-scout`), and native subagents. |
+| **OpenCode** | GLM-4.7 / any model | **Solid alternative.** Budget-friendly with `AGENTS.md` support and GLM Z.AI worker swarm via MCP, but lacks the deep background hook integration of Claude Code. |
+| **Codex CLI** | GPT models | OpenAI's coding agent. Basic auto-configuration via `.codex/config.toml`. |
 
 ### MCP Setup (One-Time)
 Register the MCP servers so your Coder agent can auto-commit and sync context:
@@ -164,6 +166,29 @@ Both `scout` and `link` use the same depth scale to control content granularity:
 | **7** | Full (compact) | Full content, truncated at 500 lines per file |
 | **8** | Full (standard) | Full content, truncated at 1000 lines per file |
 | **9** | Full (unlimited) | Everything, no limits |
+
+---
+
+## 🤖 The Claude Code Native Ecosystem (New in v6.4.5)
+
+By analyzing Claude Code's internal architecture, eckSnapshot replaces the old monolithic `CLAUDE.md` approach with a natively injected ecosystem inside your `.claude/` directory:
+
+1. **Async Background Context Sync:** A native `PostToolUse` hook (`async: true`) is injected into Claude's `settings.json`. Every time Claude edits a file, `eck-snapshot update-auto` runs silently in the background — your snapshot context stays current without interrupting the chat flow.
+2. **Native Slash Skills:** Cross-repo exploration is built into Claude's UI. Type `/eck-scout path="../other-repo"` or `/eck-fetch` in the Claude CLI, and it executes the scout protocol as a first-class skill.
+3. **Native Subagents:** Junior Architects (`jas`, `jao`) are injected as native `.claude/agents/`. Claude can spawn them directly via the `AgentTool` for parallel task delegation.
+4. **Modular Rules:** Instructions, Swarm delegation protocols, and manifest loaders are split into `.claude/rules/`, loaded by the LLM only when relevant — no more context-polluting 1000-line `CLAUDE.md` files.
+
+```
+.claude/
+├── rules/01-eck-protocol.md    # Role-specific protocol (coder/jas/jao)
+├── skills/
+│   ├── eck-scout/SKILL.md      # Cross-repo exploration
+│   └── eck-fetch/SKILL.md      # Targeted file extraction
+├── agents/
+│   ├── jas.md                  # Junior Architect (Sonnet)
+│   └── jao.md                  # Junior Architect (Opus)
+└── settings.json               # PostToolUse async hook
+```
 
 ---
 
@@ -278,7 +303,7 @@ eck-snapshot '{"name": "eck_snapshot", "arguments": {"jao": true}}'   # Opus mod
 eck-snapshot '{"name": "eck_snapshot", "arguments": {"jaz": true}}'   # GLM/OpenCode mode
 ```
 
-Each mode generates a snapshot with tailored AI headers and updates the corresponding agent config file (`CLAUDE.md` for jas/jao, `AGENTS.md` for jaz).
+Each mode generates a snapshot with tailored AI headers. For Claude Code (`jas`/`jao`), it natively registers them as subagents in `.claude/agents/` so you can spawn them via Claude's `AgentTool`. For OpenCode (`jaz`), it updates the `AGENTS.md` manifest.
 
 ---
 

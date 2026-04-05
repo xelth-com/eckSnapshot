@@ -432,6 +432,45 @@ scope: core
 
 
 
+
+## 2026-04-05 — Agent Report
+
+# Agent Report
+
+# Task Complete: `ecksnapshot:native-claude-integration`
+
+## What was done
+Refactored `src/utils/claudeMdGenerator.js` to generate a native Claude Code modular hierarchy instead of a monolithic `CLAUDE.md`.
+
+### Generated structure
+```
+CLAUDE.md                          (lightweight entrypoint, ~336 chars)
+.claude/rules/01-eck-protocol.md   (role-specific protocol: coder/jas/jao)
+.claude/skills/eck-scout/SKILL.md  (cross-repo exploration skill)
+.claude/skills/eck-fetch/SKILL.md  (file fetching skill)
+.claude/agents/jas.md              (Junior Architect Sonnet subagent)
+.claude/agents/jao.md              (Junior Architect Opus subagent)
+.claude/settings.json              (PostToolUse async hook for eck-snapshot update-auto)
+```
+
+### Key changes
+- **CLAUDE.md** is now a tiny redirect (~336 chars) pointing to `.claude/` subdirectories
+- **Rules** contain the full delegation protocol with YAML frontmatter (`description` field)
+- **Skills** (`/eck-scout`, `/eck-fetch`) are natively invocable via Claude Code slash commands
+- **Agents** (`jas`, `jao`) can be spawned natively via Claude's `AgentTool`
+- **Hooks** inject `PostToolUse` into `.claude/settings.json` — triggers `eck-snapshot update-auto` asynchronously on Bash/Edit/Write
+- Hook injection is idempotent (checked via `.some()` before adding)
+- Fixed a bug in the architect's provided code: broken arrow function in `hasEckHook` check
+
+### Verification
+- Module loads cleanly (`node -e "import(...)"`), exports `updateClaudeMd`
+- Smoke tested coder mode: all 7 files generated correctly
+- Smoke tested JAS mode with `zh: true`: Sonnet protocol + Chinese language section present
+- Hook idempotency confirmed: running twice produces exactly 1 hook entry
+
+### Interface unchanged
+- `updateClaudeMd(repoPath, mode, tree, confidentialFiles, options)` — same signature, same caller in `createSnapshot.js`
+
 ## 2026-04-05 — Agent Report
 
 # Agent Report
