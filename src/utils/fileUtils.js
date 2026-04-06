@@ -1039,3 +1039,43 @@ export async function initializeEckManifest(projectPath) {
     console.warn(`⚠️  Warning: Could not initialize .eck manifest: ${error.message}`);
   }
 }
+
+// Global hard-ignore patterns (shared between git-based and scan-based file collection)
+const GLOBAL_HARD_IGNORE_DIRS = ['node_modules', '.git', '.idea', '.vscode'];
+const GLOBAL_HARD_IGNORE_FILES = ['package-lock.json', 'yarn.lock', 'pnpm-lock.yaml', 'go.sum'];
+
+function isHiddenPath(filePath) {
+  const parts = filePath.split('/');
+  return parts.some(part => part.startsWith('.') && part !== '.eck');
+}
+
+/**
+ * Gets project files using git ls-files (preferred) or scanDirectoryRecursively as fallback.
+ * Applies global hard-ignore filters and project-specific filtering.
+ */
+export async function getProjectFiles(projectPath, config) {
+  const isGitRepo = await checkGitRepository(projectPath);
+  if (isGitRepo) {
+    const { stdout } = await execa('git', ['ls-files'], { cwd: projectPath });
+    const gitFiles = stdout.split('\n').filter(Boolean);
+
+    const dirsToIgnore = [...GLOBAL_HARD_IGNORE_DIRS, ...(config.dirsToIgnore || []).map(d => d.replace(/\/$/, ''))];
+    const filesToIgnore = [...GLOBAL_HARD_IGNORE_FILES, ...(config.filesToIgnore || [])];
+    const extensionsToIgnore = config.extensionsToIgnore || [];
+
+    const filteredFiles = gitFiles.filter(file => {
+      if (isHiddenPath(file)) return false;
+      const fileName = file.split('/').pop();
+      const fileExt = path.extname(fileName);
+      const pathParts = file.split('/');
+      for (let i = 0; i < pathParts.length - 1; i++) {
+        if (dirsToIgnore.includes(pathParts[i])) return false;
+      }
+      if (filesToIgnore.includes(fileName)) return false;
+      if (fileExt && extensionsToIgnore.includes(fileExt)) return false;
+      return true;
+    });
+    return filteredFiles;
+  }
+  return scanDirectoryRecursively(projectPath, config);
+}
