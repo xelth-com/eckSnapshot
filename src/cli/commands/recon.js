@@ -4,13 +4,15 @@ import chalk from 'chalk';
 import micromatch from 'micromatch';
 import isBinaryPath from 'is-binary-path';
 import {
-  scanDirectoryRecursively,
   generateDirectoryTree,
   generateTimestamp,
   readFileWithSizeCheck,
   parseSize,
-  loadGitignore
+  loadGitignore,
+  getProjectFiles,
+  matchesPattern
 } from '../../utils/fileUtils.js';
+import { detectProjectType, getProjectSpecificFiltering, getAllDetectedTypes } from '../../utils/projectDetector.js';
 import { loadSetupConfig } from '../../config.js';
 import { getDepthConfig, DEPTH_SCALE } from '../../core/depthConfig.js';
 import { skeletonize } from '../../core/skeletonizer.js';
@@ -39,17 +41,37 @@ async function runScout(depth = 0) {
     const repoPath = process.cwd();
     const repoName = path.basename(repoPath);
     const setupConfig = await loadSetupConfig();
-    const config = { ...setupConfig.fileFiltering, ...setupConfig.performance };
+    let config = { ...setupConfig.fileFiltering, ...setupConfig.performance };
+
+    // Apply project-specific filtering (was missing in previous versions)
+    const projectDetection = await detectProjectType(repoPath);
+    const allTypes = getAllDetectedTypes(projectDetection);
+    if (allTypes && allTypes.length > 0) {
+      const projectSpecific = await getProjectSpecificFiltering(allTypes);
+      config = {
+        ...config,
+        dirsToIgnore: [...(config.dirsToIgnore || []), ...(projectSpecific.dirsToIgnore || [])],
+        filesToIgnore: [...(config.filesToIgnore || []), ...(projectSpecific.filesToIgnore || [])],
+        extensionsToIgnore: [...(config.extensionsToIgnore || []), ...(projectSpecific.extensionsToIgnore || [])]
+      };
+    }
 
     // Use a deep maxDepth for scout so the AI can see the full structure
     config.maxDepth = 15;
 
+    // Use getProjectFiles which respects git tracking natively
+    let allFiles = await getProjectFiles(repoPath, config);
     const gitignore = await loadGitignore(repoPath);
-    const rawFiles = await scanDirectoryRecursively(repoPath, config, repoPath);
-    const allFiles = rawFiles.filter(f => {
+
+    // Filter binaries, gitignore/eckignore, and file-level ignores
+    allFiles = allFiles.filter(f => {
       const normalized = f.replace(/\\/g, '/');
-      return !gitignore.ignores(normalized) && !isBinaryPath(f);
+      if (isBinaryPath(f)) return false;
+      if (gitignore.ignores(normalized)) return false;
+      if (config.filesToIgnore && matchesPattern(normalized, config.filesToIgnore)) return false;
+      return true;
     });
+
     const directoryTree = await generateDirectoryTree(repoPath, '', allFiles, 0, config.maxDepth, config);
 
     // Build file contents section if depth > 0
@@ -160,13 +182,30 @@ async function runFetch(patterns) {
     const repoName = path.basename(repoPath);
     const repoPathNorm = repoPath.replace(/\\/g, '/').replace(/\/$/, '') + '/';
     const setupConfig = await loadSetupConfig();
-    const config = { ...setupConfig.fileFiltering, ...setupConfig.performance };
+    let config = { ...setupConfig.fileFiltering, ...setupConfig.performance };
 
+    // Apply project-specific filtering
+    const projectDetection = await detectProjectType(repoPath);
+    const allTypes = getAllDetectedTypes(projectDetection);
+    if (allTypes && allTypes.length > 0) {
+      const projectSpecific = await getProjectSpecificFiltering(allTypes);
+      config = {
+        ...config,
+        dirsToIgnore: [...(config.dirsToIgnore || []), ...(projectSpecific.dirsToIgnore || [])],
+        filesToIgnore: [...(config.filesToIgnore || []), ...(projectSpecific.filesToIgnore || [])],
+        extensionsToIgnore: [...(config.extensionsToIgnore || []), ...(projectSpecific.extensionsToIgnore || [])]
+      };
+    }
+
+    let allFiles = await getProjectFiles(repoPath, config);
     const gitignore = await loadGitignore(repoPath);
-    const rawFiles = await scanDirectoryRecursively(repoPath, config, repoPath);
-    const allFiles = rawFiles.filter(f => {
+
+    allFiles = allFiles.filter(f => {
       const normalized = f.replace(/\\/g, '/');
-      return !gitignore.ignores(normalized) && !isBinaryPath(f);
+      if (isBinaryPath(f)) return false;
+      if (gitignore.ignores(normalized)) return false;
+      if (config.filesToIgnore && matchesPattern(normalized, config.filesToIgnore)) return false;
+      return true;
     });
 
     // Normalize patterns: strip absolute cwd prefix, convert backslashes,
