@@ -433,6 +433,31 @@ scope: core
 
 
 
+
+## 2026-04-05 — Agent Report
+
+# Agent Report
+
+# Task Complete: `ecksnapshot:update-readme-claude-integration`
+
+## What was done
+Updated README.md to reflect the v6.4.5 native Claude Code integration:
+
+1. **Breakthrough banner** added below the title, highlighting the native `.claude/` integration
+2. **Coder Agent table** reclassified — Claude Code marked as "Recommended" with native features listed, OpenCode as "Solid alternative"
+3. **New section "The Claude Code Native Ecosystem"** added before Core Features, explaining:
+   - Async background context sync (PostToolUse hook)
+   - Native slash skills (`/eck-scout`, `/eck-fetch`)
+   - Native subagents (`jas`, `jao`)
+   - Modular rules (`.claude/rules/`)
+   - Includes a directory tree diagram of the `.claude/` structure
+4. **Multi-Agent Usage section** updated to mention native subagent registration and `AgentTool` spawning
+
+### Added from my own perspective
+- Directory tree visualization of the generated `.claude/` structure for clarity
+- Kept the tone professional without excessive marketing language
+- Preserved all existing content (NotebookLM, cross-context, etc.) intact
+
 ## 2026-04-05 — Agent Report
 
 # Agent Report
