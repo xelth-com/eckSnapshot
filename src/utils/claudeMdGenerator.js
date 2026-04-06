@@ -74,6 +74,11 @@ If the human user types **\`[SYNC]\`**, immediately suspend feature development 
 /**
  * Injects async background hooks into the project's .claude/settings.json
  */
+/**
+ * Cleans up the legacy spammy PostToolUse hook from .claude/settings.json.
+ * Previously injected an 'update-auto' hook on every Edit/Bash/Write tool use,
+ * causing snapshot spam (up1, up2, up3...). Snapshots are now deferred to eck_finish_task.
+ */
 async function setupClaudeHooks(repoPath) {
   const settingsPath = path.join(repoPath, '.claude', 'settings.json');
   let config = {};
@@ -81,32 +86,37 @@ async function setupClaudeHooks(repoPath) {
   try {
     const content = await fs.readFile(settingsPath, 'utf-8');
     config = JSON.parse(content);
-  } catch (e) { /* File doesn't exist or invalid JSON */ }
+  } catch (e) {
+    // File doesn't exist or invalid JSON — nothing to clean up
+    return;
+  }
 
-  if (!config.hooks) config.hooks = {};
+  let modified = false;
 
-  // Create a background update hook that triggers when Claude writes files
-  config.hooks.PostToolUse = config.hooks.PostToolUse || [];
+  if (config.hooks && config.hooks.PostToolUse) {
+    const originalLength = config.hooks.PostToolUse.length;
 
-  // Check if we already injected our hook to avoid duplication
-  const hasEckHook = config.hooks.PostToolUse.some(h =>
-    h.hooks && h.hooks.some(hc => hc.command?.includes('eck-snapshot update-auto'))
-  );
+    // Remove the eck-snapshot update-auto hook
+    config.hooks.PostToolUse = config.hooks.PostToolUse.filter(h =>
+      !(h.hooks && h.hooks.some(hc => hc.command?.includes('eck-snapshot update-auto')))
+    );
 
-  if (!hasEckHook) {
-    config.hooks.PostToolUse.push({
-      matcher: "Bash|Edit|Write",
-      hooks: [
-        {
-          type: "command",
-          command: "eck-snapshot update-auto",
-          async: true,
-          statusMessage: "Updating eckSnapshot context in background..."
-        }
-      ]
-    });
+    if (config.hooks.PostToolUse.length < originalLength) {
+      modified = true;
+    }
 
-    await fs.mkdir(path.dirname(settingsPath), { recursive: true });
+    // Clean up empty PostToolUse array
+    if (config.hooks.PostToolUse.length === 0) {
+      delete config.hooks.PostToolUse;
+    }
+
+    // Clean up empty hooks object
+    if (Object.keys(config.hooks).length === 0) {
+      delete config.hooks;
+    }
+  }
+
+  if (modified) {
     await fs.writeFile(settingsPath, JSON.stringify(config, null, 2), 'utf-8');
   }
 }
