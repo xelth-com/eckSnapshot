@@ -434,6 +434,28 @@ scope: core
 
 
 
+
+## 2026-04-06 — Agent Report
+
+# Agent Report
+
+## Completed Tasks
+
+### 1. Fix `recon.js` scout/fetch using wrong file collection pipeline
+- **Problem:** `recon.js` used `scanDirectoryRecursively` (filesystem walk) instead of `git ls-files`, picking up untracked build artifacts and ignoring project-specific exclusion rules. This caused depth 5 and depth 9 snapshots to be nearly identical in size.
+- **Fix:** Extracted `getProjectFiles()` from `createSnapshot.js` into `fileUtils.js` as a shared export. Rewired both `runScout()` and `runFetch()` in `recon.js` to use it, plus `detectProjectType` + `getProjectSpecificFiltering` for project-aware exclusions.
+- **Files changed:** `src/utils/fileUtils.js`, `src/cli/commands/createSnapshot.js`, `src/cli/commands/recon.js`
+
+### 2. Remove spammy PostToolUse update hook
+- **Problem:** `setupClaudeHooks()` in `claudeMdGenerator.js` injected an `eck-snapshot update-auto` hook on every Edit/Bash/Write tool use, causing snapshot spam (up1, up2, up3...) during intermediate agent steps.
+- **Fix:** Replaced the hook injection logic with a cleanup function that actively removes the legacy hook from existing `.claude/settings.json` files. Snapshots are now strictly deferred to `eck_finish_task`.
+- **Files changed:** `src/utils/claudeMdGenerator.js`
+
+### Verification
+- All modified modules import successfully (no broken imports)
+- `eck-snapshot scout 0` → 4.7 KB (~1.0k tokens) ✅
+- `eck-snapshot scout 5` → 152.1 KB (~38.6k tokens, 55 files) ✅
+
 ## 2026-04-05 — Agent Report
 
 # Agent Report
