@@ -233,6 +233,211 @@ function skeletonizeTreeSitter(content, language, ext, preserveDocs = true) {
 }
 
 /**
+ * Regex-based fallback skeletonizer for when tree-sitter is unavailable.
+ * Works by counting braces to find and hollow out function bodies.
+ * Supports: Rust, Go, Java, C/C++, Python, and other brace-based languages.
+ */
+function skeletonizeRegex(content, ext, preserveDocs = true) {
+    if (ext === '.py') {
+        return skeletonizePythonRegex(content, preserveDocs);
+    }
+    // Brace-based languages (Rust, Go, Java, C, C++, etc.)
+    return skeletonizeBraceRegex(content, ext, preserveDocs);
+}
+
+/**
+ * Skeleton for brace-based languages: finds function/method signatures
+ * and replaces their bodies with { /* ... * / }
+ */
+function skeletonizeBraceRegex(content, ext, preserveDocs) {
+    const lines = content.split('\n');
+    const result = [];
+    let i = 0;
+
+    // Patterns that indicate a function/method definition line
+    // We look for lines ending with '{' that look like function signatures
+    const fnPatterns = {
+        '.rs': /^\s*(?:pub\s+)?(?:async\s+)?(?:unsafe\s+)?(?:fn|impl)\s+/,
+        '.go': /^\s*func\s+/,
+        '.java': /^\s*(?:public|private|protected|static|final|abstract|synchronized|native|\s)*\s+\w+\s*\([^)]*\)\s*(?:throws\s+\w+(?:\s*,\s*\w+)*)?\s*\{?\s*$/,
+        '.kt': /^\s*(?:(?:public|private|protected|internal|override|open|abstract|suspend|inline|fun)\s+)+/,
+        '.c': null, // use generic detection
+        '.h': null,
+        '.cpp': null,
+        '.hpp': null,
+    };
+
+    const fnPattern = fnPatterns[ext] || null;
+
+    while (i < lines.length) {
+        const line = lines[i];
+        const trimmed = line.trimStart();
+
+        // Skip doc comments if !preserveDocs
+        if (!preserveDocs) {
+            // Block doc comments: /** ... */ or /// lines
+            if (trimmed.startsWith('///') || trimmed.startsWith('//!')) {
+                i++;
+                continue;
+            }
+            if (trimmed.startsWith('/**') || trimmed.startsWith('/*!')) {
+                while (i < lines.length && !lines[i].includes('*/')) {
+                    i++;
+                }
+                i++; // skip the closing */
+                continue;
+            }
+        }
+
+        // Check if this line starts a function definition
+        let isFnLine = false;
+        if (fnPattern) {
+            isFnLine = fnPattern.test(line);
+        } else {
+            // Generic C/C++ heuristic: line has parens and ends with or is followed by {
+            isFnLine = /\w+\s*\([^;]*\)\s*\{?\s*$/.test(trimmed) && !trimmed.startsWith('if') &&
+                !trimmed.startsWith('while') && !trimmed.startsWith('for') &&
+                !trimmed.startsWith('switch') && !trimmed.startsWith('#');
+        }
+
+        // For Rust: also handle impl blocks — keep them but skeleton their methods
+        if (isFnLine) {
+            // Find the opening brace (may be on same line or next line)
+            let sigLines = [line];
+            let j = i + 1;
+
+            // If no opening brace on this line, scan ahead for it
+            if (!line.includes('{')) {
+                while (j < lines.length) {
+                    sigLines.push(lines[j]);
+                    if (lines[j].includes('{')) {
+                        j++;
+                        break;
+                    }
+                    j++;
+                }
+            } else {
+                // Opening brace is on the signature line
+            }
+
+            // Now count braces to find the end of the body
+            let braceCount = 0;
+            let bodyStart = i;
+            let bodyEnd = i;
+            let foundOpen = false;
+
+            for (let k = i; k < (foundOpen ? lines.length : j); k++) {
+                for (const ch of lines[k]) {
+                    if (ch === '{') { braceCount++; foundOpen = true; }
+                    if (ch === '}') braceCount--;
+                }
+                bodyEnd = k;
+                if (foundOpen && braceCount === 0) break;
+            }
+
+            // If we didn't finish counting, continue from j
+            if (foundOpen && braceCount > 0) {
+                for (let k = j; k < lines.length; k++) {
+                    for (const ch of lines[k]) {
+                        if (ch === '{') braceCount++;
+                        if (ch === '}') braceCount--;
+                    }
+                    bodyEnd = k;
+                    if (braceCount === 0) break;
+                }
+            }
+
+            if (foundOpen && braceCount === 0) {
+                // Emit signature (up to opening brace) + skeleton
+                const sigText = sigLines.join('\n');
+                const braceIdx = sigText.indexOf('{');
+                const signature = sigText.substring(0, braceIdx).trimEnd();
+                const indent = line.match(/^(\s*)/)[1];
+                result.push(signature + ' { /* ... */ }');
+                i = bodyEnd + 1;
+                continue;
+            }
+        }
+
+        result.push(line);
+        i++;
+    }
+
+    return result.join('\n');
+}
+
+/**
+ * Skeleton for Python: finds function/class defs and replaces bodies with ...
+ */
+function skeletonizePythonRegex(content, preserveDocs) {
+    const lines = content.split('\n');
+    const result = [];
+    let i = 0;
+
+    while (i < lines.length) {
+        const line = lines[i];
+        const trimmed = line.trimStart();
+        const indent = line.length - trimmed.length;
+
+        if (/^(async\s+)?def\s+/.test(trimmed) || /^class\s+/.test(trimmed)) {
+            result.push(line);
+            i++;
+
+            // Determine body indent (should be > current indent)
+            const bodyIndent = indent + 4; // standard Python indent
+
+            // Check for docstring
+            if (i < lines.length) {
+                const nextTrimmed = lines[i].trimStart();
+                if (preserveDocs && (nextTrimmed.startsWith('"""') || nextTrimmed.startsWith("'''"))) {
+                    const quote = nextTrimmed.substring(0, 3);
+                    // Emit docstring lines
+                    if (nextTrimmed.indexOf(quote, 3) > 0) {
+                        // Single-line docstring
+                        result.push(lines[i]);
+                        i++;
+                    } else {
+                        // Multi-line docstring
+                        result.push(lines[i]);
+                        i++;
+                        while (i < lines.length && !lines[i].trimStart().includes(quote)) {
+                            result.push(lines[i]);
+                            i++;
+                        }
+                        if (i < lines.length) {
+                            result.push(lines[i]); // closing quote line
+                            i++;
+                        }
+                    }
+                }
+            }
+
+            // Add ... and skip body
+            result.push(' '.repeat(bodyIndent) + '...');
+
+            // Skip remaining body lines (lines with indent > current def indent)
+            while (i < lines.length) {
+                const bodyLine = lines[i];
+                const bodyTrimmed = bodyLine.trimStart();
+                const bodyLineIndent = bodyLine.length - bodyTrimmed.length;
+                // Empty lines or lines indented more than the def are part of body
+                if (bodyTrimmed === '' || bodyLineIndent > indent) {
+                    i++;
+                } else {
+                    break;
+                }
+            }
+            continue;
+        }
+
+        result.push(line);
+        i++;
+    }
+
+    return result.join('\n');
+}
+
+/**
  * Extract Python docstring from the first statement of a function body block.
  */
 function extractPythonDocstring(bodyNode) {
