@@ -88,11 +88,12 @@ export async function skeletonize(content, filePath, options = {}) {
         if (available && Parser && langModule) {
             return skeletonizeTreeSitter(content, langModule, ext, preserveDocs);
         }
-        return content; // Fallback: return original content if tree-sitter unavailable
+        // Fallback to regex-based skeletonizer when tree-sitter is unavailable
+        return skeletonizeRegex(content, ext, preserveDocs);
     }
 
-    // 3. Fallback (Return as is)
-    return content;
+    // 3. Fallback for other languages — try regex if it uses braces
+    return skeletonizeRegex(content, filePath.substring(filePath.lastIndexOf('.')), preserveDocs);
 }
 
 function skeletonizeJs(content, preserveDocs = true) {
