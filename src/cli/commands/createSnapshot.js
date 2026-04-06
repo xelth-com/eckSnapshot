@@ -15,7 +15,7 @@ import {
   scanDirectoryRecursively, loadGitignore, readFileWithSizeCheck,
   generateDirectoryTree, loadConfig, displayProjectInfo, loadProjectEckManifest,
   ensureSnapshotsInGitignore, initializeEckManifest, generateTimestamp,
-  getShortRepoName, SecretScanner
+  getShortRepoName, SecretScanner, getProjectFiles
 } from '../../utils/fileUtils.js';
 import { detectProjectType, getProjectSpecificFiltering, getAllDetectedTypes } from '../../utils/projectDetector.js';
 import { estimateTokensWithPolynomial, generateTrainingCommand } from '../../utils/tokenEstimator.js';
@@ -201,47 +201,7 @@ function generateClaudeMdContent(confidentialFiles, repoPath) {
   return content.join('\n');
 }
 
-// Global hard-ignore patterns (must match exactly in scanDirectoryRecursively)
-const GLOBAL_HARD_IGNORE_DIRS = ['node_modules', '.git', '.idea', '.vscode'];
-const GLOBAL_HARD_IGNORE_FILES = ['package-lock.json', 'yarn.lock', 'pnpm-lock.yaml', 'go.sum'];
-
-function shouldHardIgnore(entryName, isDirectory) {
-  if (isDirectory) {
-    return GLOBAL_HARD_IGNORE_DIRS.includes(entryName);
-  }
-  return GLOBAL_HARD_IGNORE_FILES.includes(entryName);
-}
-
-async function getProjectFiles(projectPath, config) {
-  const isGitRepo = await checkGitRepository(projectPath);
-  if (isGitRepo) {
-    const { stdout } = await execa('git', ['ls-files'], { cwd: projectPath });
-    const gitFiles = stdout.split('\n').filter(Boolean);
-
-    // Build effective dirsToIgnore list (global hard-ignores + config)
-    const dirsToIgnore = [...GLOBAL_HARD_IGNORE_DIRS, ...(config.dirsToIgnore || []).map(d => d.replace(/\/$/, ''))];
-    const filesToIgnore = [...GLOBAL_HARD_IGNORE_FILES, ...(config.filesToIgnore || [])];
-    const extensionsToIgnore = config.extensionsToIgnore || [];
-
-    const filteredFiles = gitFiles.filter(file => {
-      if (isHiddenPath(file)) return false;
-      const fileName = file.split('/').pop();
-      const fileExt = path.extname(fileName);
-      // Check if any parent directory should be ignored
-      const pathParts = file.split('/');
-      for (let i = 0; i < pathParts.length - 1; i++) {
-        if (dirsToIgnore.includes(pathParts[i])) return false;
-      }
-      // Check filesToIgnore
-      if (filesToIgnore.includes(fileName)) return false;
-      // Check extensionsToIgnore
-      if (fileExt && extensionsToIgnore.includes(fileExt)) return false;
-      return true;
-    });
-    return filteredFiles;
-  }
-  return scanDirectoryRecursively(projectPath, config);
-}
+// getProjectFiles is now imported from fileUtils.js
 
 async function getGitCommitHash(projectPath) {
   try {
