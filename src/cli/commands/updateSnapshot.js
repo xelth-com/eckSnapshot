@@ -5,7 +5,7 @@ import chalk from 'chalk';
 import isBinaryPath from 'is-binary-path';
 import { getGitAnchor, getChangedFiles } from '../../utils/gitUtils.js';
 import { loadSetupConfig } from '../../config.js';
-import { readFileWithSizeCheck, parseSize, formatSize, matchesPattern, loadGitignore, generateTimestamp, getShortRepoName } from '../../utils/fileUtils.js';
+import { readFileWithSizeCheck, parseSize, formatSize, matchesPattern, loadGitignore, generateTimestamp, getShortRepoName, ensureSnapshotsInGitignore } from '../../utils/fileUtils.js';
 import { detectProjectType, getProjectSpecificFiltering } from '../../utils/projectDetector.js';
 import { execa } from 'execa';
 import { fileURLToPath } from 'url';
@@ -247,6 +247,7 @@ export async function updateSnapshot(repoPath, options) {
     const outputPath = path.join(repoPath, '.eck', 'snapshots', outputFilename);
 
     await fs.mkdir(path.dirname(outputPath), { recursive: true });
+    await ensureSnapshotsInGitignore(repoPath);
     await fs.writeFile(outputPath, fullContent);
 
     spinner.succeed(`Update snapshot created: .eck/snapshots/${outputFilename}`);
@@ -352,6 +353,7 @@ export async function updateSnapshotJson(repoPath, options = {}) {
     const outputFilename = `eck${shortRepoName}${timestamp}_${anchor.substring(0, 7)}_up${seqStr}_${sizeKB}kb.md`;
     const outputPath = path.join(repoPath, '.eck', 'snapshots', outputFilename);
     await fs.mkdir(path.dirname(outputPath), { recursive: true });
+    await ensureSnapshotsInGitignore(repoPath);
     await fs.writeFile(outputPath, fullContent);
 
     // --- FEATURE: Active Snapshot (.eck/lastsnapshot/) ---

@@ -6,6 +6,7 @@ import chalk from 'chalk';
 import { createRequire } from 'module';
 import os from 'os';
 import crypto from 'crypto';
+import { ensureSnapshotsInGitignore } from '../utils/fileUtils.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -163,6 +164,7 @@ Ranked by frequency of use:
         queue.feedback.push({ type, message: msg, date: new Date().toISOString() });
 
         await fs.mkdir(path.dirname(queuePath), { recursive: true }).catch(() => {});
+        await ensureSnapshotsInGitignore(process.cwd()).catch(() => {});
         await fs.writeFile(queuePath, JSON.stringify(queue, null, 2));
 
         console.log(chalk.green('Feedback saved locally. It will be sent to developers during the next telemetry sync.'));
@@ -218,6 +220,7 @@ Ranked by frequency of use:
             } catch(e) { /* no existing queue */ }
             queue.usage[toolName] = (queue.usage[toolName] || 0) + 1;
             await fs.mkdir(path.dirname(queuePath), { recursive: true }).catch(() => {});
+            await ensureSnapshotsInGitignore(cwd).catch(() => {});
             await fs.writeFile(queuePath, JSON.stringify(queue, null, 2));
           } catch(e) { /* ignore tracking errors */ }
         }
@@ -265,6 +268,7 @@ Ranked by frequency of use:
             } catch(e) { /* no existing queue */ }
             queue.errors.push({ tool: toolName, error: err.message, date: new Date().toISOString() });
             await fs.mkdir(path.dirname(queuePath), { recursive: true }).catch(() => {});
+            await ensureSnapshotsInGitignore(cwd).catch(() => {});
             await fs.writeFile(queuePath, JSON.stringify(queue, null, 2));
           } catch(e) { /* ignore tracking errors */ }
         }

@@ -6,6 +6,7 @@ import ora from 'ora';
 import os from 'os';
 import { execa } from 'execa';
 import { fileURLToPath } from 'url';
+import { ensureSnapshotsInGitignore } from '../../utils/fileUtils.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -218,6 +219,7 @@ async function setupForClaude(packageRoot, eckCorePath, glmZaiPath, options, pro
 
   try {
     await fs.mkdir(path.dirname(localConfigPath), { recursive: true });
+    await ensureSnapshotsInGitignore(projectRoot);
     await fs.writeFile(localConfigPath, JSON.stringify(localConfig, null, 2));
     spinner.succeed(`Local config updated: ${chalk.cyan(localConfigPath)}`);
   } catch (e) {

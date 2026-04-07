@@ -10,7 +10,8 @@ import {
   parseSize,
   loadGitignore,
   getProjectFiles,
-  matchesPattern
+  matchesPattern,
+  ensureSnapshotsInGitignore
 } from '../../utils/fileUtils.js';
 import { detectProjectType, getProjectSpecificFiltering, getAllDetectedTypes } from '../../utils/projectDetector.js';
 import { loadSetupConfig } from '../../config.js';
@@ -160,6 +161,7 @@ ${directoryTree}
     }
 
     await fs.mkdir(path.join(repoPath, '.eck', 'scouts'), { recursive: true });
+    await ensureSnapshotsInGitignore(repoPath);
     const outputPath = path.join(repoPath, '.eck', 'scouts', filename);
     await fs.writeFile(outputPath, outputContent, 'utf-8');
 
@@ -267,6 +269,7 @@ ${fileContentStr}
 `;
 
     await fs.mkdir(path.join(repoPath, '.eck', 'scouts'), { recursive: true });
+    await ensureSnapshotsInGitignore(repoPath);
     const outputPath = path.join(repoPath, '.eck', 'scouts', filename);
     await fs.writeFile(outputPath, finalContent, 'utf-8');
 
