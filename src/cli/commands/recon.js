@@ -11,7 +11,8 @@ import {
   loadGitignore,
   getProjectFiles,
   matchesPattern,
-  ensureSnapshotsInGitignore
+  ensureSnapshotsInGitignore,
+  readMlModelMetadata
 } from '../../utils/fileUtils.js';
 import { detectProjectType, getProjectSpecificFiltering, getAllDetectedTypes } from '../../utils/projectDetector.js';
 import { loadSetupConfig } from '../../config.js';
@@ -67,7 +68,9 @@ async function runScout(depth = 0) {
     // Filter binaries, gitignore/eckignore, and file-level ignores
     allFiles = allFiles.filter(f => {
       const normalized = f.replace(/\\/g, '/');
-      if (isBinaryPath(f)) return false;
+      const mlExt = path.extname(f).toLowerCase();
+      const ML_EXTENSIONS = ['.safetensors', '.onnx', '.pt', '.pth', '.h5', '.pb', '.bin', '.ckpt', '.gguf'];
+      if (isBinaryPath(f) && !ML_EXTENSIONS.includes(mlExt)) return false;
       if (gitignore.ignores(normalized)) return false;
       if (config.filesToIgnore && matchesPattern(normalized, config.filesToIgnore)) return false;
       return true;
@@ -84,7 +87,15 @@ async function runScout(depth = 0) {
       for (const file of allFiles) {
         try {
           const fullPath = path.join(repoPath, file);
-          let content = await readFileWithSizeCheck(fullPath, maxFileSize);
+          const mlExt = path.extname(file).toLowerCase();
+          const ML_EXTENSIONS = ['.safetensors', '.onnx', '.pt', '.pth', '.h5', '.pb', '.bin', '.ckpt', '.gguf'];
+
+          let content;
+          if (ML_EXTENSIONS.includes(mlExt)) {
+            content = await readMlModelMetadata(fullPath);
+          } else {
+            content = await readFileWithSizeCheck(fullPath, maxFileSize);
+          }
 
           // Apply skeletonization
           if (depthCfg.skeleton) {
@@ -204,7 +215,9 @@ async function runFetch(patterns) {
 
     allFiles = allFiles.filter(f => {
       const normalized = f.replace(/\\/g, '/');
-      if (isBinaryPath(f)) return false;
+      const mlExt = path.extname(f).toLowerCase();
+      const ML_EXTENSIONS = ['.safetensors', '.onnx', '.pt', '.pth', '.h5', '.pb', '.bin', '.ckpt', '.gguf'];
+      if (isBinaryPath(f) && !ML_EXTENSIONS.includes(mlExt)) return false;
       if (gitignore.ignores(normalized)) return false;
       if (config.filesToIgnore && matchesPattern(normalized, config.filesToIgnore)) return false;
       return true;
@@ -245,7 +258,16 @@ async function runFetch(patterns) {
     for (const file of matchedFiles) {
       try {
         const fullPath = path.join(repoPath, file);
-        const content = await readFileWithSizeCheck(fullPath, maxFileSize);
+        const mlExt = path.extname(file).toLowerCase();
+        const ML_EXTENSIONS = ['.safetensors', '.onnx', '.pt', '.pth', '.h5', '.pb', '.bin', '.ckpt', '.gguf'];
+
+        let content;
+        if (ML_EXTENSIONS.includes(mlExt)) {
+          content = await readMlModelMetadata(fullPath);
+        } else {
+          content = await readFileWithSizeCheck(fullPath, maxFileSize);
+        }
+
         fileContentStr += `--- File: /${file} ---\n\n\`\`\`\n${content}\n\`\`\`\n\n`;
         fetchedCount++;
       } catch (e) {

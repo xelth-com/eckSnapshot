@@ -436,6 +436,30 @@ scope: core
 
 
 
+
+## 2026-04-12 — Agent Report
+
+# Agent Report
+
+## Task: Polish & Tech Debt — Hard-ignore refactor + ML extensions
+
+### What was done
+
+1. **Added `.ckpt` and `.gguf` to ML_EXTENSIONS** in both `createSnapshot.js` and `updateSnapshot.js` — these are common checkpoint/quantized model formats.
+
+2. **Refactored `fileUtils.js` hard-ignore lists** (TECH_DEBT item):
+   - Moved `GLOBAL_HARD_IGNORE_DIRS` and `GLOBAL_HARD_IGNORE_FILES` constants to the top of the file (after imports)
+   - Updated the top-level constants to include `.gradle`, `build`, `__pycache__` (previously only in inline checks, not the bottom constants)
+   - Replaced verbose inline `if/else` chains in `scanDirectoryRecursively()` and `generateDirectoryTree()` with clean `.includes()` calls against the shared constants
+   - Deleted the duplicate constant declarations at the bottom of the file (line ~1072)
+
+### Files changed
+- `src/utils/fileUtils.js` — constants moved to top, inline checks simplified, bottom duplicates removed
+- `src/cli/commands/createSnapshot.js` — added `.ckpt`, `.gguf` to ML_EXTENSIONS
+- `src/cli/commands/updateSnapshot.js` — same
+
+### No issues remain
+
 ## 2026-04-12 — Agent Report
 
 # Agent Report
