@@ -15,7 +15,7 @@ import {
   scanDirectoryRecursively, loadGitignore, readFileWithSizeCheck,
   generateDirectoryTree, loadConfig, displayProjectInfo, loadProjectEckManifest,
   ensureSnapshotsInGitignore, initializeEckManifest, generateTimestamp,
-  getShortRepoName, SecretScanner, getProjectFiles
+  getShortRepoName, SecretScanner, getProjectFiles, readMlModelMetadata
 } from '../../utils/fileUtils.js';
 import { detectProjectType, getProjectSpecificFiltering, getAllDetectedTypes } from '../../utils/projectDetector.js';
 import { estimateTokensWithPolynomial, generateTrainingCommand } from '../../utils/tokenEstimator.js';
@@ -394,8 +394,12 @@ async function processProjectFiles(repoPath, options, config, projectTypes = nul
           return null;
         }
 
-        // Check if binary file
-        if (isBinaryPath(filePath)) {
+        const mlExt = path.extname(filePath).toLowerCase();
+        const ML_EXTENSIONS = ['.safetensors', '.onnx', '.pt', '.pth', '.h5', '.pb', '.bin'];
+        const isMlModel = ML_EXTENSIONS.includes(mlExt);
+
+        // Check if binary file (bypass if it's an ML model we want to peek into)
+        if (isBinaryPath(filePath) && !isMlModel) {
           stats.binaryFiles++;
           trackSkippedFile(normalizedPath, 'Binary files');
           return null;
@@ -421,13 +425,18 @@ async function processProjectFiles(repoPath, options, config, projectTypes = nul
         stats.totalSize += fileStats.size;
 
         const maxFileSize = parseSize(config.maxFileSize);
-        if (fileStats.size > maxFileSize) {
-          stats.oversizedFiles++;
-          trackSkippedFile(normalizedPath, `File too large (${formatSize(fileStats.size)} > ${formatSize(maxFileSize)})`);
-          return null;
-        }
+        let content;
 
-        let content = await readFileWithSizeCheck(fullPath, maxFileSize);
+        if (isMlModel) {
+          content = await readMlModelMetadata(fullPath);
+        } else {
+          if (fileStats.size > maxFileSize) {
+            stats.oversizedFiles++;
+            trackSkippedFile(normalizedPath, `File too large (${formatSize(fileStats.size)} > ${formatSize(maxFileSize)})`);
+            return null;
+          }
+          content = await readFileWithSizeCheck(fullPath, maxFileSize);
+        }
 
         // Security scan for secrets
         if (config.security?.scanForSecrets !== false) {

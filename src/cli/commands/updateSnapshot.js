@@ -5,7 +5,7 @@ import chalk from 'chalk';
 import isBinaryPath from 'is-binary-path';
 import { getGitAnchor, getChangedFiles } from '../../utils/gitUtils.js';
 import { loadSetupConfig } from '../../config.js';
-import { readFileWithSizeCheck, parseSize, formatSize, matchesPattern, loadGitignore, generateTimestamp, getShortRepoName, ensureSnapshotsInGitignore } from '../../utils/fileUtils.js';
+import { readFileWithSizeCheck, parseSize, formatSize, matchesPattern, loadGitignore, generateTimestamp, getShortRepoName, ensureSnapshotsInGitignore, readMlModelMetadata } from '../../utils/fileUtils.js';
 import { detectProjectType, getProjectSpecificFiltering } from '../../utils/projectDetector.js';
 import { execa } from 'execa';
 import { fileURLToPath } from 'url';
@@ -103,8 +103,12 @@ async function generateSnapshotContent(repoPath, changedFiles, anchor, config, g
     // Skip hidden paths (.idea/, .vscode/, etc.) — mirrors createSnapshot.js
     if (isHiddenPath(normalizedPath)) continue;
 
+    const mlExt = path.extname(filePath).toLowerCase();
+    const ML_EXTENSIONS = ['.safetensors', '.onnx', '.pt', '.pth', '.h5', '.pb', '.bin'];
+    const isMlModel = ML_EXTENSIONS.includes(mlExt);
+
     // Skip binary files — mirrors createSnapshot.js
-    if (isBinaryPath(filePath)) continue;
+    if (isBinaryPath(filePath) && !isMlModel) continue;
 
     const pathParts = normalizedPath.split('/');
     let isIgnoredDir = false;
@@ -135,7 +139,13 @@ async function generateSnapshotContent(repoPath, changedFiles, anchor, config, g
         continue;
       }
 
-      const content = await readFileWithSizeCheck(fullPath, parseSize(config.maxFileSize));
+      let content;
+      if (isMlModel) {
+          content = await readMlModelMetadata(fullPath);
+      } else {
+          content = await readFileWithSizeCheck(fullPath, parseSize(config.maxFileSize));
+      }
+
       contentOutput += `--- File: /${normalizedPath} ---\n\n${content}\n\n`;
       fileList.push(`- ${normalizedPath} (Modified/Added)`);
       includedCount++;

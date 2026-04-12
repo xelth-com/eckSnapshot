@@ -1,6 +1,34 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { execa } from 'execa';
+
+/**
+ * Safely extracts metadata headers from Large ML models without loading them into memory.
+ */
+export async function readMlModelMetadata(filePath) {
+  let fileHandle;
+  try {
+    fileHandle = await fs.open(filePath, 'r');
+    const stats = await fileHandle.stat();
+    const readSize = Math.min(stats.size, 4096); // Read only the first 4KB
+    const buffer = Buffer.alloc(readSize);
+    await fileHandle.read(buffer, 0, readSize, 0);
+
+    let text = buffer.toString('utf8');
+    // Extract printable characters, keeping JSON structure intact, remove binary gibberish
+    let cleanText = text.replace(/[^\x20-\x7E\n\r\t"{}\[\]:,]/g, '').trim();
+
+    if (cleanText.length > 2000) {
+      cleanText = cleanText.substring(0, 2000) + '\n...';
+    }
+
+    return `[ML MODEL METADATA EXTRACTED]\nSize: ${formatSize(stats.size)}\n\nHeader Preview:\n${cleanText}\n\n[... BINARY DATA TRUNCATED ...]`;
+  } catch (error) {
+    return `[ML MODEL - Could not extract metadata: ${error.message}]`;
+  } finally {
+    if (fileHandle) await fileHandle.close();
+  }
+}
 import ignore from 'ignore';
 import { detectProjectType, getProjectSpecificFiltering, getAllDetectedTypes } from './projectDetector.js';
 import { getProfile, loadSetupConfig } from '../config.js';
