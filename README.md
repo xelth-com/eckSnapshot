@@ -200,6 +200,7 @@ By analyzing Claude Code's internal architecture, eckSnapshot replaces the old m
 * **📁 The `.eck/` Manifest:** Automatically maintains project context files (`CONTEXT.md`, `ROADMAP.md`, `TECH_DEBT.md`). Dynamic scanning — any `.md` file you add to `.eck/` is automatically included in snapshots.
 * **☠️ Skeleton Mode:** Uses Tree-sitter and Babel to strip function bodies, drastically reducing token count for huge codebases.
 * **📚 NotebookLM Export:** Semantic chunking for Google's NotebookLM with "Brain + Body" architecture (see below).
+* **🧪 ML Model Compatibility:** Smart metadata extraction for `.safetensors`, `.onnx`, `.pt`, `.pth`, `.h5`, `.pb`, `.bin`, `.ckpt`, `.gguf` — reads the first 4KB header instead of loading multi-GB weights into memory.
 * **🧠 Multi-Agent Protocol:** Junior Architect delegation system for multi-agent coding workflows (see below).
 
 ### 🤖 Autonomous AI Protocols
