@@ -35,6 +35,10 @@ import { getProfile, loadSetupConfig } from '../config.js';
 import micromatch from 'micromatch';
 import { minimatch } from 'minimatch';
 
+// Global hard-ignore patterns (shared between git-based and scan-based file collection)
+const GLOBAL_HARD_IGNORE_DIRS = ['node_modules', '.git', '.idea', '.vscode', '.gradle', 'build', '__pycache__'];
+const GLOBAL_HARD_IGNORE_FILES = ['package-lock.json', 'yarn.lock', 'pnpm-lock.yaml', 'go.sum'];
+
 /**
  * Scanner for detecting and redacting secrets (API keys, tokens)
  */
@@ -228,24 +232,10 @@ export async function scanDirectoryRecursively(dirPath, config, relativeTo = dir
       const relativePath = path.relative(relativeTo, fullPath).replace(/\\/g, '/');
 
       // --- GLOBAL HARD IGNORES (Zero-Config Safety) ---
-      // Explicitly skip heavy/system directories and lockfiles everywhere
-      if (entry.isDirectory()) {
-        if (entry.name === 'node_modules' ||
-            entry.name === '.git' ||
-            entry.name === '.idea' ||
-            entry.name === '.vscode' ||
-            entry.name === '.gradle' ||
-            entry.name === 'build' ||
-            entry.name === '__pycache__') {
-          continue;
-        }
-      } else {
-        if (entry.name === 'package-lock.json' ||
-            entry.name === 'yarn.lock' ||
-            entry.name === 'pnpm-lock.yaml' ||
-            entry.name === 'go.sum') {
-          continue;
-        }
+      if (entry.isDirectory() && GLOBAL_HARD_IGNORE_DIRS.includes(entry.name)) {
+        continue;
+      } else if (!entry.isDirectory() && GLOBAL_HARD_IGNORE_FILES.includes(entry.name)) {
+        continue;
       }
       // -----------------------------------------------
 
@@ -349,21 +339,8 @@ export async function generateDirectoryTree(dir, prefix = '', allFiles, depth = 
     
     for (const entry of sortedEntries) {
       // --- GLOBAL HARD IGNORES ---
-      if (entry.isDirectory() && (
-        entry.name === 'node_modules' ||
-        entry.name === '.git' ||
-        entry.name === '.idea' ||
-        entry.name === '.vscode' ||
-        entry.name === '.gradle' ||
-        entry.name === 'build' ||
-        entry.name === '__pycache__'
-      )) continue;
-      if (!entry.isDirectory() && (
-        entry.name === 'package-lock.json' ||
-        entry.name === 'yarn.lock' ||
-        entry.name === 'pnpm-lock.yaml' ||
-        entry.name === 'go.sum'
-      )) continue;
+      if (entry.isDirectory() && GLOBAL_HARD_IGNORE_DIRS.includes(entry.name)) continue;
+      if (!entry.isDirectory() && GLOBAL_HARD_IGNORE_FILES.includes(entry.name)) continue;
       // ---------------------------
 
       // Skip hidden directories and files (starting with '.')
@@ -1068,9 +1045,7 @@ export async function initializeEckManifest(projectPath) {
   }
 }
 
-// Global hard-ignore patterns (shared between git-based and scan-based file collection)
-const GLOBAL_HARD_IGNORE_DIRS = ['node_modules', '.git', '.idea', '.vscode'];
-const GLOBAL_HARD_IGNORE_FILES = ['package-lock.json', 'yarn.lock', 'pnpm-lock.yaml', 'go.sum'];
+
 
 function isHiddenPath(filePath) {
   const parts = filePath.split('/');

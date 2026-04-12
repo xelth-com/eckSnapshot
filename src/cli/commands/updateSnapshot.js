@@ -104,7 +104,7 @@ async function generateSnapshotContent(repoPath, changedFiles, anchor, config, g
     if (isHiddenPath(normalizedPath)) continue;
 
     const mlExt = path.extname(filePath).toLowerCase();
-    const ML_EXTENSIONS = ['.safetensors', '.onnx', '.pt', '.pth', '.h5', '.pb', '.bin'];
+    const ML_EXTENSIONS = ['.safetensors', '.onnx', '.pt', '.pth', '.h5', '.pb', '.bin', '.ckpt', '.gguf'];
     const isMlModel = ML_EXTENSIONS.includes(mlExt);
 
     // Skip binary files — mirrors createSnapshot.js

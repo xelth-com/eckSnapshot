@@ -435,6 +435,39 @@ scope: core
 
 
 
+
+## 2026-04-12 — Agent Report
+
+# Agent Report
+
+## Task: Smart ML Model Metadata Extraction
+
+### What was done
+Implemented intelligent metadata extraction for large ML model files (`.safetensors`, `.onnx`, `.pt`, `.pth`, `.h5`, `.pb`, `.bin`) across both `createSnapshot` and `updateSnapshot` flows.
+
+### Changes made
+1. **`src/utils/fileUtils.js`** — Added `readMlModelMetadata()` function that:
+   - Opens the file and reads only the first 4KB (safe for multi-GB models)
+   - Strips binary gibberish while preserving JSON structure (common in safetensors headers)
+   - Truncates clean text to 2000 chars max
+   - Returns formatted output with file size and header preview
+
+2. **`src/cli/commands/createSnapshot.js`** — Modified `processFile()`:
+   - ML model files bypass the binary file skip check
+   - ML model files bypass the maxFileSize check (we only read 4KB anyway)
+   - Routes ML models through `readMlModelMetadata()` instead of `readFileWithSizeCheck()`
+
+3. **`src/cli/commands/updateSnapshot.js`** — Modified `generateSnapshotContent()`:
+   - Same ML model bypass logic for binary check
+   - Routes ML models through `readMlModelMetadata()` for content extraction
+
+### Testing
+- All three modules import cleanly (no syntax/runtime errors)
+- Functional test with a fake `.safetensors` file confirmed correct JSON header extraction
+- Fixed variable naming conflicts (`mlExt` instead of reusing `fileExtension`/`fileExt`)
+
+### No issues remain
+
 ## 2026-04-06 — Agent Report
 
 # Agent Report
