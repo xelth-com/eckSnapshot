@@ -437,6 +437,28 @@ scope: core
 
 
 
+
+## 2026-04-12 — Agent Report
+
+# Agent Report
+
+## Task: Apply ML model metadata extraction to recon.js (scout & fetch)
+
+### What was done
+Synchronized `recon.js` with the ML model metadata extraction logic already present in `createSnapshot.js` and `updateSnapshot.js`.
+
+### Changes in `src/cli/commands/recon.js`:
+1. **Import** — added `readMlModelMetadata` to the import from `fileUtils.js`
+2. **`runScout()` filter** — ML model files (`.safetensors`, `.onnx`, `.pt`, `.pth`, `.h5`, `.pb`, `.bin`, `.ckpt`, `.gguf`) now bypass the binary file filter
+3. **`runScout()` content reading** — ML models routed through `readMlModelMetadata()` instead of `readFileWithSizeCheck()`
+4. **`runFetch()` filter** — same binary bypass for ML extensions
+5. **`runFetch()` content reading** — same metadata extraction routing
+
+### Verification
+- Module imports cleanly with no errors
+
+### No issues remain
+
 ## 2026-04-12 — Agent Report
 
 # Agent Report
