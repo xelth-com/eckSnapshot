@@ -438,6 +438,19 @@ scope: core
 
 
 
+
+## 2026-04-12 — Agent Report
+
+# Agent Report
+
+## Task: Update TECH_DEBT.md
+
+### What was done
+1. Added new Active item: **Unified Snapshot Engine** — documents the need to extract duplicated file collection/filtering logic from `createSnapshot.js` and `recon.js` into a shared service.
+2. Moved "Hard-coded ignore lists" item to Resolved (completed in previous task on 2026-04-12 — extracted to `GLOBAL_HARD_IGNORE_DIRS`/`GLOBAL_HARD_IGNORE_FILES` constants).
+
+### No issues remain
+
 ## 2026-04-12 — Agent Report
 
 # Agent Report
