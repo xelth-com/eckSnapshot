@@ -3,7 +3,6 @@ import path from 'path';
 import { execa } from 'execa';
 import pLimit from 'p-limit';
 import { SingleBar, Presets } from 'cli-progress';
-import isBinaryPath from 'is-binary-path';
 import zlib from 'zlib';
 import { promisify } from 'util';
 import ora from 'ora';
@@ -15,7 +14,8 @@ import {
   scanDirectoryRecursively, loadGitignore, readFileWithSizeCheck,
   generateDirectoryTree, loadConfig, displayProjectInfo, loadProjectEckManifest,
   ensureSnapshotsInGitignore, initializeEckManifest, generateTimestamp,
-  getShortRepoName, SecretScanner, getProjectFiles, readMlModelMetadata
+  getShortRepoName, SecretScanner, getProjectFiles, readMlModelMetadata,
+  isBinaryFile
 } from '../../utils/fileUtils.js';
 import { detectProjectType, getProjectSpecificFiltering, getAllDetectedTypes } from '../../utils/projectDetector.js';
 import { estimateTokensWithPolynomial, generateTrainingCommand } from '../../utils/tokenEstimator.js';
@@ -252,7 +252,7 @@ async function estimateProjectTokens(projectPath, config, projectTypes = null) {
         continue;
       }
 
-      if (isBinaryPath(file)) {
+      if (await isBinaryFile(path.join(projectPath, file))) {
         continue;
       }
 
@@ -398,8 +398,9 @@ async function processProjectFiles(repoPath, options, config, projectTypes = nul
         const ML_EXTENSIONS = ['.safetensors', '.onnx', '.pt', '.pth', '.h5', '.pb', '.bin', '.ckpt', '.gguf'];
         const isMlModel = ML_EXTENSIONS.includes(mlExt);
 
-        // Check if binary file (bypass if it's an ML model we want to peek into)
-        if (isBinaryPath(filePath) && !isMlModel) {
+        // Content-aware binary check (catches extensionless ELFs, SQLite DBs, archives).
+        // ML models bypass to allow header metadata extraction below.
+        if (!isMlModel && await isBinaryFile(path.join(repoPath, filePath))) {
           stats.binaryFiles++;
           trackSkippedFile(normalizedPath, 'Binary files');
           return null;

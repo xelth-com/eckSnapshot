@@ -1,6 +1,84 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { execa } from 'execa';
+import isBinaryPath from 'is-binary-path';
+
+// Magic-byte signatures for content-based binary detection.
+// Used by isBinaryFile() when an extension-only check (is-binary-path) is inconclusive —
+// catches extensionless binaries like ARM ELF firmware (`xlt_agent`), SQLite dumps without
+// `.db`/`.sqlite` suffix (`inbody270DB`), and similar files common in embedded/firmware repos.
+const BINARY_MAGIC_NUMBERS = [
+  Buffer.from([0x7F, 0x45, 0x4C, 0x46]),                          // ELF (Linux/Android executables, .so)
+  Buffer.from([0x4D, 0x5A]),                                       // PE/EXE/DLL (Windows)
+  Buffer.from('SQLite format 3\0', 'binary'),                      // SQLite 3
+  Buffer.from([0xCA, 0xFE, 0xBA, 0xBE]),                          // Java .class / Mach-O fat
+  Buffer.from([0xFE, 0xED, 0xFA, 0xCE]),                          // Mach-O 32-bit
+  Buffer.from([0xFE, 0xED, 0xFA, 0xCF]),                          // Mach-O 64-bit
+  Buffer.from([0xCF, 0xFA, 0xED, 0xFE]),                          // Mach-O 64-bit LE
+  Buffer.from([0xCE, 0xFA, 0xED, 0xFE]),                          // Mach-O 32-bit LE
+  Buffer.from([0x00, 0x61, 0x73, 0x6D]),                          // WebAssembly
+  Buffer.from([0x50, 0x4B, 0x03, 0x04]),                          // ZIP / JAR / APK / docx / xlsx
+  Buffer.from([0x50, 0x4B, 0x05, 0x06]),                          // ZIP (empty)
+  Buffer.from([0x50, 0x4B, 0x07, 0x08]),                          // ZIP (spanned)
+  Buffer.from([0x1F, 0x8B]),                                       // GZIP
+  Buffer.from([0x42, 0x5A, 0x68]),                                 // BZIP2
+  Buffer.from([0xFD, 0x37, 0x7A, 0x58, 0x5A, 0x00]),              // XZ
+  Buffer.from([0x37, 0x7A, 0xBC, 0xAF, 0x27, 0x1C]),              // 7-zip
+  Buffer.from([0x52, 0x61, 0x72, 0x21, 0x1A, 0x07]),              // RAR
+  Buffer.from([0xD0, 0xCF, 0x11, 0xE0, 0xA1, 0xB1, 0x1A, 0xE1]),  // MS Compound (old .doc/.xls/.ppt/.msi)
+  Buffer.from('%PDF-', 'binary'),                                  // PDF
+  Buffer.from([0x89, 0x50, 0x4E, 0x47]),                          // PNG
+  Buffer.from([0xFF, 0xD8, 0xFF]),                                 // JPEG
+  Buffer.from('GIF8', 'binary'),                                   // GIF
+  Buffer.from('RIFF', 'binary'),                                   // RIFF (AVI/WAV/WebP)
+  Buffer.from('OggS', 'binary'),                                   // OGG
+  Buffer.from('fLaC', 'binary'),                                   // FLAC
+  Buffer.from('ID3', 'binary'),                                    // MP3 (with ID3)
+];
+
+/**
+ * Async binary detection with two-tier strategy.
+ * Fast path: `is-binary-path` extension match (instant, no I/O).
+ * Slow path: read first 8KB and check magic-byte signatures + null-byte heuristic.
+ *
+ * The slow path is what catches extensionless binaries that the extension-only
+ * detector misses (firmware ELFs, SQLite DBs, archives renamed without extension, etc.)
+ * — the primary cause of past snapshot bloat in embedded/firmware repos.
+ *
+ * @param {string} absolutePath - Absolute path to the file
+ * @returns {Promise<boolean>} True if the file is binary
+ */
+export async function isBinaryFile(absolutePath) {
+  if (isBinaryPath(absolutePath)) return true;
+
+  let fileHandle;
+  try {
+    fileHandle = await fs.open(absolutePath, 'r');
+    const buffer = Buffer.alloc(8192);
+    const { bytesRead } = await fileHandle.read(buffer, 0, 8192, 0);
+    if (bytesRead === 0) return false; // empty file → treat as text
+
+    const sample = buffer.subarray(0, bytesRead);
+
+    for (const magic of BINARY_MAGIC_NUMBERS) {
+      if (bytesRead >= magic.length && sample.subarray(0, magic.length).equals(magic)) {
+        return true;
+      }
+    }
+
+    // Null-byte heuristic — text files virtually never contain NULs; binaries almost always do.
+    // Strong signal even when the file has no recognizable magic header (raw dumps, custom formats).
+    for (let i = 0; i < bytesRead; i++) {
+      if (sample[i] === 0) return true;
+    }
+
+    return false;
+  } catch {
+    return false; // unreadable → don't skip; let downstream surface the error
+  } finally {
+    if (fileHandle) await fileHandle.close();
+  }
+}
 
 /**
  * Safely extracts metadata headers from Large ML models without loading them into memory.

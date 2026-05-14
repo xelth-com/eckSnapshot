@@ -2,10 +2,9 @@ import fs from 'fs/promises';
 import path from 'path';
 import ora from 'ora';
 import chalk from 'chalk';
-import isBinaryPath from 'is-binary-path';
 import { getGitAnchor, getChangedFiles } from '../../utils/gitUtils.js';
 import { loadSetupConfig } from '../../config.js';
-import { readFileWithSizeCheck, parseSize, formatSize, matchesPattern, loadGitignore, generateTimestamp, getShortRepoName, ensureSnapshotsInGitignore, readMlModelMetadata } from '../../utils/fileUtils.js';
+import { readFileWithSizeCheck, parseSize, formatSize, matchesPattern, loadGitignore, generateTimestamp, getShortRepoName, ensureSnapshotsInGitignore, readMlModelMetadata, isBinaryFile } from '../../utils/fileUtils.js';
 import { detectProjectType, getProjectSpecificFiltering } from '../../utils/projectDetector.js';
 import { execa } from 'execa';
 import { fileURLToPath } from 'url';
@@ -107,8 +106,8 @@ async function generateSnapshotContent(repoPath, changedFiles, anchor, config, g
     const ML_EXTENSIONS = ['.safetensors', '.onnx', '.pt', '.pth', '.h5', '.pb', '.bin', '.ckpt', '.gguf'];
     const isMlModel = ML_EXTENSIONS.includes(mlExt);
 
-    // Skip binary files — mirrors createSnapshot.js
-    if (isBinaryPath(filePath) && !isMlModel) continue;
+    // Skip binary files — mirrors createSnapshot.js (content-aware: catches extensionless ELFs/DBs)
+    if (!isMlModel && await isBinaryFile(path.join(repoPath, filePath))) continue;
 
     const pathParts = normalizedPath.split('/');
     let isIgnoredDir = false;

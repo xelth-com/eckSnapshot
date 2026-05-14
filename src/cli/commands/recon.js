@@ -2,7 +2,6 @@ import fs from 'fs/promises';
 import path from 'path';
 import chalk from 'chalk';
 import micromatch from 'micromatch';
-import isBinaryPath from 'is-binary-path';
 import {
   generateDirectoryTree,
   generateTimestamp,
@@ -12,7 +11,8 @@ import {
   getProjectFiles,
   matchesPattern,
   ensureSnapshotsInGitignore,
-  readMlModelMetadata
+  readMlModelMetadata,
+  isBinaryFile
 } from '../../utils/fileUtils.js';
 import { detectProjectType, getProjectSpecificFiltering, getAllDetectedTypes } from '../../utils/projectDetector.js';
 import { loadSetupConfig } from '../../config.js';
@@ -65,16 +65,18 @@ async function runScout(depth = 0) {
     let allFiles = await getProjectFiles(repoPath, config);
     const gitignore = await loadGitignore(repoPath);
 
-    // Filter binaries, gitignore/eckignore, and file-level ignores
-    allFiles = allFiles.filter(f => {
+    // Filter binaries, gitignore/eckignore, and file-level ignores.
+    // Binary check is content-aware (magic-bytes) — needed for extensionless firmware/DB files.
+    const ML_EXTENSIONS = ['.safetensors', '.onnx', '.pt', '.pth', '.h5', '.pb', '.bin', '.ckpt', '.gguf'];
+    const keepFlags = await Promise.all(allFiles.map(async (f) => {
       const normalized = f.replace(/\\/g, '/');
       const mlExt = path.extname(f).toLowerCase();
-      const ML_EXTENSIONS = ['.safetensors', '.onnx', '.pt', '.pth', '.h5', '.pb', '.bin', '.ckpt', '.gguf'];
-      if (isBinaryPath(f) && !ML_EXTENSIONS.includes(mlExt)) return false;
       if (gitignore.ignores(normalized)) return false;
       if (config.filesToIgnore && matchesPattern(normalized, config.filesToIgnore)) return false;
+      if (!ML_EXTENSIONS.includes(mlExt) && await isBinaryFile(path.join(repoPath, f))) return false;
       return true;
-    });
+    }));
+    allFiles = allFiles.filter((_, i) => keepFlags[i]);
 
     const directoryTree = await generateDirectoryTree(repoPath, '', allFiles, 0, config.maxDepth, config);
 
@@ -213,15 +215,16 @@ async function runFetch(patterns) {
     let allFiles = await getProjectFiles(repoPath, config);
     const gitignore = await loadGitignore(repoPath);
 
-    allFiles = allFiles.filter(f => {
+    const ML_EXTENSIONS = ['.safetensors', '.onnx', '.pt', '.pth', '.h5', '.pb', '.bin', '.ckpt', '.gguf'];
+    const keepFlags = await Promise.all(allFiles.map(async (f) => {
       const normalized = f.replace(/\\/g, '/');
       const mlExt = path.extname(f).toLowerCase();
-      const ML_EXTENSIONS = ['.safetensors', '.onnx', '.pt', '.pth', '.h5', '.pb', '.bin', '.ckpt', '.gguf'];
-      if (isBinaryPath(f) && !ML_EXTENSIONS.includes(mlExt)) return false;
       if (gitignore.ignores(normalized)) return false;
       if (config.filesToIgnore && matchesPattern(normalized, config.filesToIgnore)) return false;
+      if (!ML_EXTENSIONS.includes(mlExt) && await isBinaryFile(path.join(repoPath, f))) return false;
       return true;
-    });
+    }));
+    allFiles = allFiles.filter((_, i) => keepFlags[i]);
 
     // Normalize patterns: strip absolute cwd prefix, convert backslashes,
     // and auto-wrap bare filenames with **/ for convenience

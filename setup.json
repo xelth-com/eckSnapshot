@@ -164,6 +164,19 @@
         ],
         "priority": 7
       },
+      "esp-idf": {
+        "files": [
+          "sdkconfig.defaults",
+          "partitions.csv"
+        ],
+        "directories": [
+          "managed_components"
+        ],
+        "manifestFiles": [
+          "idf_component.yml"
+        ],
+        "priority": 8
+      },
       "c": {
         "files": [
           "Makefile",
@@ -516,6 +529,27 @@
           "obj/",
           ".vs/",
           "packages/"
+        ]
+      },
+      "esp-idf": {
+        "filesToIgnore": [
+          "sdkconfig.old",
+          "dependencies.lock"
+        ],
+        "dirsToIgnore": [
+          "managed_components/",
+          "build/",
+          "managed_components/*/examples/",
+          "managed_components/*/test/",
+          "managed_components/*/test_apps/",
+          "managed_components/*/docs/",
+          "managed_components/*/hw/"
+        ],
+        "extensionsToIgnore": [
+          ".bin",
+          ".elf",
+          ".map",
+          ".flash"
         ]
       },
       "c": {

@@ -207,6 +207,8 @@ async function getProjectDetails(projectPath, type) {
       return await getGoDetails(projectPath);
     case 'dotnet':
       return await getDotnetDetails(projectPath);
+    case 'esp-idf':
+      return await getEspIdfDetails(projectPath);
     default:
       return details;
   }
@@ -638,6 +640,64 @@ async function getDotnetDetails(projectPath) {
     console.warn('Error getting .NET project details:', error.message);
   }
   
+  return details;
+}
+
+async function getEspIdfDetails(projectPath) {
+  const details = { type: 'esp-idf' };
+
+  try {
+    const cmakePath = path.join(projectPath, 'CMakeLists.txt');
+    if (await fileExists(cmakePath)) {
+      const cmakeContent = await fs.readFile(cmakePath, 'utf-8');
+      const projectMatch = cmakeContent.match(/project\((\w+)/);
+      if (projectMatch) details.projectName = projectMatch[1];
+      const idfPathMatch = cmakeContent.includes('IDF_PATH');
+      if (idfPathMatch) details.usesIdfPath = true;
+    }
+
+    const sdkDefaultsPath = path.join(projectPath, 'sdkconfig.defaults');
+    if (await fileExists(sdkDefaultsPath)) {
+      const sdkContent = await fs.readFile(sdkDefaultsPath, 'utf-8');
+      const chipMatch = sdkContent.match(/CONFIG_IDF_TARGET="(\w+)"/);
+      if (chipMatch) details.targetChip = chipMatch[1];
+      const flashSizeMatch = sdkContent.match(/CONFIG_ESPTOOLPY_FLASHSIZE_(\w+)/);
+      if (flashSizeMatch) details.flashSize = flashSizeMatch[1];
+    }
+
+    const componentYmlPath = path.join(projectPath, 'main', 'idf_component.yml');
+    if (await fileExists(componentYmlPath)) {
+      details.hasComponentManifest = true;
+      try {
+        const ymlContent = await fs.readFile(componentYmlPath, 'utf-8');
+        const deps = [];
+        const depMatches = ymlContent.matchAll(/^\s{2}(\S+):/gm);
+        for (const m of depMatches) {
+          if (m[1] !== 'version') deps.push(m[1]);
+        }
+        if (deps.length > 0) details.dependencies = deps;
+      } catch {}
+    }
+
+    const partitionsPath = path.join(projectPath, 'partitions.csv');
+    if (await fileExists(partitionsPath)) {
+      details.hasPartitions = true;
+    }
+
+    const mainDir = path.join(projectPath, 'main');
+    if (await directoryExists(mainDir)) {
+      try {
+        const mainFiles = await fs.readdir(mainDir);
+        details.mainFiles = mainFiles.filter(f =>
+          f.endsWith('.c') || f.endsWith('.h') || f.endsWith('.cpp')
+        );
+      } catch {}
+    }
+
+  } catch (error) {
+    console.warn('Error getting ESP-IDF project details:', error.message);
+  }
+
   return details;
 }
 
