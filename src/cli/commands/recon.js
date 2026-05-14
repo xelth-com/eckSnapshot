@@ -22,20 +22,21 @@ import { skeletonize } from '../../core/skeletonizer.js';
 export async function runReconTool(payload) {
   const toolName = payload.name;
   const args = payload.arguments || {};
+  const ml = !!args.ml;
 
   if (toolName === 'eck_scout') {
     const depth = args.depth !== undefined ? parseInt(args.depth, 10) : 0;
-    await runScout(depth);
+    await runScout(depth, { ml });
   } else if (toolName === 'eck_fetch') {
     if (!args.patterns || !Array.isArray(args.patterns)) {
       console.log(chalk.red('❌ Error: eck_fetch requires an array of "patterns" in arguments.'));
       return;
     }
-    await runFetch(args.patterns);
+    await runFetch(args.patterns, { ml });
   }
 }
 
-async function runScout(depth = 0) {
+async function runScout(depth = 0, opts = {}) {
   const depthCfg = getDepthConfig(depth);
   const depthInfo = DEPTH_SCALE[depth] || DEPTH_SCALE[0];
   console.log(chalk.blue(`🕵️ Scouting repository (depth ${depth}: ${depthInfo.mode})...`));
@@ -67,13 +68,16 @@ async function runScout(depth = 0) {
 
     // Filter binaries, gitignore/eckignore, and file-level ignores.
     // Binary check is content-aware (magic-bytes) — needed for extensionless firmware/DB files.
+    // ML peek is opt-in (opts.ml === true) — otherwise ML extensions go through normal binary skip.
     const ML_EXTENSIONS = ['.safetensors', '.onnx', '.pt', '.pth', '.h5', '.pb', '.bin', '.ckpt', '.gguf'];
+    const mlPeek = !!opts.ml;
     const keepFlags = await Promise.all(allFiles.map(async (f) => {
       const normalized = f.replace(/\\/g, '/');
       const mlExt = path.extname(f).toLowerCase();
+      const isMlModel = mlPeek && ML_EXTENSIONS.includes(mlExt);
       if (gitignore.ignores(normalized)) return false;
       if (config.filesToIgnore && matchesPattern(normalized, config.filesToIgnore)) return false;
-      if (!ML_EXTENSIONS.includes(mlExt) && await isBinaryFile(path.join(repoPath, f))) return false;
+      if (!isMlModel && await isBinaryFile(path.join(repoPath, f))) return false;
       return true;
     }));
     allFiles = allFiles.filter((_, i) => keepFlags[i]);
@@ -93,7 +97,7 @@ async function runScout(depth = 0) {
           const ML_EXTENSIONS = ['.safetensors', '.onnx', '.pt', '.pth', '.h5', '.pb', '.bin', '.ckpt', '.gguf'];
 
           let content;
-          if (ML_EXTENSIONS.includes(mlExt)) {
+          if (mlPeek && ML_EXTENSIONS.includes(mlExt)) {
             content = await readMlModelMetadata(fullPath);
           } else {
             content = await readFileWithSizeCheck(fullPath, maxFileSize);
@@ -190,7 +194,7 @@ ${directoryTree}
   }
 }
 
-async function runFetch(patterns) {
+async function runFetch(patterns, opts = {}) {
   console.log(chalk.blue(`🚚 Fetching files matching patterns: ${patterns.join(', ')}...`));
   try {
     const repoPath = process.cwd();
@@ -216,12 +220,14 @@ async function runFetch(patterns) {
     const gitignore = await loadGitignore(repoPath);
 
     const ML_EXTENSIONS = ['.safetensors', '.onnx', '.pt', '.pth', '.h5', '.pb', '.bin', '.ckpt', '.gguf'];
+    const mlPeek = !!opts.ml;
     const keepFlags = await Promise.all(allFiles.map(async (f) => {
       const normalized = f.replace(/\\/g, '/');
       const mlExt = path.extname(f).toLowerCase();
+      const isMlModel = mlPeek && ML_EXTENSIONS.includes(mlExt);
       if (gitignore.ignores(normalized)) return false;
       if (config.filesToIgnore && matchesPattern(normalized, config.filesToIgnore)) return false;
-      if (!ML_EXTENSIONS.includes(mlExt) && await isBinaryFile(path.join(repoPath, f))) return false;
+      if (!isMlModel && await isBinaryFile(path.join(repoPath, f))) return false;
       return true;
     }));
     allFiles = allFiles.filter((_, i) => keepFlags[i]);
@@ -265,7 +271,7 @@ async function runFetch(patterns) {
         const ML_EXTENSIONS = ['.safetensors', '.onnx', '.pt', '.pth', '.h5', '.pb', '.bin', '.ckpt', '.gguf'];
 
         let content;
-        if (ML_EXTENSIONS.includes(mlExt)) {
+        if (mlPeek && ML_EXTENSIONS.includes(mlExt)) {
           content = await readMlModelMetadata(fullPath);
         } else {
           content = await readFileWithSizeCheck(fullPath, maxFileSize);

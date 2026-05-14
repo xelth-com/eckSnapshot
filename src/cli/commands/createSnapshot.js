@@ -396,7 +396,10 @@ async function processProjectFiles(repoPath, options, config, projectTypes = nul
 
         const mlExt = path.extname(filePath).toLowerCase();
         const ML_EXTENSIONS = ['.safetensors', '.onnx', '.pt', '.pth', '.h5', '.pb', '.bin', '.ckpt', '.gguf'];
-        const isMlModel = ML_EXTENSIONS.includes(mlExt);
+        // ML peek is opt-in via `arguments.ml: true`. Default: ML files treated as plain binaries.
+        // This prevents false-positives where `.bin` raw dumps (mitm captures, sniffer output)
+        // get included via readMlModelMetadata when no real model is present.
+        const isMlModel = !!options?.ml && ML_EXTENSIONS.includes(mlExt);
 
         // Content-aware binary check (catches extensionless ELFs, SQLite DBs, archives).
         // ML models bypass to allow header metadata extraction below.

@@ -49,17 +49,17 @@ const LEGACY_COMMANDS = {
     const base = baseIdx !== -1 && args[baseIdx + 1] ? args[baseIdx + 1] : undefined;
     return { name: 'eck_update_auto', arguments: { fail: args.includes('--fail') || args.includes('-f'), base } };
   },
-  'snapshot':    () => ({ name: 'eck_snapshot', arguments: {} }),
+  'snapshot':    (args) => ({ name: 'eck_snapshot', arguments: { ml: args.includes('--ml') } }),
   'update':      (args) => {
     const baseIdx = args.indexOf('--base');
     const base = baseIdx !== -1 && args[baseIdx + 1] ? args[baseIdx + 1] : undefined;
-    return { name: 'eck_update', arguments: { fail: args.includes('--fail') || args.includes('-f'), base } };
+    return { name: 'eck_update', arguments: { fail: args.includes('--fail') || args.includes('-f'), base, ml: args.includes('--ml') } };
   },
   'setup-mcp':   (args) => ({ name: 'eck_setup_mcp', arguments: { opencode: args.includes('--opencode'), both: args.includes('--both') } }),
   'detect':      () => ({ name: 'eck_detect', arguments: {} }),
   'doctor':      () => ({ name: 'eck_doctor', arguments: {} }),
-  'scout':       (args) => ({ name: 'eck_scout', arguments: { depth: args[0] !== undefined ? parseInt(args[0], 10) : 0 } }),
-  'fetch':       (args) => ({ name: 'eck_fetch', arguments: { patterns: args } }),
+  'scout':       (args) => ({ name: 'eck_scout', arguments: { depth: args[0] !== undefined ? parseInt(args[0], 10) : 0, ml: args.includes('--ml') } }),
+  'fetch':       (args) => ({ name: 'eck_fetch', arguments: { patterns: args.filter(a => a !== '--ml'), ml: args.includes('--ml') } }),
   'link':        (args) => ({ name: 'eck_snapshot', arguments: { isLinkedProject: true, linkDepth: args[0] !== undefined ? parseInt(args[0], 10) : 0 } }),
   'profile':     (args) => args[0] ? ({ name: 'eck_snapshot', arguments: { profile: args.join(',') } }) : ({ name: 'eck_snapshot', arguments: { profile: true } }),
   'booklm':      () => ({ name: 'eck_snapshot', arguments: { notebooklm: 'scout' } }),

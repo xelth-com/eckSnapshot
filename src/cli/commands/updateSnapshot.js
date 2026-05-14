@@ -104,7 +104,8 @@ async function generateSnapshotContent(repoPath, changedFiles, anchor, config, g
 
     const mlExt = path.extname(filePath).toLowerCase();
     const ML_EXTENSIONS = ['.safetensors', '.onnx', '.pt', '.pth', '.h5', '.pb', '.bin', '.ckpt', '.gguf'];
-    const isMlModel = ML_EXTENSIONS.includes(mlExt);
+    // ML peek is opt-in (`arguments.ml: true` flows into config via options spread upstream).
+    const isMlModel = !!config?.ml && ML_EXTENSIONS.includes(mlExt);
 
     // Skip binary files — mirrors createSnapshot.js (content-aware: catches extensionless ELFs/DBs)
     if (!isMlModel && await isBinaryFile(path.join(repoPath, filePath))) continue;

@@ -116,6 +116,24 @@ import { minimatch } from 'minimatch';
 // Global hard-ignore patterns (shared between git-based and scan-based file collection)
 const GLOBAL_HARD_IGNORE_DIRS = ['node_modules', '.git', '.idea', '.vscode', '.gradle', 'build', '__pycache__'];
 const GLOBAL_HARD_IGNORE_FILES = ['package-lock.json', 'yarn.lock', 'pnpm-lock.yaml', 'go.sum'];
+// Glob-based hard-ignore — for patterns that exact-name matching can't express.
+// Primary target: rotated logs (logrotate/journald) and core dumps.
+// `*.log` is widely conventional to ignore; including it here hardens the default for projects
+// without their own .eckignore. Caller can still opt-in to logs via explicit profile/include.
+const GLOBAL_HARD_IGNORE_GLOBS = [
+  '*.log',          // standard log files
+  '*.log.[0-9]*',   // logrotate numeric suffix: app.log.0, app.log.1
+  '*.log.gz',       // compressed rotated log
+  '*.log.*.gz',     // app.log.0.gz
+  '*.log.bz2',
+  '*.log.xz',
+  'core.[0-9]*',    // Linux core dumps: core.12345
+  '*.swp', '*.swo', // editor swap files
+];
+
+function matchesGlobalHardIgnoreGlob(fileName) {
+  return GLOBAL_HARD_IGNORE_GLOBS.some(p => minimatch(fileName, p, { nocase: true }));
+}
 
 /**
  * Scanner for detecting and redacting secrets (API keys, tokens)
@@ -312,7 +330,7 @@ export async function scanDirectoryRecursively(dirPath, config, relativeTo = dir
       // --- GLOBAL HARD IGNORES (Zero-Config Safety) ---
       if (entry.isDirectory() && GLOBAL_HARD_IGNORE_DIRS.includes(entry.name)) {
         continue;
-      } else if (!entry.isDirectory() && GLOBAL_HARD_IGNORE_FILES.includes(entry.name)) {
+      } else if (!entry.isDirectory() && (GLOBAL_HARD_IGNORE_FILES.includes(entry.name) || matchesGlobalHardIgnoreGlob(entry.name))) {
         continue;
       }
       // -----------------------------------------------
@@ -418,7 +436,7 @@ export async function generateDirectoryTree(dir, prefix = '', allFiles, depth = 
     for (const entry of sortedEntries) {
       // --- GLOBAL HARD IGNORES ---
       if (entry.isDirectory() && GLOBAL_HARD_IGNORE_DIRS.includes(entry.name)) continue;
-      if (!entry.isDirectory() && GLOBAL_HARD_IGNORE_FILES.includes(entry.name)) continue;
+      if (!entry.isDirectory() && (GLOBAL_HARD_IGNORE_FILES.includes(entry.name) || matchesGlobalHardIgnoreGlob(entry.name))) continue;
       // ---------------------------
 
       // Skip hidden directories and files (starting with '.')
@@ -1153,6 +1171,7 @@ export async function getProjectFiles(projectPath, config) {
         if (dirsToIgnore.includes(pathParts[i])) return false;
       }
       if (filesToIgnore.includes(fileName)) return false;
+      if (matchesGlobalHardIgnoreGlob(fileName)) return false;
       if (fileExt && extensionsToIgnore.includes(fileExt)) return false;
       return true;
     });
