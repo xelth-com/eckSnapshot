@@ -215,7 +215,7 @@ Agents distinguish between Architect tasks and Human requests:
 | **AI Architect** | Message wrapped in `<eck_task id="repo:desc">` | Execute → verify → auto-call `eck_finish_task` with task `id` |
 | **Human User** | No `<eck_task>` tag | Apply changes → reply naturally. No `eck_finish_task` unless explicitly told |
 
-**Architect command format** (Eck-Protocol v2):
+**Architect command format** (Eck-Protocol):
 ```text
 <eck_task id="ecksnapshot:fix-auth-crash">
 # Analysis
