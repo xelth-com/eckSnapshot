@@ -18,6 +18,8 @@ Also serves as the coordination hub for the Royal Court AI architecture and prov
   - **Shared Depth Scale (0-9)**: Used by both `scout` and `link` — tree-only → truncated → skeleton → skeleton+docs → full
   - **Security**: Built-in SecretScanner for automatic redaction of API keys (regex + Shannon entropy)
   - **Polyglot Monorepo Filtering**: `detectProjectType` returns all detected types via `allDetections`; `getProjectSpecificFiltering` accepts `string[]` and merges ignore rules from all stacks (e.g., Rust + Android). Helper `getAllDetectedTypes(detection)` extracts the full type list
+  - **Content-aware binary filtering**: `isBinaryFile()` in `fileUtils.js` does extension-based fast path (`is-binary-path`) plus magic-byte/null-byte sniff of first 8KB — catches extensionless ELF firmware, SQLite DBs without suffix, archives renamed without extension. Complemented by `GLOBAL_HARD_IGNORE_GLOBS` for rotated logs (`*.log.[0-9]*`, `*.log.gz`), core dumps, swap files
+  - **ML peek opt-in**: ML model header extraction (`readMlModelMetadata` for `.safetensors`/`.onnx`/`.pt`/`.pth`/`.h5`/`.pb`/`.bin`/`.ckpt`/`.gguf`) is disabled by default — enable via `arguments.ml: true` (JSON) or `--ml` flag (shim). Prevents false-positive inclusion of raw `.bin` dumps as model headers
 
 ## Key Technologies
 - **Depth Config** (`src/core/depthConfig.js`): Shared 0-9 depth scale for `scout` and `link`, returns mode/truncation/skeleton settings

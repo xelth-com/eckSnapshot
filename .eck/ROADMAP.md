@@ -9,6 +9,9 @@
 - [ ] Per-project telemetry isolation (project_id in reports)
 
 ## Completed
+- [x] **Content-aware binary detection** — `isBinaryFile()` async two-tier check in `fileUtils.js`: extension-based fast path + 8KB magic-byte sniff (26 signatures: ELF/PE/SQLite/Mach-O/archives/MS-Compound/PDF/media/WASM/Java) + null-byte heuristic. Catches extensionless firmware ELFs, SQLite DBs without suffix, archives renamed without extension. Reduced xelixir snapshot 22MB → 3.7MB (2026-05-14)
+- [x] **Glob-based global hard-ignore** — `GLOBAL_HARD_IGNORE_GLOBS` for rotated logs (`*.log.[0-9]*`, `*.log.gz`), core dumps (`core.[0-9]*`), editor swap files (`*.swp`/`*.swo`). Standard `*.log` also hardened as default. Applied at all 3 file-collection sites (2026-05-14)
+- [x] **ML peek opt-in** — separated ML model metadata extraction from default snapshot behavior via `arguments.ml: true` flag (CLI shim: `--ml`). Default treats `.bin`/`.onnx`/etc. as plain binaries → skipped. Eliminates false positives on raw network captures and sniffer dumps that share `.bin` extension (2026-05-14)
 - [x] **NotebookLM Chunked Export** — `notebook` (hybrid), `notebook link N` (linked project), `notebook scout N` (read-only) with Brain+Body architecture, depth-controlled chunking, and system prompt generation. Fixed depth=0 default and chunk size calculation using post-truncation byte length (v6.4.5, 2026-04-05)
 - [x] **Atomic Manifest Editing** — `eck_manifest_edit` MCP tool for token-efficient `.eck/` file editing without reading full files into context (2026-04-04)
 - [x] **Anti-Contamination Guardrails** — Cross-project hallucination prevention in AI context generation (2026-04-04)

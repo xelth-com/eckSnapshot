@@ -1,4 +1,45 @@
 ---
+task_id: ecksnapshot:binary-detection-overhaul
+date: 2026-05-14
+type: fix
+scope: core
+summary: Magic-byte binary detection, rotated-log hard-ignore, ML peek as opt-in
+---
+
+# Binary Detection Overhaul
+
+Reduced xelixir polyglot-firmware snapshot from **21989 KB → 1972 KB (-91%)**. Three independent fixes addressing root causes:
+
+## 1. Content-aware binary detection (magic-bytes + null-byte heuristic)
+- Added `isBinaryFile(absolutePath)` in `src/utils/fileUtils.js` — async two-tier check:
+  - Fast path: `is-binary-path` extension match (unchanged behavior for known extensions)
+  - Slow path for extensionless files: reads first 8KB, checks 26 magic-byte signatures (ELF, PE/EXE, SQLite, Mach-O, ZIP/JAR/APK, GZIP/BZIP2/XZ/7z/RAR, MS Compound, PDF, image/audio formats, WASM, Java .class) + null-byte presence
+- Previously: `isBinaryPath()` from `is-binary-path` package was extension-only — extensionless ELF firmware (`xlt_agent`), SQLite DBs without `.db`/`.sqlite` suffix (`inbody270DB`), and similar files leaked through as gibberish text
+- Replaced 4 callsites (createSnapshot.js × 2, updateSnapshot.js × 1, recon.js × 2 — scout + fetch); recon.js filters converted from sync `.filter()` to async `Promise.all` pattern
+
+## 2. Glob-based global hard-ignore (rotated logs, core dumps, swap files)
+- Added `GLOBAL_HARD_IGNORE_GLOBS` array in `fileUtils.js`: `*.log`, `*.log.[0-9]*`, `*.log.gz`, `*.log.*.gz`, `*.log.bz2`, `*.log.xz`, `core.[0-9]*`, `*.swp`, `*.swo`
+- Helper `matchesGlobalHardIgnoreGlob(fileName)` uses `minimatch` (nocase)
+- Applied at 3 sites: `scanDirectoryRecursively`, `generateDirectoryTree`, `getProjectFiles` (git-tracked branch)
+- Catches logrotate/journald output that user `.eckignore: *.log` patterns miss (e.g. `inbody_app.log.0` = 1.7MB / 66K lines in xelixir)
+
+## 3. ML peek as opt-in flag
+- Previously: `ML_EXTENSIONS` (`.bin`/`.onnx`/`.safetensors`/`.pt`/`.pth`/`.h5`/`.pb`/`.ckpt`/`.gguf`) auto-bypassed binary check, sent through `readMlModelMetadata` for header extraction. Caused false positives on `mitm_raw_*.bin` network captures and sniffer dumps
+- New default: ML extensions treated as plain binaries → skipped
+- Opt-in via `arguments.ml: true`:
+  - JSON: `eck-snapshot '{"name":"eck_snapshot","arguments":{"ml":true}}'`
+  - Shim flag: `eck-snapshot snapshot --ml` / `update --ml` / `scout N --ml` / `fetch 'PATTERN' --ml`
+- Flag plumbing: `options.ml` in createSnapshot; `config.ml` in updateSnapshot (via options spread upstream); `opts.ml` in recon (threaded from `runReconTool` → `runScout`/`runFetch`)
+- `ML_EXTENSIONS` list unchanged — HuggingFace `pytorch_model.bin` still works when flag is set
+
+**Modified Files**:
+- `src/utils/fileUtils.js` — `isBinaryFile()`, `BINARY_MAGIC_NUMBERS`, `GLOBAL_HARD_IGNORE_GLOBS`, `matchesGlobalHardIgnoreGlob()`, applied at 3 hard-ignore sites
+- `src/cli/commands/createSnapshot.js` — replaced `isBinaryPath` with `isBinaryFile`; gated `isMlModel` on `options.ml`
+- `src/cli/commands/updateSnapshot.js` — same; gated on `config.ml`
+- `src/cli/commands/recon.js` — same; threaded `opts.ml` through `runScout`/`runFetch`; converted sync filters to async `Promise.all`
+- `src/cli/cli.js` — `--ml` flag added to `snapshot`/`update`/`scout`/`fetch` LEGACY_COMMANDS shims
+
+---
 task_id: ecksnapshot:execution-agent-sync-codeword
 date: 2026-04-04
 type: feat

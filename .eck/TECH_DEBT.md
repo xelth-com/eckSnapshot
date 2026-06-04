@@ -7,6 +7,9 @@
 - [x] Hard-coded ignore lists extracted to shared `GLOBAL_HARD_IGNORE_DIRS`/`GLOBAL_HARD_IGNORE_FILES` constants in `fileUtils.js` (2026-04-12)
 
 ## Resolved
+- [x] Extension-only binary detection (`is-binary-path`) missed extensionless ELF/SQLite/firmware files — fixed via `isBinaryFile()` magic-byte + null-byte sniff in `fileUtils.js` (2026-05-14)
+- [x] Rotated logs (`.log.0`, `.log.gz`, etc.) and core dumps not filtered — fixed via `GLOBAL_HARD_IGNORE_GLOBS` minimatch list in `fileUtils.js` (2026-05-14)
+- [x] `ML_EXTENSIONS` auto-bypass caused false positives on raw `.bin` dumps (mitm captures, sniffer output) — fixed via `arguments.ml: true` opt-in flag (2026-05-14)
 - [x] `claudeCliService.js` removed — `fileUtils.js` now uses static stub templates (2026-03-15)
 - [x] `trainTokens.js` re-created with JSON-native interface, wired into router (2026-03-15)
 - [x] Legacy CLI commands removed — 11 orphaned modules deleted (2026-03-15)

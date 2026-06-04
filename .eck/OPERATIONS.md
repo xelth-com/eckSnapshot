@@ -18,6 +18,11 @@ node index.js snapshot
 # Create a skeleton snapshot (compressed)
 node index.js '{"name": "eck_snapshot", "arguments": {"skeleton": true}}'
 
+# Create snapshot with ML peek enabled (extracts header metadata for .safetensors/.onnx/.pt/.bin/etc.)
+node index.js '{"name": "eck_snapshot", "arguments": {"ml": true}}'
+# Or use the shim:
+node index.js snapshot --ml
+
 # Update snapshot (incremental delta)
 node index.js '{"name": "eck_update"}'
 # Or use the shim:
