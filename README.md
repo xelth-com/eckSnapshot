@@ -295,7 +295,7 @@ Senior Architect (Gemini/Grok — Web LLM, huge context)
     └── Coder (default) — standard developer mode
 ```
 
-The Senior Architect reads the full snapshot, plans the work, and delegates tasks via the Eck-Protocol v2. Junior Architects receive filtered snapshots with role-specific `CLAUDE.md` / `AGENTS.md` instructions and execute the plan locally.
+The Senior Architect reads the full snapshot, plans the work, and delegates tasks via the Eck-Protocol. Junior Architects receive filtered snapshots with role-specific `CLAUDE.md` / `AGENTS.md` instructions and execute the plan locally.
 
 ### Usage
 ```bash

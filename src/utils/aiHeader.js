@@ -481,9 +481,9 @@ You are the **Senior Architect**. You have a **Junior Architect** available to h
 3.  **No Micro-Management:** Do not tell the Junior Architect *how* to use GLM Z.AI or internal tools. Just give them the strategic objective.
 `;
 
-      commandFormats = `### COMMAND FORMATS (Eck-Protocol v2)
+      commandFormats = `### COMMAND FORMATS (Eck-Protocol)
 
-You MUST use the **Eck-Protocol v2** format for all code execution tasks. This format combines Markdown for analysis, XML tags for file operations, and JSON for routing metadata.
+You MUST use the **Eck-Protocol** format for all code execution tasks. This format combines Markdown for analysis, XML tags for file operations, and JSON for routing metadata.
 
 **CRITICAL DISPLAY RULE (THE 4-BACKTICK WRAPPER):**
 To ensure your command is copy-pasteable without breaking UI rendering, you **MUST** wrap the ENTIRE protocol output in a \`text\` block using **QUADRUPLE BACKTICKS** (\` \`\`\`\` \`).
@@ -617,9 +617,9 @@ Your role is **Architect**. You formulate technical plans and delegate code impl
   - **Architect (You):** Sets strategy, defines tasks, enforces manifest maintenance.
   - **Coder (e.g., \`local_dev\`):** Receives precise coding tasks and executes them, including manifest updates.`;
 
-      commandFormats = `### COMMAND FORMATS (Eck-Protocol v2)
+      commandFormats = `### COMMAND FORMATS (Eck-Protocol)
 
-You MUST use the **Eck-Protocol v2** format for all code execution tasks. This format combines Markdown for analysis, XML tags for file operations, and JSON for routing metadata.
+You MUST use the **Eck-Protocol** format for all code execution tasks. This format combines Markdown for analysis, XML tags for file operations, and JSON for routing metadata.
 
 **CRITICAL DISPLAY RULE (THE 4-BACKTICK WRAPPER):**
 To ensure your command is copy-pasteable without breaking UI rendering, you **MUST** wrap the ENTIRE protocol output in a \`text\` block using **QUADRUPLE BACKTICKS** (\` \`\`\`\` \`).

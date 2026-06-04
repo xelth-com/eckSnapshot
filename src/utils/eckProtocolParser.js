@@ -1,5 +1,5 @@
 /**
- * Eck-Protocol v2 Parser
+ * Eck-Protocol Parser
  *
  * Parses hybrid Markdown/XML/JSON format for agent communication.
  * This is a pure text parser - no shell commands are involved.
@@ -11,7 +11,7 @@
  */
 
 /**
- * Parses Eck-Protocol v2 response from an agent.
+ * Parses Eck-Protocol response from an agent.
  * @param {string} text - Raw text response from the agent
  * @returns {object} Parsed structure with thought, files, and metadata
  */
@@ -131,7 +131,7 @@ function extractThought(text) {
 }
 
 /**
- * Validates if a response contains valid Eck-Protocol v2 structure.
+ * Validates if a response contains valid Eck-Protocol structure.
  * @param {string} text - Raw text to validate
  * @returns {{valid: boolean, hasFiles: boolean, hasMetadata: boolean, errors: string[]}}
  */

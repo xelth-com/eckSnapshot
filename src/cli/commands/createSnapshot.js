@@ -783,7 +783,7 @@ export async function createRepoSnapshot(repoPath, options) {
           systemPrompt += `You are the Senior Software Architect for this project.\n`;
           systemPrompt += `Analyze the provided source documents to solve complex structural problems, design new features, and propose refactoring strategies.\n\n`;
           systemPrompt += `RULES FOR CODE GENERATION:\n`;
-          systemPrompt += `1. Output precise code modifications using Eck-Protocol v2.\n`;
+          systemPrompt += `1. Output precise code modifications using Eck-Protocol.\n`;
           systemPrompt += `2. Wrap the entire response in quadruple backticks (\`\`\`\`).\n`;
           systemPrompt += `3. Use \`<file path="..." action="replace">\` XML tags for files.\n`;
           systemPrompt += `4. Always consult the BRAIN document (part 0) before answering to understand project constraints.\n`;
@@ -795,7 +795,7 @@ export async function createRepoSnapshot(repoPath, options) {
           systemPrompt += `2. Linked Projects (link_part*): Companion repositories (e.g., backend + mobile). You CAN modify code here if cross-project sync is needed.\n`;
           systemPrompt += `3. Scouted Projects (scout_part*): External repositories loaded STRICTLY for read-only reference. NEVER write code for scouted projects.\n\n`;
           systemPrompt += `RULES:\n`;
-          systemPrompt += `- Use Eck-Protocol v2 format (quadruple backticks \`\`\`\`, <file> tags) for ALL code generation.\n`;
+          systemPrompt += `- Use Eck-Protocol format (quadruple backticks \`\`\`\`, <file> tags) for ALL code generation.\n`;
           systemPrompt += `- If modifying a Linked Project, clearly specify the absolute project path in the <file> tag.\n`;
           systemPrompt += `- If you need missing file contents from linked/scouted projects (because they were truncated/skeletonized), output bash commands to fetch them: \`cd /path/to/project && eck-snapshot fetch "**/api.rs"\`.\n`;
           systemPrompt += `- ANTI-CONTAMINATION: Verify that any new file uploads belong to your known primary/linked contexts. If not, WARN the user and stop.\n`;
@@ -877,10 +877,10 @@ export async function createRepoSnapshot(repoPath, options) {
       // --- Standard Snapshot Mode ---
       let fileBody = '';
       if (directoryTree) {
-        fileBody += `\n## Directory Structure\n\n\`\`\`\n${directoryTree}\`\`\`\n\n`;
+        fileBody += `\n<repository_structure>\nTreat this tree as the absolute source of truth for the project state:\n\`\`\`text\n${directoryTree}\`\`\`\n</repository_structure>\n\n`;
       }
       if (!options.skipContent) {
-        fileBody += contentArray.join('');
+        fileBody += `<source_code>\n${contentArray.join('')}\n</source_code>\n\n`;
       }
 
       // Helper to write snapshot file

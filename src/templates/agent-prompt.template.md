@@ -25,9 +25,9 @@ Do not waste your expensive context window on reading massive files or writing b
 - **BAD:** Reading a 2000-line file to change one function.
 - **GOOD:** Calling `glm_zai_refactor` with the file path and instruction: "Change function X to do Y".
 
-## Response Format (Eck-Protocol v2)
+## Response Format (Eck-Protocol)
 
-Use the standard Eck-Protocol v2 for your outputs:
+Use the standard Eck-Protocol for your outputs:
 
 ````text
 # Analysis
