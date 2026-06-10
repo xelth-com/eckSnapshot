@@ -41,6 +41,7 @@ import { runDoctor } from './commands/doctor.js';
 import { runReconTool } from './commands/recon.js';
 import { runTokenTools } from './commands/trainTokens.js';
 import { generateProfileGuide } from './commands/generateProfileGuide.js';
+import { importProfiles } from './commands/importProfiles.js';
 
 // Legacy command shims: translate old positional commands to JSON payloads
 // so internal callers (mcp-eck-core.js) keep working after the JSON migration.
@@ -72,6 +73,7 @@ const LEGACY_COMMANDS = {
   },
   'telemetry':   (args) => ({ name: 'eck_telemetry', arguments: { action: args[0] } }),
   'generate-profile-guide': (args) => ({ name: 'eck_generate_profile_guide', arguments: { depth: args[0] !== undefined ? parseInt(args[0], 10) : 5 } }),
+  'profile-import': (args) => ({ name: 'eck_profile_import', arguments: { file: args[0] } }),
 };
 
 export function run() {
@@ -128,6 +130,7 @@ Ranked by frequency of use:
  10. eck-snapshot detect            Detect project type and active filters
  11. eck-snapshot doctor            Check project health and stubs
  12. eck-snapshot generate-profile-guide [0-9] Generate LLM context to build profiles
+ 13. eck-snapshot profile-import <file>  Import <profile> tags from an LLM response into profiles.json
 
 [FEEDBACK]
   eck-snapshot -e "message"     Send feedback/ideas to developers (read by AI)
@@ -257,6 +260,9 @@ Ranked by frequency of use:
             break;
           case 'eck_generate_profile_guide':
             await generateProfileGuide(cwd, args);
+            break;
+          case 'eck_profile_import':
+            await importProfiles(cwd, args);
             break;
           default:
             console.log(chalk.red(`❌ Unknown tool: "${toolName}"`));

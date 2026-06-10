@@ -131,6 +131,68 @@ function extractThought(text) {
 }
 
 /**
+ * Parses Eck-Protocol (Profile Variant) <profile> tags into a profiles.json-shaped object.
+ * WHY: `generate-profile-guide` instructs external LLMs to answer with <profile> markup
+ * instead of raw JSON (avoids escaping issues, consistent with the house protocol). This
+ * parser is the receiving end: it converts that markup back into the exact structure
+ * stored in `.eck/profiles.json`, closing the guide → LLM → import round-trip.
+ * @param {string} text - Raw LLM response containing <profile name="..."> blocks
+ * @returns {Object<string, {description: string, include: string[], exclude?: string[]}>}
+ */
+export function parseProfileTags(text) {
+  const profiles = {};
+  if (!text || typeof text !== 'string') {
+    return profiles;
+  }
+
+  const profileRegex = /<profile\s+name=["']([^"']+)["']\s*>([\s\S]*?)<\/profile>/gi;
+  let match;
+  while ((match = profileRegex.exec(text)) !== null) {
+    const name = match[1].trim();
+    const body = match[2];
+
+    const description = extractSectionText(body, 'Description');
+    const include = extractSectionList(body, 'Include');
+    const exclude = extractSectionList(body, 'Exclude');
+
+    const profile = { description, include };
+    if (exclude.length > 0) {
+      profile.exclude = exclude;
+    }
+    profiles[name] = profile;
+  }
+
+  return profiles;
+}
+
+/**
+ * Extracts the text under a markdown heading inside a profile body.
+ * @param {string} body - Profile tag inner content
+ * @param {string} heading - Heading name (e.g. "Description")
+ * @returns {string} Trimmed section text, or '' if the section is absent
+ */
+function extractSectionText(body, heading) {
+  const m = body.match(new RegExp(`#{1,3}\\s*${heading}\\s*\\n([\\s\\S]*?)(?=\\n#{1,3}\\s|$)`, 'i'));
+  return m ? m[1].trim() : '';
+}
+
+/**
+ * Extracts a bullet list under a markdown heading as an array of patterns.
+ * Lenient: accepts "-" or "*" bullets as well as bare lines.
+ * @param {string} body - Profile tag inner content
+ * @param {string} heading - Heading name (e.g. "Include")
+ * @returns {string[]} List entries with bullet markers stripped
+ */
+function extractSectionList(body, heading) {
+  const raw = extractSectionText(body, heading);
+  if (!raw) return [];
+  return raw
+    .split('\n')
+    .map(line => line.replace(/^\s*[-*]\s+/, '').trim())
+    .filter(line => line && !line.startsWith('#'));
+}
+
+/**
  * Validates if a response contains valid Eck-Protocol structure.
  * @param {string} text - Raw text to validate
  * @returns {{valid: boolean, hasFiles: boolean, hasMetadata: boolean, errors: string[]}}
@@ -216,6 +278,7 @@ export function parseWithFallback(text) {
 
 export default {
   parseEckResponse,
+  parseProfileTags,
   validateEckResponse,
   parseWithFallback
 };

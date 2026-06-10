@@ -11,6 +11,34 @@ summary: Magic-byte binary detection, rotated-log hard-ignore, ML peek as opt-in
 Reduced xelixir polyglot-firmware snapshot from **21989 KB → 1972 KB (-91%)**. Three independent fixes addressing root causes:
 
 
+
+## 2026-06-10 — Agent Report
+
+# Agent Report
+
+## Feature: `generate-profile-guide` command + profile listing fix
+
+### What was done
+1. **Created `src/cli/commands/generateProfileGuide.js`** — new `generateProfileGuide(repoPath, args)` command. It gathers project files through the standard filtering pipeline (setup config + project-type-specific filters + gitignore + binary detection), renders the directory tree, and extracts per-file content according to the shared depth scale (`getDepthConfig`, default depth 5 = skeleton signatures via `skeletonize`). Output is written to `.eck/profile_generation_guide.md` as a structured system prompt instructing an external LLM to return a profiles JSON object. JSDoc explains the WHY (give LLMs enough architectural context without blowing the context window).
+
+2. **Wired into `src/cli/cli.js`** — added import, `generate-profile-guide [0-9]` legacy shim, help-text entry (#12), and `eck_generate_profile_guide` switch case.
+
+3. **Fixed profile listing in `src/cli/commands/createSnapshot.js`** — `--profile` with no argument now uses the global-aware `getAllProfiles(repoPath)` from `config.js` (merges setup.json `contextProfiles` with local `.eck/profiles.json`, local wins) instead of reading only the local file. The ENOENT-specific error branch was removed since a missing local file is no longer an error.
+
+### Deviations from the provided patch (transcription artifacts NOT applied)
+The supplied full-file replacement for `cli.js` contained two regressions unrelated to this task's analysis, which I declined to apply:
+- It emptied the "⬆ Update available" message string in `checkForUpdates` (would have printed a blank yellow line) — the working message from the previous task was preserved.
+- It dropped the `[FEEDBACK]` and `[DATENSCHUTZ / PRIVACY]` sections from the help text — both preserved.
+
+### Verification
+- `npm run test:run`: no test files exist in the repo (vitest exits "No test files found"), so manual CLI verification was performed per protocol.
+- `node --check` passes on all three touched files.
+- End-to-end in a temp project: `generate-profile-guide 5` produced a correct guide (tree + skeletonized signatures with bodies collapsed to `/* ... */`); `generate-profile-guide 0` produced tree-only with the no-content placeholder; both exit 0.
+- Profile listing fix verified: in a project with no local `.eck/profiles.json`, `eck-snapshot profile` now lists the 9 global profiles from setup.json and exits 0 (previously: "profiles.json not found", exit 1).
+
+### Issues remaining
+None blocking. Note: there are still no automated tests in the repo — adding vitest coverage for the depth pipeline and profile merging would be a good TECH_DEBT item.
+
 ## 2026-06-10 — Agent Report
 
 # Agent Report
