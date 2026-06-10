@@ -304,6 +304,14 @@ async function processProjectFiles(repoPath, options, config, projectTypes = nul
     process.chdir(repoPath);
 
     console.log('🔍 Scanning repository...');
+    // DELIBERATE: the main snapshot does NOT use snapshotBuilder.discoverFiles here.
+    // Canonical discovery (gitignore → filesToIgnore → binary) is a SUBSET of this
+    // command's policy — the per-file checks in processFile additionally enforce
+    // isHiddenPath, dirsToIgnore prefixes, and extensionsToIgnore, and must attribute
+    // every skip to a per-reason stats counter for the console report. Routing through
+    // the opaque shared filter would loosen filtering (.github/.vscode leakage) and
+    // erase skip attribution. The drift-prone parts (config merge, ML list, render
+    // pipeline) ARE shared — see ARCHITECTURAL_AUDIT.md §1, step 4 closure note.
     let allFiles = await getProjectFiles(repoPath, config);
 
     // Filter the raw file list immediately so ignored files don't show up in the Tree

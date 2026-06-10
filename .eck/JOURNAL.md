@@ -15,6 +15,39 @@ Reduced xelixir polyglot-firmware snapshot from **21989 KB → 1972 KB (-91%)**.
 
 
 
+
+## 2026-06-10 — Agent Report
+
+# Agent Report
+
+## Engine unification complete + worker prompt caching + vitest suite
+
+### 1. createSnapshot.js `processFile` migrated to `renderFileAtDepth`
+**Critical deviation from the provided patch:** the architect's search/replace block silently DROPPED the SecretScanner redaction step (the search block omitted lines that exist in the real file). Applying it as-is would have removed secret redaction from all snapshots — a security regression. I preserved redaction by running `SecretScanner.redact` on the rendered output (post-skeletonize/truncate), which is equivalent-or-safer: anything surviving rendering is still scanned, and secrets stripped by skeletonization are gone anyway. Functionally verified: a fake API key in a test project was detected, redacted, and counted in stats (`1 secret(s) detected and redacted`); grep confirmed zero leak in both normal and skeleton snapshots.
+Other adjustments vs the patch: static import instead of the patch's dynamic `await import(...)` (the module was already statically imported); oversize check stays caller-side for the `oversizedFiles` counter + skip-reason tracking. Known cosmetic change: truncation marker unified to the engine's `// ... truncated (N more lines)` format. Unused imports (`skeletonize`, `readMlModelMetadata`, `readFileWithSizeCheck`) removed.
+
+### 2. GLM worker prompt caching (improved over spec)
+Implemented `cache_control: ephemeral`, but with two deliberate design changes from the provided patch:
+- **Cache-effective block layout:** the patch cached the entire user message including the per-call instruction — a cache hit would require the whole message to repeat verbatim (i.e., never in practice). Instead: system persona (breakpoint 1) + stable context/files block FIRST (breakpoint 2) + instruction LAST, uncached. Iterative delegation loops re-sending the same files with new instructions now hit the cached prefix — the actual savings scenario.
+- **Graceful fallback:** Z.AI's cache_control support is unconfirmed; on the first 400 rejection the worker logs, permanently disables caching for the process lifetime (`cacheControlSupported` flag), and retries uncached — delegations never hard-fail on an unsupported field.
+Usage footer extended with `cache: N read / M written` when the endpoint reports cache stats, so effectiveness is observable. NOTE for Architect: message part order changed (files before TASK) — semantically neutral but tell GLM-prompt authors.
+
+### 3. Vitest suite deployed
+`test/snapshotBuilder.test.js` (6 tests) and `test/eckProtocolParser.test.js` (12 tests) — the architect's cases plus the full hardening regression set (close-tag-in-content, quad-backtick fences, default action, single-line delete tags, profile `#`-bleed, exclude-key omission, multi-file ordering, validator quoting, UTF-8 byte counting, k-suffix formatting, resolveEffectiveConfig no-types copy semantics). **18/18 pass**, `npm run test:run` now exits 0 (previously failed with "No test files found").
+
+### Verification
+- `npm run test:run`: 18/18 passed.
+- `node --check`: both modified source files pass.
+- End-to-end temp project: normal snapshot (secret redacted, stats correct), skeleton snapshot (`_sk_` artifact, bodies stripped to `/* ... */`, 144B→84B), zero secret leakage confirmed by grep across all generated snapshots.
+- This commit's delta snapshot exercises updateSnapshot's shared-engine path live.
+
+### TECH_DEBT
+Unified Snapshot Engine item marked COMPLETE via eck_manifest_edit.
+
+### For the Architect
+- First real GLM delegation will reveal whether Z.AI honors cache_control — watch for the `cache: N read / M written` footer (success) or the one-time stderr fallback notice (unsupported).
+- Suggested next test targets: `discoverFiles`/`renderFileAtDepth` against a fixture tree (needs tmp-dir scaffolding), and `extractMetadata` journal parsing.
+
 ## 2026-06-10 — Agent Report
 
 # Agent Report
