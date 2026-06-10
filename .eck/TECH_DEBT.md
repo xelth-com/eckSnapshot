@@ -1,9 +1,10 @@
 # Technical Debt
 
 ## Active
-- [ ] `LEGACY_COMMANDS` shim in `cli.js` translates old positional commands to JSON — should be removed once all documentation and muscle memory is updated
+- [ ] 📋 **Architectural Audit (2026-06-10)** — strategic blueprints for snapshot engine unification, Eck-Protocol parser hardening (line-anchored tags, `</file>`-in-content defect), GLM worker prompt caching + usage passthrough, and CLI shim reframing: see `ARCHITECTURAL_AUDIT.md`
+- [ ] `LEGACY_COMMANDS` in `cli.js` — audit (2026-06-10) found these are the *primary human interface*, not legacy: do NOT remove wholesale. Real debt: argv-mutation double-parse + the lone true-legacy `update-auto` entry. See `ARCHITECTURAL_AUDIT.md` §4 for the revised plan.
 - [ ] `src/templates/claude-code/mcp-server-template.js` still references `eck-snapshot update-auto` in description string (non-functional, documentation only)
-- [ ] **Unified Snapshot Engine**: Extract file collection, filtering, and metadata extraction logic into a shared service (e.g., `src/core/snapshotBuilder.js`). Current duplication between `createSnapshot.js` and `recon.js` leads to logic drift (fixed for ML models, but still risky).
+- [ ] **Unified Snapshot Engine**: Extract file collection, filtering, and metadata extraction logic into a shared service (`src/core/snapshotBuilder.js`). Audit (2026-06-10) confirmed 5 pipeline copies (incl. `generateProfileGuide.js` and a 2nd copy inside `createSnapshot.js`) with observed drift; risk-ordered migration plan in `ARCHITECTURAL_AUDIT.md` §1.
 - [x] Hard-coded ignore lists extracted to shared `GLOBAL_HARD_IGNORE_DIRS`/`GLOBAL_HARD_IGNORE_FILES` constants in `fileUtils.js` (2026-04-12)
 
 ## Resolved

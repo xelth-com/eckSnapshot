@@ -12,6 +12,33 @@ Reduced xelixir polyglot-firmware snapshot from **21989 KB → 1972 KB (-91%)**.
 
 
 
+
+## 2026-06-10 — Agent Report
+
+# Agent Report
+
+## Feature: Profile guide isolation, metrics, Eck-Protocol output — plus round-trip importer
+
+### Architect's spec (applied as designed)
+1. **Isolation:** Guide now written to `.eck/profile/generation_guide.md`. I verified the isolation claim end-to-end before trusting it: `loadProjectEckManifest` (fileUtils.js:820) reads `.eck` non-recursively (top-level `.md` only), and the main file sweep excludes `.eck/**` via the gitignored `.eck/` entry — so the subdirectory genuinely bypasses both sweep paths. The legacy hardcoded exclusion for the old flat filename `profile_generation_guide.md` (fileUtils.js:833) was deliberately kept to protect users who generated the old artifact with v6.7.x.
+2. **Metrics:** Post-write console output shows byte size (`formatSize`) and ~tokens (length/4), with a tip to lower the depth if the payload is too large.
+3. **Eck-Protocol (Profile Variant):** Prompt template now demands `<profile name="...">` markup with `# Description` / `# Include` / `# Exclude` sections instead of JSON.
+
+### Addition beyond spec (authorized by the human operator mid-task)
+The human granted latitude to improve on the spec. Critical gap found: nothing in the codebase could parse `<profile>` tags, so the JSON→markup switch left users with no way to apply the LLM's answer (previously the JSON was pastable into profiles.json). I closed the round-trip:
+- **`parseProfileTags()`** added to `src/utils/eckProtocolParser.js` (the natural home — it already parses `<file>` tags). Converts `<profile>` markup into the exact profiles.json schema; `exclude` omitted when empty.
+- **New command `profile-import <file>`** (`eck_profile_import`, `src/cli/commands/importProfiles.js`): reads a saved LLM response, parses tags, merges into local `.eck/profiles.json` (imported wins on name collision), reports Added/Updated lists, warns on empty Include lists. Friendly errors for missing file/argument/tags (exit 1).
+- Generator console output now points to the next step: `eck-snapshot profile-import <reply-file>`.
+- Wired into cli.js: import, legacy shim, switch case, help entry #13.
+
+### Verification
+- `node --check` passes on all 4 touched files (cli.js, generateProfileGuide.js, importProfiles.js, eckProtocolParser.js).
+- Functional round-trip in temp project: guide generated at new path with metrics (1.7 KB / ~421 tokens shown); fake LLM reply with two `<profile>` tags imported correctly (Description/Include/Exclude all parsed, schema matches existing profiles.json format); re-import reports "Updated"; no-tags file and missing argument both fail cleanly with exit 1.
+
+### Issues remaining / for the Architect
+- The full eck-snapshot repo itself still lacks automated tests; `parseProfileTags` is a prime candidate for the first vitest suite.
+- Consider whether `profile-import` should also accept stdin or a default reply path (e.g. `.eck/profile/llm_reply.md`) in a future iteration.
+
 ## 2026-06-10 — Agent Report
 
 # Agent Report
