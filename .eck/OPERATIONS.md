@@ -94,6 +94,25 @@ Link output saved to `.eck/links/` and `snapshots/`.
 | 8 | Full (standard) | Full content, truncated at 1000 lines |
 | 9 | Full (unlimited) | Everything, no limits |
 
+## Profile Workflow (Context Slices)
+```bash
+# 1. Generate an LLM guide for building profiles (depth 0-9, default 5 = skeleton)
+eck-snapshot generate-profile-guide 5
+# → .eck/profile/generation_guide.md (+ size/token metrics in console)
+
+# 2. Paste the guide into any LLM; save its <profile>-tag reply to a file
+
+# 3. Import the reply — merges into .eck/profiles.json (local wins on name collision)
+eck-snapshot profile-import reply.md
+
+# List available profiles (local + global merged)
+eck-snapshot profile
+
+# Snapshot a slice
+eck-snapshot profile backend
+eck-snapshot profile backend,api
+```
+
 ## NotebookLM Export
 ```bash
 # Primary project — Hybrid mode (Brain + Body chunks)

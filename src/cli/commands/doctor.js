@@ -2,8 +2,18 @@ import fs from 'fs/promises';
 import path from 'path';
 import chalk from 'chalk';
 
+// Generated-artifact subdirectories inside .eck/. WHY excluded: snapshots and
+// scouts EMBED copies of the manifests they were built from, so old artifacts
+// legitimately contain historic [STUB] markers — scanning them produced 170+
+// false positives that drowned out real unresolved stubs in live manifests.
+const ARTIFACT_DIRS = new Set(['snapshots', 'scouts', 'links', 'build', 'profile', 'lastsnapshot']);
+
 /**
- * Scans .eck directory for files containing [STUB] markers
+ * Scans .eck manifest files for unresolved [STUB] markers.
+ * Explains WHY it exists: stubs mark manifest sections awaiting human/agent
+ * completion; doctor surfaces them so [SYNC] passes know what to resolve.
+ * Only live manifests are scanned — generated artifact directories are skipped
+ * (see ARTIFACT_DIRS) because they archive old manifest copies verbatim.
  */
 export async function runDoctor(repoPath = process.cwd()) {
   const eckDir = path.join(repoPath, '.eck');
@@ -19,11 +29,12 @@ export async function runDoctor(repoPath = process.cwd()) {
   const stubFiles = [];
   const scannedFiles = [];
 
-  async function scan(dir) {
+  async function scan(dir, isRoot = false) {
     const entries = await fs.readdir(dir, { withFileTypes: true });
     for (const entry of entries) {
       const fullPath = path.join(dir, entry.name);
       if (entry.isDirectory()) {
+        if (isRoot && ARTIFACT_DIRS.has(entry.name)) continue;
         await scan(fullPath);
       } else if (entry.isFile() && (entry.name.endsWith('.md') || entry.name.endsWith('.json'))) {
         scannedFiles.push(fullPath);
@@ -38,7 +49,7 @@ export async function runDoctor(repoPath = process.cwd()) {
     }
   }
 
-  await scan(eckDir);
+  await scan(eckDir, true);
 
   if (stubFiles.length === 0) {
     console.log(chalk.green(`\n✅ All clear! Found ${scannedFiles.length} manifest files and no stubs.`));

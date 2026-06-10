@@ -9,7 +9,7 @@ Also serves as the coordination hub for the Royal Court AI architecture and prov
 - **Environment**: Node.js (ESM, `type: "module"`)
 - **CLI Framework**: Commander.js (single JSON argument router)
 - **Interface**: Pure JSON/MCP payloads (`{"name": "tool_name", "arguments": {...}}`)
-- **Legacy Shims**: Old positional commands (`snapshot`, `update`, `scout`, `fetch`) auto-translate to JSON
+- **Human Shorthands**: positional commands (`snapshot`, `update`, `scout`, `fetch`, `profile`, `generate-profile-guide`, `profile-import`, ...) auto-translate to JSON via the `HUMAN_SHORTHANDS` map — kept by design as the primary human interface (audit 2026-06-10)
 - **Core Features**:
   - **Skeleton Mode**: Strips function bodies using Tree-sitter and Babel to save tokens
   - **Delta Updates**: Tracks changes via Git anchors with sequential numbering (`_up1`, `_up2`, ...)
@@ -20,6 +20,8 @@ Also serves as the coordination hub for the Royal Court AI architecture and prov
   - **Polyglot Monorepo Filtering**: `detectProjectType` returns all detected types via `allDetections`; `getProjectSpecificFiltering` accepts `string[]` and merges ignore rules from all stacks (e.g., Rust + Android). Helper `getAllDetectedTypes(detection)` extracts the full type list
   - **Content-aware binary filtering**: `isBinaryFile()` in `fileUtils.js` does extension-based fast path (`is-binary-path`) plus magic-byte/null-byte sniff of first 8KB — catches extensionless ELF firmware, SQLite DBs without suffix, archives renamed without extension. Complemented by `GLOBAL_HARD_IGNORE_GLOBS` for rotated logs (`*.log.[0-9]*`, `*.log.gz`), core dumps, swap files
   - **ML peek opt-in**: ML model header extraction (`readMlModelMetadata` for `.safetensors`/`.onnx`/`.pt`/`.pth`/`.h5`/`.pb`/`.bin`/`.ckpt`/`.gguf`) is disabled by default — enable via `arguments.ml: true` (JSON) or `--ml` flag (shim). Prevents false-positive inclusion of raw `.bin` dumps as model headers
+  - **Unified Snapshot Engine** (`src/core/snapshotBuilder.js`): canonical `resolveEffectiveConfig` → `discoverFiles` → `renderFileAtDepth` pipeline + `computeArtifactMetrics`, shared by snapshot/update/scout/fetch/profile-guide; single `ML_EXTENSIONS` export (was 6 drifting copies). The main snapshot's `processFile` deliberately keeps stricter caller-side filters (hidden paths, dirsToIgnore, extensions) — see `ARCHITECTURAL_AUDIT.md` §1 closure note
+  - **Profile round-trip**: `generate-profile-guide [0-9]` → LLM guide at `.eck/profile/generation_guide.md` → external LLM replies with Eck-Protocol `<profile>` tags → `profile-import <file>` merges into `.eck/profiles.json` (parser: `parseProfileTags` in `eckProtocolParser.js`)
 
 ## Key Technologies
 - **Depth Config** (`src/core/depthConfig.js`): Shared 0-9 depth scale for `scout` and `link`, returns mode/truncation/skeleton settings
@@ -27,7 +29,7 @@ Also serves as the coordination hub for the Royal Court AI architecture and prov
 - **Babel**: JS/TS parsing and function body transformation
 - **Tree-sitter**: Multi-language structural analysis (Rust, Go, Python, C, Java, Kotlin)
 - **Execa**: Robust shell command execution
-- **Vitest**: Testing suite
+- **Vitest**: Testing suite (18 core tests: Eck-Protocol parser robustness + snapshotBuilder utilities, in `test/`)
 - **Micromatch**: Glob pattern matching (used by scout fetch)
 
 ## CLI Router (`src/cli/cli.js`)
@@ -47,8 +49,10 @@ All tools are dispatched via a single JSON payload argument:
 | `eck_telemetry` | Enable/disable/check telemetry | `cli.js` (inline) |
 | `eck_train_tokens` | Calibrate token estimator | `trainTokens.js` |
 | `eck_token_stats` | Show estimation accuracy | `trainTokens.js` |
+| `eck_generate_profile_guide` | Depth-scaled LLM guide for building profiles | `generateProfileGuide.js` |
+| `eck_profile_import` | Import `<profile>` tags into profiles.json | `importProfiles.js` |
 
-Legacy positional commands are intercepted via `LEGACY_COMMANDS` map in `cli.js` and translated to JSON before reaching the router. Includes `link` and `scout` shims with depth argument support.
+Positional shorthand commands are intercepted via the `HUMAN_SHORTHANDS` map in `cli.js` and translated to JSON before reaching the router. Includes `link` and `scout` shims with depth argument support. These are the primary human interface and stay by design; the only true-legacy entry is `update-auto`, kept for previously generated MCP server templates.
 
 **Default behavior:** Running `eck-snapshot` without arguments defaults to a full snapshot (`eck_snapshot`).
 
@@ -81,7 +85,7 @@ GLM Z.AI Worker Fleet (MCP: glm-zai server)
 ### Dynamic .eck/ Manifest Loading
 `loadProjectEckManifest` dynamically scans the `.eck/` directory for all `.md` files. Well-known files (CONTEXT, OPERATIONS, JOURNAL, ROADMAP, TECH_DEBT, ENVIRONMENT) map to dedicated keys; additional `.md` files are collected into `dynamicFiles`.
 
-Excluded from scanning: files containing `secret`, `credential`, `server_access` in the name, and `profile_generation_guide.md`.
+Excluded from scanning: files containing `secret`, `credential`, `server_access` in the name, and `profile_generation_guide.md` (legacy flat location). The scan is top-level-only by design — current profile guides live isolated in the `.eck/profile/` subdirectory, which the manifest sweep never reaches.
 
 ### Task Context Separation (`<eck_task>` Protocol)
 

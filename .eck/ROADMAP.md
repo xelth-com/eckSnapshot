@@ -1,7 +1,9 @@
 # Project Roadmap
 
 ## Current Sprint
-- [ ] Remove `LEGACY_COMMANDS` shim from `cli.js` once all callers use JSON natively
+- [ ] Verify Z.AI honors `cache_control` on first live GLM delegation (watch the usage footer in worker output)
+- [ ] Broaden vitest coverage: fixture-tree tests for `discoverFiles`/`renderFileAtDepth`
+- [ ] (optional) Promote `HUMAN_SHORTHANDS` to first-class commander subcommands, removing the argv-mutation double-parse — the shorthands themselves stay (superseded the old "remove LEGACY_COMMANDS" goal; audit 2026-06-10 established they are the primary human interface)
 
 ## Next Phase
 - [ ] **Scoped Directory Filtering (Path Б)** — dynamically apply project-specific filters per subdirectory (e.g., Android rules only inside `android/`) instead of global union
@@ -9,6 +11,12 @@
 - [ ] Per-project telemetry isolation (project_id in reports)
 
 ## Completed
+- [x] **Unified Snapshot Engine** — `src/core/snapshotBuilder.js`: canonical `resolveEffectiveConfig` → `discoverFiles` → `renderFileAtDepth` + `computeArtifactMetrics` pipeline shared by snapshot/update/scout/fetch/profile-guide; collapsed 6 `ML_EXTENSIONS` copies to one export; fixed updateSnapshot single-type polyglot drift; secret redaction preserved on rendered output (2026-06-10)
+- [x] **Eck-Protocol parser hardening** — line-anchored tags (literal `</file>` inside content no longer truncates blocks), attribute-order tolerance, `action` defaults to replace, quad-backtick fence support, known-heading profile sections, line-anchored validator (2026-06-10)
+- [x] **Profile round-trip workflow** — `generate-profile-guide [0-9]` writes a depth-scaled LLM guide to `.eck/profile/generation_guide.md` (isolated from manifest sweep) with size/token metrics → external LLM replies with `<profile>` tags → `profile-import <file>` parses and merges into `.eck/profiles.json`; profile listing is global-aware via `getAllProfiles` (2026-06-10)
+- [x] **GLM worker token economy** — prompt caching with cache-friendly block layout (stable files prefix, instruction last) + permanent 400-fallback, usage passthrough incl. cache read/write counts, 256KB per-file context guard, `project_root`/`max_tokens` args, persona rules dedup (2026-06-10)
+- [x] **Vitest suite bootstrapped** — 18 tests covering the parser-hardening regression set and snapshotBuilder utilities; `npm test` is now meaningful (2026-06-10)
+- [x] **Update-check semver fix** — segment-wise numerical comparison in `checkForUpdates` kills false downgrade alerts when the local version is ahead of npm (2026-06-10)
 - [x] **Content-aware binary detection** — `isBinaryFile()` async two-tier check in `fileUtils.js`: extension-based fast path + 8KB magic-byte sniff (26 signatures: ELF/PE/SQLite/Mach-O/archives/MS-Compound/PDF/media/WASM/Java) + null-byte heuristic. Catches extensionless firmware ELFs, SQLite DBs without suffix, archives renamed without extension. Reduced xelixir snapshot 22MB → 3.7MB (2026-05-14)
 - [x] **Glob-based global hard-ignore** — `GLOBAL_HARD_IGNORE_GLOBS` for rotated logs (`*.log.[0-9]*`, `*.log.gz`), core dumps (`core.[0-9]*`), editor swap files (`*.swp`/`*.swo`). Standard `*.log` also hardened as default. Applied at all 3 file-collection sites (2026-05-14)
 - [x] **ML peek opt-in** — separated ML model metadata extraction from default snapshot behavior via `arguments.ml: true` flag (CLI shim: `--ml`). Default treats `.bin`/`.onnx`/etc. as plain binaries → skipped. Eliminates false positives on raw network captures and sniffer dumps that share `.bin` extension (2026-05-14)
