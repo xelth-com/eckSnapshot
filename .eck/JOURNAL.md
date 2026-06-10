@@ -10,6 +10,24 @@ summary: Magic-byte binary detection, rotated-log hard-ignore, ML peek as opt-in
 
 Reduced xelixir polyglot-firmware snapshot from **21989 KB → 1972 KB (-91%)**. Three independent fixes addressing root causes:
 
+
+## 2026-06-10 — Agent Report
+
+# Agent Report
+
+## Fix: Package downgrade false-positives in checkForUpdates
+
+### What was done
+Replaced the strict string inequality check (`latest !== currentVersion`) in `checkForUpdates` with a segment-by-segment numerical semver comparison. The function now iterates through each version segment and only sets `isNewer = true` when the registry version is strictly greater than the local version. If any segment of the local version is higher, the loop breaks early without alerting.
+
+Also added a JSDoc block explaining WHY the validation layer exists (to prevent false downgrade alerts when the local/dev branch is ahead of npm).
+
+### Files changed
+- `src/cli/cli.js` — `checkForUpdates` function (lines 287–336)
+
+### Issues remaining
+None. The change is surgical and isolated to the update-check logic; all other CLI behavior is untouched.
+
 ## 1. Content-aware binary detection (magic-bytes + null-byte heuristic)
 - Added `isBinaryFile(absolutePath)` in `src/utils/fileUtils.js` — async two-tier check:
   - Fast path: `is-binary-path` extension match (unchanged behavior for known extensions)

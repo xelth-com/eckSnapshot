@@ -581,14 +581,13 @@ export async function createRepoSnapshot(repoPath, options) {
     // Handle --profile with no argument: list available profiles
     if (options.profile === true) {
       spinner.stop();
-      const profilesPath = path.join(repoPath, '.eck', 'profiles.json');
       try {
-        const profilesContent = await fs.readFile(profilesPath, 'utf-8');
-        const profiles = JSON.parse(profilesContent);
+        const { getAllProfiles } = await import('../../config.js');
+        const profiles = await getAllProfiles(repoPath);
         const profileNames = Object.keys(profiles).filter(name => !name.startsWith('_'));
 
         if (profileNames.length === 0) {
-          console.log(chalk.yellow('\n⚠️  No profiles found in .eck/profiles.json'));
+          console.log(chalk.yellow('\n⚠️  No profiles found'));
           console.log(`\nTo create profiles, run: ${chalk.green('eck-snapshot generate-profile-guide')}`);
           process.exit(0);
         }
@@ -613,12 +612,7 @@ export async function createRepoSnapshot(repoPath, options) {
         process.exit(0);
       } catch (error) {
         spinner.stop();
-        if (error.code === 'ENOENT') {
-          console.log(chalk.yellow('\n⚠️  profiles.json not found'));
-          console.log(`\nTo create profiles, run: ${chalk.green('eck-snapshot generate-profile-guide')}`);
-        } else {
-          console.log(chalk.red(`\n❌ Error reading profiles: ${error.message}`));
-        }
+        console.log(chalk.red(`\n❌ Error reading profiles: ${error.message}`));
         process.exit(1);
       }
     }
