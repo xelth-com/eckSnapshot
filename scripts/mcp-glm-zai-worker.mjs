@@ -38,31 +38,34 @@ const glmClient = new Anthropic({
   baseURL: "https://api.z.ai/api/anthropic",
 });
 
+// Shared persona preamble.
+// WHY: the same first rule and convention-following rule were duplicated across
+// all five personas — one drifted edit would silently desynchronize worker behavior.
+const SHARED_RULES = `Rules:
+- Return ONLY the code or diffs. No explanations unless critical.
+- Follow the existing project conventions you see in the provided files.`;
+
 // Define Personas - specialized worker roles
 const PERSONAS = {
   frontend: `You are an Expert Frontend Developer (GLM-4.7).
 Focus: React, Vue, Svelte, Tailwind, CSS, UI/UX, responsive design.
 Goal: Implement the requested UI component, page, or frontend logic.
-Rules:
-- Return ONLY the code or diffs. No explanations unless critical.
-- Follow the existing project conventions you see in the provided files.
+${SHARED_RULES}
 - Use modern ES modules syntax.
 - Ensure accessibility basics (semantic HTML, ARIA where needed).`,
 
   backend: `You are a Senior Backend Engineer (GLM-4.7).
 Focus: Node.js, Python, Go, SQL, API design, Auth, WebSocket.
 Goal: Implement robust business logic, API endpoints, and data handling.
-Rules:
-- Return ONLY the code or diffs. No explanations unless critical.
-- Follow RESTful principles and existing project patterns.
+${SHARED_RULES}
+- Follow RESTful principles.
 - Include proper error handling.
 - Write secure code (no SQL injection, XSS, etc).`,
 
   qa: `You are a QA Automation Engineer (GLM-4.7).
 Focus: Unit tests, Integration tests, E2E tests, Edge cases.
 Goal: Write comprehensive tests for the provided code.
-Rules:
-- Return ONLY the test files. No explanations unless critical.
+${SHARED_RULES}
 - Use the testing framework already in the project (Jest, Vitest, pytest, etc).
 - Use AAA pattern (Arrange, Act, Assert).
 - Cover happy paths, edge cases, and error scenarios.
@@ -71,8 +74,7 @@ Rules:
   refactor: `You are a Code Quality Specialist (GLM-4.7).
 Focus: Clean Code, DRY, SOLID, Performance optimization, readability.
 Goal: Refactor the provided code to be cleaner, faster, and more maintainable.
-Rules:
-- Return ONLY the refactored code. No explanations unless critical.
+${SHARED_RULES}
 - Preserve existing functionality (no behavior changes).
 - Reduce complexity and duplication.
 - Improve naming and structure.`,
@@ -80,12 +82,15 @@ Rules:
   general: `You are an Expert Full-Stack Developer (GLM-4.7).
 Focus: Full-stack web development, problem-solving, debugging.
 Goal: Complete the requested task efficiently and correctly.
-Rules:
-- Return ONLY the code or diffs. No explanations unless critical.
-- Follow existing project conventions.
+${SHARED_RULES}
 - Write clean, maintainable code.
 - Consider edge cases.`
 };
+
+// Per-file context budget. WHY: a multi-megabyte file (lockfile, bundle, dump)
+// passed via file_paths would blow the GLM context window and waste the whole
+// delegation call. Files over the cap are truncated head-first with a marker.
+const MAX_FILE_BYTES = 256 * 1024;
 
 const server = new Server(
   { name: "glm-zai-worker", version: "2.0.0" },
@@ -115,6 +120,16 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
           type: "string",
           description:
             "Brief context about the project and what we are building (optional but recommended).",
+        },
+        project_root: {
+          type: "string",
+          description:
+            "Absolute path to the project root used to resolve file_paths. Defaults to the MCP server's working directory.",
+        },
+        max_tokens: {
+          type: "number",
+          description:
+            "Maximum output tokens for the worker response (default 16384).",
         },
       },
       required: ["instruction"],
@@ -147,17 +162,26 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     instruction,
     file_paths = [],
     context_summary = "",
+    project_root = "",
+    max_tokens = 16384,
   } = request.params.arguments;
 
   try {
-    // Read files internally to avoid sending file content through the supervisor
+    // Read files internally to avoid sending file content through the supervisor.
+    // project_root makes resolution independent of where the MCP server process
+    // was spawned (process.cwd() is unreliable across harness configurations).
+    const resolveBase = project_root || process.cwd();
     let heavyContext = "";
     const missingFiles = [];
 
     for (const filePath of file_paths) {
       try {
-        const absolutePath = path.resolve(process.cwd(), filePath);
-        const content = await fs.readFile(absolutePath, "utf-8");
+        const absolutePath = path.resolve(resolveBase, filePath);
+        let content = await fs.readFile(absolutePath, "utf-8");
+        if (Buffer.byteLength(content, "utf-8") > MAX_FILE_BYTES) {
+          content = content.slice(0, MAX_FILE_BYTES)
+            + `\n\n[... TRUNCATED by worker: file exceeds ${MAX_FILE_BYTES / 1024}KB context budget ...]`;
+        }
         heavyContext += `\n=== FILE: ${filePath} ===\n${content}\n=== END FILE ===\n`;
       } catch (e) {
         missingFiles.push(`${filePath} (${e.code || e.message})`);
@@ -190,10 +214,14 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       userMessage += `\nSOURCE FILES:\n${heavyContext}`;
     }
 
+    // TODO(token-economy): add Anthropic prompt caching (cache_control: ephemeral)
+    // on the system prompt + file context once verified against the Z.AI endpoint —
+    // it is Anthropic-SDK-compatible but cache support is unconfirmed. Highest-leverage
+    // optimization for iterative delegation loops (see ARCHITECTURAL_AUDIT.md §3).
     const response = await pRetry(
       () => glmClient.messages.create({
         model: "GLM-4.7",
-        max_tokens: 16384,
+        max_tokens,
         system: systemPrompt,
         messages: [{ role: "user", content: userMessage }],
       }),
@@ -218,11 +246,20 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       resultText = "No content returned from GLM Z.AI.";
     }
 
+    // Surface token usage so the supervisor can manage the delegation token economy
+    // (previously response.usage was silently discarded).
+    let usageFooter = "";
+    if (response.usage) {
+      const inTok = response.usage.input_tokens ?? "?";
+      const outTok = response.usage.output_tokens ?? "?";
+      usageFooter = `\n\n---\n_tokens: ${inTok} in / ${outTok} out_`;
+    }
+
     return {
       content: [
         {
           type: "text",
-          text: `## GLM Z.AI (${role.toUpperCase()}) Output\n\n${resultText}`,
+          text: `## GLM Z.AI (${role.toUpperCase()}) Output\n\n${resultText}${usageFooter}`,
         },
       ],
     };

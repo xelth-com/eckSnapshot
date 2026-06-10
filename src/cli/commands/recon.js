@@ -5,19 +5,11 @@ import micromatch from 'micromatch';
 import {
   generateDirectoryTree,
   generateTimestamp,
-  readFileWithSizeCheck,
-  parseSize,
-  loadGitignore,
-  getProjectFiles,
-  matchesPattern,
-  ensureSnapshotsInGitignore,
-  readMlModelMetadata,
-  isBinaryFile
+  ensureSnapshotsInGitignore
 } from '../../utils/fileUtils.js';
-import { detectProjectType, getProjectSpecificFiltering, getAllDetectedTypes } from '../../utils/projectDetector.js';
 import { loadSetupConfig } from '../../config.js';
 import { getDepthConfig, DEPTH_SCALE } from '../../core/depthConfig.js';
-import { skeletonize } from '../../core/skeletonizer.js';
+import { resolveEffectiveConfig, discoverFiles, renderFileAtDepth, computeArtifactMetrics } from '../../core/snapshotBuilder.js';
 
 export async function runReconTool(payload) {
   const toolName = payload.name;
@@ -45,78 +37,25 @@ async function runScout(depth = 0, opts = {}) {
     const repoName = path.basename(repoPath);
     const setupConfig = await loadSetupConfig();
     let config = { ...setupConfig.fileFiltering, ...setupConfig.performance };
-
-    // Apply project-specific filtering (was missing in previous versions)
-    const projectDetection = await detectProjectType(repoPath);
-    const allTypes = getAllDetectedTypes(projectDetection);
-    if (allTypes && allTypes.length > 0) {
-      const projectSpecific = await getProjectSpecificFiltering(allTypes);
-      config = {
-        ...config,
-        dirsToIgnore: [...(config.dirsToIgnore || []), ...(projectSpecific.dirsToIgnore || [])],
-        filesToIgnore: [...(config.filesToIgnore || []), ...(projectSpecific.filesToIgnore || [])],
-        extensionsToIgnore: [...(config.extensionsToIgnore || []), ...(projectSpecific.extensionsToIgnore || [])]
-      };
-    }
+    config = await resolveEffectiveConfig(repoPath, config);
 
     // Use a deep maxDepth for scout so the AI can see the full structure
     config.maxDepth = 15;
 
-    // Use getProjectFiles which respects git tracking natively
-    let allFiles = await getProjectFiles(repoPath, config);
-    const gitignore = await loadGitignore(repoPath);
-
-    // Filter binaries, gitignore/eckignore, and file-level ignores.
-    // Binary check is content-aware (magic-bytes) — needed for extensionless firmware/DB files.
     // ML peek is opt-in (opts.ml === true) — otherwise ML extensions go through normal binary skip.
-    const ML_EXTENSIONS = ['.safetensors', '.onnx', '.pt', '.pth', '.h5', '.pb', '.bin', '.ckpt', '.gguf'];
     const mlPeek = !!opts.ml;
-    const keepFlags = await Promise.all(allFiles.map(async (f) => {
-      const normalized = f.replace(/\\/g, '/');
-      const mlExt = path.extname(f).toLowerCase();
-      const isMlModel = mlPeek && ML_EXTENSIONS.includes(mlExt);
-      if (gitignore.ignores(normalized)) return false;
-      if (config.filesToIgnore && matchesPattern(normalized, config.filesToIgnore)) return false;
-      if (!isMlModel && await isBinaryFile(path.join(repoPath, f))) return false;
-      return true;
-    }));
-    allFiles = allFiles.filter((_, i) => keepFlags[i]);
+    const allFiles = await discoverFiles(repoPath, config, { mlPeek });
 
     const directoryTree = await generateDirectoryTree(repoPath, '', allFiles, 0, config.maxDepth, config);
 
     // Build file contents section if depth > 0
     let fileContentSection = '';
     if (!depthCfg.skipContent) {
-      const maxFileSize = parseSize(config.maxFileSize || '10MB');
       let processedCount = 0;
 
       for (const file of allFiles) {
         try {
-          const fullPath = path.join(repoPath, file);
-          const mlExt = path.extname(file).toLowerCase();
-          const ML_EXTENSIONS = ['.safetensors', '.onnx', '.pt', '.pth', '.h5', '.pb', '.bin', '.ckpt', '.gguf'];
-
-          let content;
-          if (mlPeek && ML_EXTENSIONS.includes(mlExt)) {
-            content = await readMlModelMetadata(fullPath);
-          } else {
-            content = await readFileWithSizeCheck(fullPath, maxFileSize);
-          }
-
-          // Apply skeletonization
-          if (depthCfg.skeleton) {
-            content = await skeletonize(content, file, { preserveDocs: depthCfg.preserveDocs !== false });
-          }
-
-          // Apply line truncation
-          if (depthCfg.maxLinesPerFile && depthCfg.maxLinesPerFile > 0) {
-            const lines = content.split('\n');
-            if (lines.length > depthCfg.maxLinesPerFile) {
-              content = lines.slice(0, depthCfg.maxLinesPerFile).join('\n');
-              content += `\n// ... truncated (${lines.length - depthCfg.maxLinesPerFile} more lines)`;
-            }
-          }
-
+          const content = await renderFileAtDepth(repoPath, file, depthCfg, config, { mlPeek });
           fileContentSection += `--- File: /${file} ---\n\n\`\`\`\n${content}\n\`\`\`\n\n`;
           processedCount++;
         } catch (e) {
@@ -182,10 +121,7 @@ ${directoryTree}
     const outputPath = path.join(repoPath, '.eck', 'scouts', filename);
     await fs.writeFile(outputPath, outputContent, 'utf-8');
 
-    const sizeBytes = Buffer.byteLength(outputContent, 'utf-8');
-    const sizeStr = sizeBytes < 1024 ? `${sizeBytes} B` : sizeBytes < 1048576 ? `${(sizeBytes / 1024).toFixed(1)} KB` : `${(sizeBytes / 1048576).toFixed(1)} MB`;
-    const approxTokens = Math.round(outputContent.length / 4);
-    const tokensStr = approxTokens < 1000 ? `${approxTokens}` : `${(approxTokens / 1000).toFixed(1)}k`;
+    const { sizeStr, tokensStr } = computeArtifactMetrics(outputContent);
 
     console.log(chalk.green(`✅ Scout complete. Saved to: .eck/scouts/${filename}`));
     console.log(chalk.gray(`   Size: ${sizeStr} | ~${tokensStr} tokens`));
@@ -202,35 +138,10 @@ async function runFetch(patterns, opts = {}) {
     const repoPathNorm = repoPath.replace(/\\/g, '/').replace(/\/$/, '') + '/';
     const setupConfig = await loadSetupConfig();
     let config = { ...setupConfig.fileFiltering, ...setupConfig.performance };
+    config = await resolveEffectiveConfig(repoPath, config);
 
-    // Apply project-specific filtering
-    const projectDetection = await detectProjectType(repoPath);
-    const allTypes = getAllDetectedTypes(projectDetection);
-    if (allTypes && allTypes.length > 0) {
-      const projectSpecific = await getProjectSpecificFiltering(allTypes);
-      config = {
-        ...config,
-        dirsToIgnore: [...(config.dirsToIgnore || []), ...(projectSpecific.dirsToIgnore || [])],
-        filesToIgnore: [...(config.filesToIgnore || []), ...(projectSpecific.filesToIgnore || [])],
-        extensionsToIgnore: [...(config.extensionsToIgnore || []), ...(projectSpecific.extensionsToIgnore || [])]
-      };
-    }
-
-    let allFiles = await getProjectFiles(repoPath, config);
-    const gitignore = await loadGitignore(repoPath);
-
-    const ML_EXTENSIONS = ['.safetensors', '.onnx', '.pt', '.pth', '.h5', '.pb', '.bin', '.ckpt', '.gguf'];
     const mlPeek = !!opts.ml;
-    const keepFlags = await Promise.all(allFiles.map(async (f) => {
-      const normalized = f.replace(/\\/g, '/');
-      const mlExt = path.extname(f).toLowerCase();
-      const isMlModel = mlPeek && ML_EXTENSIONS.includes(mlExt);
-      if (gitignore.ignores(normalized)) return false;
-      if (config.filesToIgnore && matchesPattern(normalized, config.filesToIgnore)) return false;
-      if (!isMlModel && await isBinaryFile(path.join(repoPath, f))) return false;
-      return true;
-    }));
-    allFiles = allFiles.filter((_, i) => keepFlags[i]);
+    const allFiles = await discoverFiles(repoPath, config, { mlPeek });
 
     // Normalize patterns: strip absolute cwd prefix, convert backslashes,
     // and auto-wrap bare filenames with **/ for convenience
@@ -262,21 +173,11 @@ async function runFetch(patterns, opts = {}) {
 
     let fileContentStr = '';
     let fetchedCount = 0;
-    const maxFileSize = parseSize(config.maxFileSize || '10MB');
 
     for (const file of matchedFiles) {
       try {
-        const fullPath = path.join(repoPath, file);
-        const mlExt = path.extname(file).toLowerCase();
-        const ML_EXTENSIONS = ['.safetensors', '.onnx', '.pt', '.pth', '.h5', '.pb', '.bin', '.ckpt', '.gguf'];
-
-        let content;
-        if (mlPeek && ML_EXTENSIONS.includes(mlExt)) {
-          content = await readMlModelMetadata(fullPath);
-        } else {
-          content = await readFileWithSizeCheck(fullPath, maxFileSize);
-        }
-
+        // Fetch always returns full content: pass an empty depth config (no skeleton/truncation)
+        const content = await renderFileAtDepth(repoPath, file, {}, config, { mlPeek });
         fileContentStr += `--- File: /${file} ---\n\n\`\`\`\n${content}\n\`\`\`\n\n`;
         fetchedCount++;
       } catch (e) {
@@ -304,10 +205,7 @@ ${fileContentStr}
     const outputPath = path.join(repoPath, '.eck', 'scouts', filename);
     await fs.writeFile(outputPath, finalContent, 'utf-8');
 
-    const sizeBytes = Buffer.byteLength(finalContent, 'utf-8');
-    const sizeStr = sizeBytes < 1024 ? `${sizeBytes} B` : sizeBytes < 1048576 ? `${(sizeBytes / 1024).toFixed(1)} KB` : `${(sizeBytes / 1048576).toFixed(1)} MB`;
-    const approxTokens = Math.round(finalContent.length / 4);
-    const tokensStr = approxTokens < 1000 ? `${approxTokens}` : `${(approxTokens / 1000).toFixed(1)}k`;
+    const { sizeStr, tokensStr } = computeArtifactMetrics(finalContent);
 
     console.log(chalk.green(`✅ Fetched ${fetchedCount} files. Saved to: .eck/scouts/${filename}`));
     console.log(chalk.gray(`   Size: ${sizeStr} | ~${tokensStr} tokens`));

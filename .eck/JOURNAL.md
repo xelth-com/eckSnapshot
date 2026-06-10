@@ -13,6 +13,30 @@ Reduced xelixir polyglot-firmware snapshot from **21989 KB → 1972 KB (-91%)**.
 
 
 
+
+## 2026-06-10 — Agent Report
+
+# Agent Report
+
+## Architectural Audit & Optimization Blueprint — completed
+
+### What was done
+Performed a real code audit of the four target areas (read `createSnapshot.js`, `recon.js`, `eckProtocolParser.js`, `mcp-glm-zai-worker.mjs`, `cli.js`, plus caller greps across `src/` and `scripts/`), then wrote the findings to `.eck/ARCHITECTURAL_AUDIT.md` — substantially expanded from the provided template with concrete file:line evidence. Linked the audit into `TECH_DEBT.md` via three `eck_manifest_edit` calls (new audit entry + updated the two pre-existing related debt items). **No production code was changed.**
+
+### Key findings the Architect should review (they go beyond / against the original framing)
+1. **Snapshot engine:** duplication is worse than stated — 5 pipeline copies, not 2: `processProjectFiles`/`processFile` AND `estimateProjectTokens` (both in createSnapshot.js), `runScout` AND `runFetch` (both in recon.js), plus `generateProfileGuide.js`. `ML_EXTENSIONS` is defined in 5 separate literals. Drift already observed (truncation markers, extension checks). Risk-ordered 5-step migration plan in §1; proposed functional module API over the class sketch (matches codebase style), JSDoc with WHY included.
+2. **Eck-Protocol parser:** found 5 concrete defects. Highest severity: lazy `</file>` matching means any file *containing* the literal `</file>` (the protocol's own docs: `architect-prompt.template.md`, `aiHeader.js`) cannot round-trip — content truncates silently. Also: attribute-order rigidity, quad-backtick fence mismatch vs the documented spec, validator false-positives on protocol examples, profile-section bleed on `#` lines. Cheap fix proposed (line-anchored tags, ~10 lines) before any state-machine rewrite. Token-economy honest take: markup overhead is negligible; the real cost+risk is full-file `action="replace"` payloads (already caused 2 transcription regressions on 2026-06-10) — recommend defaulting the protocol to `modify` search/replace blocks.
+3. **GLM worker:** highest-leverage change is Anthropic prompt caching (`cache_control` breakpoints) — full file contents are currently re-sent on every delegation. Also: `response.usage` is discarded (supervisor flies blind on the token economy), no per-file size guard, CWD-fragile path resolution, hardcoded max_tokens.
+4. **Legacy shim — recommendation contradicts the original premise:** `LEGACY_COMMANDS` is the *primary human interface* (help text markets it; agent templates at `claudeMdGenerator.js:182,202` and `architect-prompt.template.md` instruct its use; `mcp-server-template.js:161` calls `update-auto` programmatically). Wholesale elimination would break human UX and generated agent prompts. Revised plan: fix the argv-mutation double-parse (the actual smell), migrate the single true-legacy `update-auto` caller to JSON, rename/promote the rest. TECH_DEBT item updated accordingly.
+
+### Verification
+- `node --check` passes on all five audited source files (no code modified, codebase healthy).
+- `TECH_DEBT.md` re-read after the three manifest edits — all landed correctly, file well-formed.
+- `.eck/ARCHITECTURAL_AUDIT.md` created with all four required sections + JSDoc'd architecture sketches.
+
+### Issues remaining
+None for this task. The audit's §1 step 1 (extract `ML_EXTENSIONS` + `discoverFiles`) is the natural next eck_task if the Architect wants to begin the migration.
+
 ## 2026-06-10 — Agent Report
 
 # Agent Report

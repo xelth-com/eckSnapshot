@@ -35,30 +35,63 @@ export function parseEckResponse(text) {
 }
 
 /**
+ * Parses XML-like tag attributes in any order.
+ * Explains WHY it exists: the previous <file> regex required path-then-action in that
+ * exact order, so `<file action="..." path="...">` silently failed to parse and the
+ * agent's payload was treated as plain text.
+ * @param {string} attrStr - The raw attribute portion of an opening tag
+ * @returns {Object<string, string>} Attribute name → value map
+ */
+function parseTagAttributes(attrStr) {
+  const attrs = {};
+  const re = /(\w+)\s*=\s*["']([^"']*)["']/g;
+  let m;
+  while ((m = re.exec(attrStr)) !== null) {
+    attrs[m[1]] = m[2];
+  }
+  return attrs;
+}
+
+/**
  * Extracts file changes from <file> tags.
+ * Tags are anchored to line starts so a literal `</file>` appearing inside file
+ * content (e.g. files documenting the protocol itself) no longer terminates the
+ * block early. Attributes may appear in any order; `action` defaults to "replace".
+ * Fence stripping honors the protocol's quadruple-backtick convention via a
+ * backreference, so ````-wrapped code keeps embedded ``` fences intact.
  * @param {string} text - Raw text
  * @returns {Array<{path: string, action: string, content: string}>}
  */
 function extractFiles(text) {
   const files = [];
 
-  // Pattern: <file path="..." action="..."> content </file>
-  const fileRegex = /<file\s+path=["']([^"']+)["']\s+action=["']([^"']+)["']>\s*([\s\S]*?)\s*<\/file>/gi;
+  // Multiline blocks: opening and closing tags each on their own line
+  const fileRegex = /^[ \t]*<file\b([^>]*)>[ \t]*\r?\n([\s\S]*?)^[ \t]*<\/file>[ \t]*$/gim;
+  // Single-line empty blocks: <file ... ></file> (e.g. delete actions)
+  const emptyRegex = /^[ \t]*<file\b([^>]*)><\/file>[ \t]*$/gim;
 
-  let match;
-  while ((match = fileRegex.exec(text)) !== null) {
-    const path = match[1];
-    const action = match[2];
-    let content = match[3].trim();
+  const collect = (attrStr, rawContent) => {
+    const attrs = parseTagAttributes(attrStr);
+    if (!attrs.path) return;
 
-    // Strip markdown code fences if present
-    const fenceMatch = content.match(/^```[\w]*\s*\n?([\s\S]*?)\n?\s*```$/);
+    let content = rawContent.trim();
+    // Strip markdown code fences if present; \1 backreference keeps 3- and 4-backtick
+    // fences symmetric (protocol uses ```` to wrap code containing ```)
+    const fenceMatch = content.match(/^(`{3,4})[\w-]*[ \t]*\r?\n?([\s\S]*?)\r?\n?[ \t]*\1$/);
     if (fenceMatch) {
-      content = fenceMatch[1];
+      content = fenceMatch[2];
     }
 
     content = content.replace(/\r\n/g, '\n');
-    files.push({ path, action, content });
+    files.push({ path: attrs.path, action: attrs.action || 'replace', content });
+  };
+
+  let match;
+  while ((match = fileRegex.exec(text)) !== null) {
+    collect(match[1], match[2]);
+  }
+  while ((match = emptyRegex.exec(text)) !== null) {
+    collect(match[1], '');
   }
 
   return files;
@@ -114,7 +147,7 @@ function extractMetadata(text) {
  */
 function extractThought(text) {
   const changesIndex = text.search(/##\s*Changes/i);
-  const fileIndex = text.search(/<file\s+path=/i);
+  const fileIndex = text.search(/^[ \t]*<file\b/im);
 
   let endIndex = text.length;
   if (changesIndex !== -1 && fileIndex !== -1) {
@@ -167,12 +200,18 @@ export function parseProfileTags(text) {
 
 /**
  * Extracts the text under a markdown heading inside a profile body.
+ * The section terminator is restricted to the protocol's KNOWN headings
+ * (Description/Include/Exclude) so a stray `#`-prefixed line inside a
+ * description no longer truncates the section.
  * @param {string} body - Profile tag inner content
  * @param {string} heading - Heading name (e.g. "Description")
  * @returns {string} Trimmed section text, or '' if the section is absent
  */
 function extractSectionText(body, heading) {
-  const m = body.match(new RegExp(`#{1,3}\\s*${heading}\\s*\\n([\\s\\S]*?)(?=\\n#{1,3}\\s|$)`, 'i'));
+  const m = body.match(new RegExp(
+    `#{1,3}\\s*${heading}\\s*\\n([\\s\\S]*?)(?=\\n#{1,3}\\s*(?:Description|Include|Exclude)\\b|$)`,
+    'i'
+  ));
   return m ? m[1].trim() : '';
 }
 
@@ -211,11 +250,12 @@ export function validateEckResponse(text) {
     return result;
   }
 
-  const hasFileTags = /<file\s+path=/.test(text);
-  if (hasFileTags) {
+  // Line-anchored counting: protocol examples quoted INSIDE file content used to
+  // inflate the counts and produce bogus "mismatched tags" errors.
+  const openTags = (text.match(/^[ \t]*<file\b/gim) || []).length;
+  const closeTags = (text.match(/^[ \t]*<\/file>|<file\b[^>]*><\/file>[ \t]*$/gim) || []).length;
+  if (openTags > 0) {
     result.hasFiles = true;
-    const openTags = (text.match(/<file\s+/g) || []).length;
-    const closeTags = (text.match(/<\/file>/g) || []).length;
     if (openTags !== closeTags) {
       result.valid = false;
       result.errors.push(`Mismatched file tags: ${openTags} opening, ${closeTags} closing`);

@@ -43,9 +43,12 @@ import { runTokenTools } from './commands/trainTokens.js';
 import { generateProfileGuide } from './commands/generateProfileGuide.js';
 import { importProfiles } from './commands/importProfiles.js';
 
-// Legacy command shims: translate old positional commands to JSON payloads
-// so internal callers (mcp-eck-core.js) keep working after the JSON migration.
-const LEGACY_COMMANDS = {
+// Human-facing positional shorthands, translated to JSON payloads before commander
+// parses them. WHY this exists: the JSON payload is the canonical AI interface, but
+// humans (and generated agent prompts) use these shorthands daily — they are a
+// feature, not legacy debt (see ARCHITECTURAL_AUDIT.md §4). The lone true-legacy
+// entry is 'update-auto', kept only for previously generated MCP server templates.
+const HUMAN_SHORTHANDS = {
   'update-auto': (args) => {
     const baseIdx = args.indexOf('--base');
     const base = baseIdx !== -1 && args[baseIdx + 1] ? args[baseIdx + 1] : undefined;
@@ -77,11 +80,11 @@ const LEGACY_COMMANDS = {
 };
 
 export function run() {
-  // Intercept legacy positional commands before commander parses them
+  // Intercept positional shorthand commands before commander parses them
   const rawArgs = process.argv.slice(2);
   const firstArg = rawArgs[0];
-  if (firstArg && LEGACY_COMMANDS[firstArg]) {
-    const payload = LEGACY_COMMANDS[firstArg](rawArgs.slice(1));
+  if (firstArg && HUMAN_SHORTHANDS[firstArg]) {
+    const payload = HUMAN_SHORTHANDS[firstArg](rawArgs.slice(1));
     // Replace argv so commander sees the JSON payload
     process.argv = [process.argv[0], process.argv[1], JSON.stringify(payload)];
   }

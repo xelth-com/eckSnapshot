@@ -17,7 +17,8 @@ import {
   getShortRepoName, SecretScanner, getProjectFiles, readMlModelMetadata,
   isBinaryFile
 } from '../../utils/fileUtils.js';
-import { detectProjectType, getProjectSpecificFiltering, getAllDetectedTypes } from '../../utils/projectDetector.js';
+import { detectProjectType, getAllDetectedTypes } from '../../utils/projectDetector.js';
+import { isMlModelFile, resolveEffectiveConfig } from '../../core/snapshotBuilder.js';
 import { estimateTokensWithPolynomial, generateTrainingCommand } from '../../utils/tokenEstimator.js';
 import { loadSetupConfig, getProfile } from '../../config.js';
 import { applyProfileFilter } from '../../utils/fileUtils.js';
@@ -223,15 +224,8 @@ async function estimateProjectTokens(projectPath, config, projectTypes = null) {
     projectTypes = getAllDetectedTypes(detection);
   }
 
-  const projectSpecific = await getProjectSpecificFiltering(projectTypes);
-
-  // Merge project-specific filters with global config (same as in scanDirectoryRecursively)
-  const effectiveConfig = {
-    ...config,
-    dirsToIgnore: [...(config.dirsToIgnore || []), ...(projectSpecific.dirsToIgnore || [])],
-    filesToIgnore: [...(config.filesToIgnore || []), ...(projectSpecific.filesToIgnore || [])],
-    extensionsToIgnore: [...(config.extensionsToIgnore || []), ...(projectSpecific.extensionsToIgnore || [])]
-  };
+  // Merge project-specific filters with global config (shared logic in snapshotBuilder)
+  const effectiveConfig = await resolveEffectiveConfig(projectPath, config, projectTypes);
 
   const files = await getProjectFiles(projectPath, effectiveConfig);
   const gitignore = await loadGitignore(projectPath);
@@ -286,13 +280,7 @@ async function estimateProjectTokens(projectPath, config, projectTypes = null) {
 async function processProjectFiles(repoPath, options, config, projectTypes = null) {
   // Merge project-specific filtering rules for ALL detected types (polyglot monorepo support)
   if (projectTypes) {
-    const projectSpecific = await getProjectSpecificFiltering(projectTypes);
-    config = {
-      ...config,
-      dirsToIgnore: [...(config.dirsToIgnore || []), ...(projectSpecific.dirsToIgnore || [])],
-      filesToIgnore: [...(config.filesToIgnore || []), ...(projectSpecific.filesToIgnore || [])],
-      extensionsToIgnore: [...(config.extensionsToIgnore || []), ...(projectSpecific.extensionsToIgnore || [])]
-    };
+    config = await resolveEffectiveConfig(repoPath, config, projectTypes);
   }
 
   const originalCwd = process.cwd();
@@ -394,12 +382,10 @@ async function processProjectFiles(repoPath, options, config, projectTypes = nul
           return null;
         }
 
-        const mlExt = path.extname(filePath).toLowerCase();
-        const ML_EXTENSIONS = ['.safetensors', '.onnx', '.pt', '.pth', '.h5', '.pb', '.bin', '.ckpt', '.gguf'];
         // ML peek is opt-in via `arguments.ml: true`. Default: ML files treated as plain binaries.
         // This prevents false-positives where `.bin` raw dumps (mitm captures, sniffer output)
         // get included via readMlModelMetadata when no real model is present.
-        const isMlModel = !!options?.ml && ML_EXTENSIONS.includes(mlExt);
+        const isMlModel = !!options?.ml && isMlModelFile(filePath);
 
         // Content-aware binary check (catches extensionless ELFs, SQLite DBs, archives).
         // ML models bypass to allow header metadata extraction below.

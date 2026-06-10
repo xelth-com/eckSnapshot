@@ -3,8 +3,8 @@
 ## Active
 - [ ] 📋 **Architectural Audit (2026-06-10)** — strategic blueprints for snapshot engine unification, Eck-Protocol parser hardening (line-anchored tags, `</file>`-in-content defect), GLM worker prompt caching + usage passthrough, and CLI shim reframing: see `ARCHITECTURAL_AUDIT.md`
 - [ ] `LEGACY_COMMANDS` in `cli.js` — audit (2026-06-10) found these are the *primary human interface*, not legacy: do NOT remove wholesale. Real debt: argv-mutation double-parse + the lone true-legacy `update-auto` entry. See `ARCHITECTURAL_AUDIT.md` §4 for the revised plan.
-- [ ] `src/templates/claude-code/mcp-server-template.js` still references `eck-snapshot update-auto` in description string (non-functional, documentation only)
-- [ ] **Unified Snapshot Engine**: Extract file collection, filtering, and metadata extraction logic into a shared service (`src/core/snapshotBuilder.js`). Audit (2026-06-10) confirmed 5 pipeline copies (incl. `generateProfileGuide.js` and a 2nd copy inside `createSnapshot.js`) with observed drift; risk-ordered migration plan in `ARCHITECTURAL_AUDIT.md` §1.
+- [x] `src/templates/claude-code/mcp-server-template.js` referenced `eck-snapshot update-auto` — description string AND the execa call migrated to the `eck_update_auto` JSON payload (2026-06-10); positional shim entry kept for previously generated template copies
+- [ ] **Unified Snapshot Engine**: Step 1 DONE (2026-06-10) — `src/core/snapshotBuilder.js` created (`ML_EXTENSIONS`, `resolveEffectiveConfig`, `discoverFiles`, `renderFileAtDepth`, `computeArtifactMetrics`); migrated recon.js, generateProfileGuide.js, updateSnapshot.js (fixed single-type polyglot drift) and createSnapshot.js config-merge/ML checks. REMAINING: migrate createSnapshot's `processFile` discovery loop itself (highest risk; see `ARCHITECTURAL_AUDIT.md` §1 step 4).
 - [x] Hard-coded ignore lists extracted to shared `GLOBAL_HARD_IGNORE_DIRS`/`GLOBAL_HARD_IGNORE_FILES` constants in `fileUtils.js` (2026-04-12)
 
 ## Resolved

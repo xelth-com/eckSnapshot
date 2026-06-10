@@ -45,7 +45,7 @@ class EckSnapshotMCPServer {
       tools: [
         {
           name: 'eck_finish_task',
-          description: 'Finalize a completed task by updating AnswerToSA.md, creating a git commit, and generating a delta snapshot. This should be called when a task is fully complete, tested, and ready to be committed. The tool automatically syncs context by running eck-snapshot update-auto.',
+          description: 'Finalize a completed task by updating AnswerToSA.md, creating a git commit, and generating a delta snapshot. This should be called when a task is fully complete, tested, and ready to be committed. The tool automatically syncs context via the eck_update_auto JSON tool.',
           inputSchema: {
             type: 'object',
             properties: {
@@ -156,9 +156,11 @@ class EckSnapshotMCPServer {
       throw new Error(`Failed to create commit: ${error.message}`);
     }
 
-    // Step 5: ALWAYS generate update snapshot (using update-auto for silent JSON output)
+    // Step 5: ALWAYS generate update snapshot (eck_update_auto JSON tool, silent JSON output).
+    // Migrated off the positional `update-auto` shim — it was the last true-legacy caller
+    // (see ARCHITECTURAL_AUDIT.md §4).
     try {
-      const { stdout } = await execa('eck-snapshot', ['update-auto'], { cwd: workDir });
+      const { stdout } = await execa('eck-snapshot', [JSON.stringify({ name: 'eck_update_auto', arguments: {} })], { cwd: workDir });
 
       // Parse JSON output
       let snapshotResult;

@@ -5,7 +5,7 @@ import chalk from 'chalk';
 import { getGitAnchor, getChangedFiles } from '../../utils/gitUtils.js';
 import { loadSetupConfig } from '../../config.js';
 import { readFileWithSizeCheck, parseSize, formatSize, matchesPattern, loadGitignore, generateTimestamp, getShortRepoName, ensureSnapshotsInGitignore, readMlModelMetadata, isBinaryFile } from '../../utils/fileUtils.js';
-import { detectProjectType, getProjectSpecificFiltering } from '../../utils/projectDetector.js';
+import { isMlModelFile, resolveEffectiveConfig } from '../../core/snapshotBuilder.js';
 import { execa } from 'execa';
 import { fileURLToPath } from 'url';
 import { pushTelemetry } from '../../utils/telemetry.js';
@@ -102,10 +102,8 @@ async function generateSnapshotContent(repoPath, changedFiles, anchor, config, g
     // Skip hidden paths (.idea/, .vscode/, etc.) — mirrors createSnapshot.js
     if (isHiddenPath(normalizedPath)) continue;
 
-    const mlExt = path.extname(filePath).toLowerCase();
-    const ML_EXTENSIONS = ['.safetensors', '.onnx', '.pt', '.pth', '.h5', '.pb', '.bin', '.ckpt', '.gguf'];
     // ML peek is opt-in (`arguments.ml: true` flows into config via options spread upstream).
-    const isMlModel = !!config?.ml && ML_EXTENSIONS.includes(mlExt);
+    const isMlModel = !!config?.ml && isMlModelFile(filePath);
 
     // Skip binary files — mirrors createSnapshot.js (content-aware: catches extensionless ELFs/DBs)
     if (!isMlModel && await isBinaryFile(path.join(repoPath, filePath))) continue;
@@ -215,17 +213,10 @@ export async function updateSnapshot(repoPath, options) {
     const setupConfig = await loadSetupConfig();
     let config = { ...setupConfig.fileFiltering, ...setupConfig.performance, ...options };
 
-    // Detect project type and merge project-specific filters
-    const projectDetection = await detectProjectType(repoPath);
-    if (projectDetection.type) {
-      const projectSpecific = await getProjectSpecificFiltering(projectDetection.type);
-      config = {
-        ...config,
-        dirsToIgnore: [...(config.dirsToIgnore || []), ...(projectSpecific.dirsToIgnore || [])],
-        filesToIgnore: [...(config.filesToIgnore || []), ...(projectSpecific.filesToIgnore || [])],
-        extensionsToIgnore: [...(config.extensionsToIgnore || []), ...(projectSpecific.extensionsToIgnore || [])]
-      };
-    }
+    // Merge project-specific filters for ALL detected types via the shared builder.
+    // (Previously merged only the primary type — drifted from createSnapshot and broke
+    // polyglot monorepo filtering on delta updates; see ARCHITECTURAL_AUDIT.md §1.)
+    config = await resolveEffectiveConfig(repoPath, config);
 
     const gitignore = await loadGitignore(repoPath);
 
@@ -323,17 +314,10 @@ export async function updateSnapshotJson(repoPath, options = {}) {
     const setupConfig = await loadSetupConfig();
     let config = { ...setupConfig.fileFiltering, ...setupConfig.performance };
 
-    // Detect project type and merge project-specific filters
-    const projectDetection = await detectProjectType(repoPath);
-    if (projectDetection.type) {
-      const projectSpecific = await getProjectSpecificFiltering(projectDetection.type);
-      config = {
-        ...config,
-        dirsToIgnore: [...(config.dirsToIgnore || []), ...(projectSpecific.dirsToIgnore || [])],
-        filesToIgnore: [...(config.filesToIgnore || []), ...(projectSpecific.filesToIgnore || [])],
-        extensionsToIgnore: [...(config.extensionsToIgnore || []), ...(projectSpecific.extensionsToIgnore || [])]
-      };
-    }
+    // Merge project-specific filters for ALL detected types via the shared builder.
+    // (Previously merged only the primary type — drifted from createSnapshot and broke
+    // polyglot monorepo filtering on delta updates; see ARCHITECTURAL_AUDIT.md §1.)
+    config = await resolveEffectiveConfig(repoPath, config);
 
     const gitignore = await loadGitignore(repoPath);
 

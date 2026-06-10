@@ -2,21 +2,10 @@ import fs from 'fs/promises';
 import path from 'path';
 import chalk from 'chalk';
 import ora from 'ora';
-import {
-  generateDirectoryTree,
-  readFileWithSizeCheck,
-  parseSize,
-  formatSize,
-  loadGitignore,
-  getProjectFiles,
-  matchesPattern,
-  ensureSnapshotsInGitignore,
-  isBinaryFile
-} from '../../utils/fileUtils.js';
-import { detectProjectType, getProjectSpecificFiltering, getAllDetectedTypes } from '../../utils/projectDetector.js';
+import { generateDirectoryTree, ensureSnapshotsInGitignore } from '../../utils/fileUtils.js';
 import { loadSetupConfig } from '../../config.js';
 import { getDepthConfig } from '../../core/depthConfig.js';
-import { skeletonize } from '../../core/skeletonizer.js';
+import { resolveEffectiveConfig, discoverFiles, renderFileAtDepth, computeArtifactMetrics } from '../../core/snapshotBuilder.js';
 
 /**
  * Generates an LLM prompt-guide file to help create project filtering profiles.
@@ -36,56 +25,20 @@ export async function generateProfileGuide(repoPath, args = {}) {
   const spinner = ora(`Generating profile guide prompt (depth ${depth})...`).start();
 
   try {
-    const repoName = path.basename(repoPath);
     const setupConfig = await loadSetupConfig();
     let config = { ...setupConfig.fileFiltering, ...setupConfig.performance };
-
-    const projectDetection = await detectProjectType(repoPath);
-    const allTypes = getAllDetectedTypes(projectDetection);
-    if (allTypes && allTypes.length > 0) {
-      const projectSpecific = await getProjectSpecificFiltering(allTypes);
-      config = {
-        ...config,
-        dirsToIgnore: [...(config.dirsToIgnore || []), ...(projectSpecific.dirsToIgnore || [])],
-        filesToIgnore: [...(config.filesToIgnore || []), ...(projectSpecific.filesToIgnore || [])],
-        extensionsToIgnore: [...(config.extensionsToIgnore || []), ...(projectSpecific.extensionsToIgnore || [])]
-      };
-    }
+    config = await resolveEffectiveConfig(repoPath, config);
 
     config.maxDepth = 15;
-    let allFiles = await getProjectFiles(repoPath, config);
-    const gitignore = await loadGitignore(repoPath);
-
-    const keepFlags = await Promise.all(allFiles.map(async (f) => {
-      const normalized = f.replace(/\\/g, '/');
-      if (gitignore.ignores(normalized)) return false;
-      if (config.filesToIgnore && matchesPattern(normalized, config.filesToIgnore)) return false;
-      if (await isBinaryFile(path.join(repoPath, f))) return false;
-      return true;
-    }));
-    allFiles = allFiles.filter((_, i) => keepFlags[i]);
+    const allFiles = await discoverFiles(repoPath, config);
 
     const directoryTree = await generateDirectoryTree(repoPath, '', allFiles, 0, config.maxDepth, config);
 
     let fileContentSection = '';
     if (!depthCfg.skipContent) {
-      const maxFileSize = parseSize(config.maxFileSize || '10MB');
       for (const file of allFiles) {
         try {
-          const fullPath = path.join(repoPath, file);
-          let content = await readFileWithSizeCheck(fullPath, maxFileSize);
-
-          if (depthCfg.skeleton) {
-            content = await skeletonize(content, file, { preserveDocs: depthCfg.preserveDocs !== false });
-          }
-
-          if (depthCfg.maxLinesPerFile && depthCfg.maxLinesPerFile > 0) {
-            const lines = content.split('\n');
-            if (lines.length > depthCfg.maxLinesPerFile) {
-              content = lines.slice(0, depthCfg.maxLinesPerFile).join('\n') + `\n// ... truncated`;
-            }
-          }
-
+          const content = await renderFileAtDepth(repoPath, file, depthCfg, config);
           fileContentSection += `--- File: /${file} ---\n\`\`\`\n${content}\n\`\`\`\n\n`;
         } catch (e) {
           // Skip single file errors silently to keep the prompt clean
@@ -140,11 +93,7 @@ ${fileContentSection || '*(No content segments extracted at depth 0)*'}
 
     spinner.succeed(`Profile generation guide created at: .eck/profile/generation_guide.md`);
 
-    // Calculate size and token metrics
-    const fileBuffer = Buffer.from(guideContent, 'utf-8');
-    const sizeStr = formatSize(fileBuffer.length);
-    const approxTokens = Math.round(guideContent.length / 4);
-    const tokensStr = approxTokens < 1000 ? `${approxTokens}` : `${(approxTokens / 1000).toFixed(1)}k`;
+    const { sizeStr, tokensStr } = computeArtifactMetrics(guideContent);
 
     console.log(chalk.cyan('\n📊 Context Guide Metrics:'));
     console.log(`   Size: ${sizeStr}`);
