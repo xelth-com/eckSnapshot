@@ -284,12 +284,38 @@ Ranked by frequency of use:
   program.parse(process.argv);
 }
 
+/**
+ * Checks if a strictly newer version is available on the npm registry.
+ * Explains WHY it exists: Performs a segment-by-segment numerical comparison to
+ * prevent false positive update/downgrade alerts when the local codebase version
+ * is ahead of or equal to the public registry version.
+ *
+ * @param {string} currentVersion - The active version from package.json
+ */
 function checkForUpdates(currentVersion) {
   import('execa').then(({ execa }) => {
     execa('npm', ['view', '@xelth/eck-snapshot', 'version'], { timeout: 5000 })
       .then(({ stdout }) => {
         const latest = stdout.trim();
-        if (latest && latest !== currentVersion) {
+        if (!latest) return;
+
+        const c = currentVersion.split('.').map(Number);
+        const l = latest.split('.').map(Number);
+        let isNewer = false;
+
+        for (let i = 0; i < Math.max(c.length, l.length); i++) {
+          const cv = c[i] || 0;
+          const lv = l[i] || 0;
+          if (lv > cv) {
+            isNewer = true;
+            break;
+          }
+          if (lv < cv) {
+            break;
+          }
+        }
+
+        if (isNewer) {
           console.error(`\n${chalk.yellow(`⬆ Update available: ${currentVersion} → ${latest}`)}`);
         }
       })
