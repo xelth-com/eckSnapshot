@@ -14,6 +14,56 @@ Reduced xelixir polyglot-firmware snapshot from **21989 KB → 1972 KB (-91%)**.
 
 
 
+
+## 2026-06-10 — Agent Report
+
+# Agent Report
+
+## Step 1 of audit plan executed + remaining audit findings fixed (human-authorized expanded scope)
+
+### §1 Unified Snapshot Engine — Step 1 complete, and further
+Created `src/core/snapshotBuilder.js` with full JSDoc (WHY-focused): `ML_EXTENSIONS` + `isMlModelFile` (as specified), plus `resolveEffectiveConfig`, `discoverFiles`, `renderFileAtDepth`, `computeArtifactMetrics` per the audit's proposed API. Migrated consumers:
+- `generateProfileGuide.js` — full pipeline on builder (discovery + depth render + metrics).
+- `recon.js` — both `runScout` and `runFetch` on builder; removed 3 of the 6 `ML_EXTENSIONS` copies and both inline keepFlags blocks.
+- `updateSnapshot.js` — **drift fixed**: previously merged filters for only `projectDetection.type` (primary type), silently breaking polyglot monorepo filtering on delta updates; now uses `resolveEffectiveConfig` (all detected types), consistent with createSnapshot. Behavior change, intentional, documented in code comment.
+- `createSnapshot.js` — both config-merge blocks (`processProjectFiles`, `estimateProjectTokens`) and the ML literal replaced; the `processFile` discovery loop itself NOT migrated (audit step 4, highest risk — left for a dedicated task). All 6 `ML_EXTENSIONS` literals are now one export.
+- Side effect: `generateProfileGuide` truncation marker now reports omitted line count (unified on recon's richer format).
+
+### §2 Eck-Protocol parser hardened (`eckProtocolParser.js`)
+- Tags anchored to line starts: a literal `</file>` inside file content no longer truncates the block (was the highest-severity defect — protocol docs couldn't round-trip).
+- Attributes accepted in any order via `parseTagAttributes`; `action` defaults to `"replace"` when omitted; single-line `<file ...></file>` (delete) still supported.
+- Fence stripping uses a `(`{3,4})...\1` backreference — quadruple-backtick convention from the protocol spec now works, inner ``` fences survive.
+- `validateEckResponse` counts line-anchored tags only — quoted protocol examples inside content no longer cause bogus mismatch errors.
+- `parseProfileTags` section terminator restricted to known headings (Description/Include/Exclude) — `#`-prefixed lines inside descriptions no longer truncate.
+- `extractThought` updated for attribute-order tolerance.
+- **9/9 unit checks pass** (attr order, close-tag-in-content, quad fence, default action, single-line empty, profile hash bleed, validator quoting, legacy format regression, multi-file).
+
+### §3 GLM worker (`mcp-glm-zai-worker.mjs`)
+- `response.usage` now surfaced as a footer (`_tokens: N in / M out_`) — supervisor can track the delegation token economy.
+- 256KB per-file context budget with truncation marker — oversized files no longer blow the GLM window.
+- New optional `project_root` arg — file resolution no longer depends on the MCP server's cwd.
+- New optional `max_tokens` arg (default 16384).
+- Shared persona rules extracted to `SHARED_RULES` (5 personas deduplicated).
+- **Prompt caching deliberately NOT added**: Z.AI cache_control support is unverifiable without a live API call; left as TODO with rationale. Architect should verify against the endpoint before enabling.
+
+### §4 CLI shims
+- `LEGACY_COMMANDS` → `HUMAN_SHORTHANDS` with a WHY comment (audit finding: it's the human interface, not debt).
+- `mcp-server-template.js`: the last true-legacy caller migrated — `execa('eck-snapshot', ['update-auto'])` → `eck_update_auto` JSON payload; description string updated. Shim entry `update-auto` kept for already-generated template copies in user projects.
+- argv-mutation double-parse NOT touched (commander subcommand promotion is a separate refactor per audit).
+
+### Verification
+- `node --check`: all 9 touched files pass.
+- Parser: 9/9 functional checks.
+- End-to-end in temp project: `scout 5` (skeleton works), `scout 2` (line-count truncation marker works), `fetch`, `generate-profile-guide 5` (metrics + next-step hint), full `snapshot` (polyglot filtering merged 5 types via shared builder), `profile-import` → `profile core` filtered snapshot (2 files by `src/**`). All exit 0.
+- This very commit's delta snapshot exercises the modified `updateSnapshot.js` path live.
+
+### TECH_DEBT updated via eck_manifest_edit
+- Unified Engine item: step-1 progress recorded, remaining work scoped (processFile migration).
+- mcp-server-template update-auto item: marked resolved.
+
+### For the Architect
+Next natural steps: (a) audit §1 step 4 — migrate createSnapshot's processFile loop onto discoverFiles (needs careful stats/skip-reason preservation); (b) verify Z.AI cache_control support, then enable prompt caching in the worker; (c) first vitest suite — parseProfileTags/extractFiles and snapshotBuilder are now ideal seams.
+
 ## 2026-06-10 — Agent Report
 
 # Agent Report

@@ -11,19 +11,18 @@ import chalk from 'chalk';
 
 import {
   parseSize, formatSize, matchesPattern, checkGitRepository,
-  scanDirectoryRecursively, loadGitignore, readFileWithSizeCheck,
+  scanDirectoryRecursively, loadGitignore,
   generateDirectoryTree, loadConfig, displayProjectInfo, loadProjectEckManifest,
   ensureSnapshotsInGitignore, initializeEckManifest, generateTimestamp,
-  getShortRepoName, SecretScanner, getProjectFiles, readMlModelMetadata,
+  getShortRepoName, SecretScanner, getProjectFiles,
   isBinaryFile
 } from '../../utils/fileUtils.js';
 import { detectProjectType, getAllDetectedTypes } from '../../utils/projectDetector.js';
-import { isMlModelFile, resolveEffectiveConfig } from '../../core/snapshotBuilder.js';
+import { isMlModelFile, resolveEffectiveConfig, renderFileAtDepth } from '../../core/snapshotBuilder.js';
 import { estimateTokensWithPolynomial, generateTrainingCommand } from '../../utils/tokenEstimator.js';
 import { loadSetupConfig, getProfile } from '../../config.js';
 import { applyProfileFilter } from '../../utils/fileUtils.js';
 import { saveGitAnchor } from '../../utils/gitUtils.js';
-import { skeletonize } from '../../core/skeletonizer.js';
 import { getDepthConfig } from '../../core/depthConfig.js';
 import { updateClaudeMd } from '../../utils/claudeMdGenerator.js';
 import { generateOpenCodeAgents } from '../../utils/opencodeAgentsGenerator.js';
@@ -409,56 +408,42 @@ async function processProjectFiles(repoPath, options, config, projectTypes = nul
           return null;
         }
 
-        // Read file with size check
+        // Pre-check size for stats and skip-reason reporting (renderFileAtDepth would
+        // throw on oversize, but we want the oversizedFiles counter + tracked reason).
         const fullPath = path.join(repoPath, filePath);
         const fileStats = await fs.stat(fullPath);
         stats.totalSize += fileStats.size;
 
         const maxFileSize = parseSize(config.maxFileSize);
-        let content;
-
-        if (isMlModel) {
-          content = await readMlModelMetadata(fullPath);
-        } else {
-          if (fileStats.size > maxFileSize) {
-            stats.oversizedFiles++;
-            trackSkippedFile(normalizedPath, `File too large (${formatSize(fileStats.size)} > ${formatSize(maxFileSize)})`);
-            return null;
-          }
-          content = await readFileWithSizeCheck(fullPath, maxFileSize);
+        if (!isMlModel && fileStats.size > maxFileSize) {
+          stats.oversizedFiles++;
+          trackSkippedFile(normalizedPath, `File too large (${formatSize(fileStats.size)} > ${formatSize(maxFileSize)})`);
+          return null;
         }
 
-        // Security scan for secrets
+        // Render via the shared engine (read/ML-peek → skeletonize → truncate) so the
+        // main snapshot pipeline behaves identically to scouts/updates/profile guides.
+        // Focus globs keep matched files full-bodied even in skeleton mode.
+        const isFocused = options.focus && micromatch.isMatch(normalizedPath, options.focus);
+        const depthCfg = {
+          skeleton: !!options.skeleton && !isFocused,
+          preserveDocs: options.preserveDocs !== false,
+          maxLinesPerFile: options.maxLinesPerFile || 0
+        };
+        let outputBody = await renderFileAtDepth(repoPath, filePath, depthCfg, config, { mlPeek: !!options?.ml });
+
+        // Security scan for secrets — runs on the rendered output so anything that
+        // survives skeletonization/truncation is still redacted before publication.
         if (config.security?.scanForSecrets !== false) {
-          const scanResult = SecretScanner.redact(content, normalizedPath);
+          const scanResult = SecretScanner.redact(outputBody, normalizedPath);
           if (scanResult.found.length > 0) {
             stats.secretsRedacted += scanResult.found.length;
             console.log(chalk.yellow(`\n  ⚠️  Security: Found ${scanResult.found.join(', ')} in ${normalizedPath}. Redacting...`));
-            content = scanResult.content;
+            outputBody = scanResult.content;
           }
         }
 
         stats.includedFiles++;
-
-        // Apply skeletonization if enabled
-        if (options.skeleton) {
-          // Check if file should be focused (kept full)
-          const isFocused = options.focus && micromatch.isMatch(normalizedPath, options.focus);
-          if (!isFocused) {
-            content = await skeletonize(content, normalizedPath, { preserveDocs: options.preserveDocs !== false });
-          }
-        }
-
-        let outputBody = content;
-
-        // Apply max-lines-per-file truncation if specified
-        if (options.maxLinesPerFile && options.maxLinesPerFile > 0) {
-          const lines = outputBody.split('\n');
-          if (lines.length > options.maxLinesPerFile) {
-            outputBody = lines.slice(0, options.maxLinesPerFile).join('\n') +
-              `\n\n[... truncated ${lines.length - options.maxLinesPerFile} lines ...]`;
-          }
-        }
 
         const formattedContent = `--- File: /${normalizedPath} ---\n\n${outputBody}\n\n`;
         const finalSize = Buffer.byteLength(formattedContent, 'utf-8');

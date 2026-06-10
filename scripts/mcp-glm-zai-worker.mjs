@@ -92,6 +92,11 @@ ${SHARED_RULES}
 // delegation call. Files over the cap are truncated head-first with a marker.
 const MAX_FILE_BYTES = 256 * 1024;
 
+// Tracks whether the Z.AI endpoint accepts Anthropic cache_control markers.
+// Flips to false (for this process lifetime) on the first 400 rejection so
+// every subsequent delegation transparently runs uncached.
+let cacheControlSupported = true;
+
 const server = new Server(
   { name: "glm-zai-worker", version: "2.0.0" },
   { capabilities: { tools: {} } }
@@ -202,29 +207,51 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
     const systemPrompt = PERSONAS[role] || PERSONAS.general;
 
-    let userMessage = "";
+    // Prompt-cache-friendly message layout (see ARCHITECTURAL_AUDIT.md §3).
+    // WHY this structure: Anthropic caching works on PREFIXES up to a cache_control
+    // breakpoint, so the stable heavy parts (persona + project context + source files)
+    // come FIRST with breakpoints, and the per-call instruction comes LAST uncached.
+    // In iterative delegation loops the same files are re-sent with new instructions —
+    // this layout turns those re-sends into cache reads instead of full-price tokens.
+    let stableContext = "";
     if (context_summary) {
-      userMessage += `PROJECT CONTEXT: ${context_summary}\n\n`;
-    }
-    userMessage += `TASK: ${instruction}\n`;
-    if (missingFiles.length > 0) {
-      userMessage += `\nWARNING: Could not read some files: ${missingFiles.join(", ")}\n`;
+      stableContext += `PROJECT CONTEXT: ${context_summary}\n\n`;
     }
     if (heavyContext) {
-      userMessage += `\nSOURCE FILES:\n${heavyContext}`;
+      stableContext += `SOURCE FILES:\n${heavyContext}\n`;
     }
 
-    // TODO(token-economy): add Anthropic prompt caching (cache_control: ephemeral)
-    // on the system prompt + file context once verified against the Z.AI endpoint —
-    // it is Anthropic-SDK-compatible but cache support is unconfirmed. Highest-leverage
-    // optimization for iterative delegation loops (see ARCHITECTURAL_AUDIT.md §3).
-    const response = await pRetry(
-      () => glmClient.messages.create({
+    let taskText = `TASK: ${instruction}\n`;
+    if (missingFiles.length > 0) {
+      taskText += `\nWARNING: Could not read some files: ${missingFiles.join(", ")}\n`;
+    }
+
+    // Builds request params with or without cache_control markers.
+    // WHY the toggle: the Z.AI endpoint is Anthropic-SDK-compatible but its
+    // cache_control support is unconfirmed — on a 400 we permanently fall back
+    // to uncached requests instead of failing every delegation.
+    const buildParams = (useCache) => {
+      const userBlocks = [];
+      if (stableContext) {
+        const block = { type: "text", text: stableContext };
+        if (useCache) block.cache_control = { type: "ephemeral" };
+        userBlocks.push(block);
+      }
+      userBlocks.push({ type: "text", text: taskText });
+
+      const systemBlock = { type: "text", text: systemPrompt };
+      if (useCache) systemBlock.cache_control = { type: "ephemeral" };
+
+      return {
         model: "GLM-4.7",
         max_tokens,
-        system: systemPrompt,
-        messages: [{ role: "user", content: userMessage }],
-      }),
+        system: [systemBlock],
+        messages: [{ role: "user", content: userBlocks }],
+      };
+    };
+
+    const callGlm = (useCache) => pRetry(
+      () => glmClient.messages.create(buildParams(useCache)),
       {
         retries: 2,
         onFailedAttempt: (error) => {
@@ -235,6 +262,20 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         },
       }
     );
+
+    let response;
+    try {
+      response = await callGlm(cacheControlSupported);
+    } catch (error) {
+      if (cacheControlSupported && error.status === 400) {
+        // Endpoint likely rejected cache_control — disable for this process lifetime and retry once.
+        cacheControlSupported = false;
+        console.error("glm-zai-worker: endpoint rejected cache_control, falling back to uncached requests");
+        response = await callGlm(false);
+      } else {
+        throw error;
+      }
+    }
 
     let resultText = "";
     if (response.content && Array.isArray(response.content)) {
@@ -247,12 +288,18 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     }
 
     // Surface token usage so the supervisor can manage the delegation token economy
-    // (previously response.usage was silently discarded).
+    // (previously response.usage was silently discarded). Cache read/write counts are
+    // included when the endpoint reports them — that's how cache effectiveness is observed.
     let usageFooter = "";
     if (response.usage) {
       const inTok = response.usage.input_tokens ?? "?";
       const outTok = response.usage.output_tokens ?? "?";
       usageFooter = `\n\n---\n_tokens: ${inTok} in / ${outTok} out_`;
+      const cacheRead = response.usage.cache_read_input_tokens;
+      const cacheWrite = response.usage.cache_creation_input_tokens;
+      if (cacheRead !== undefined || cacheWrite !== undefined) {
+        usageFooter += `_, cache: ${cacheRead ?? 0} read / ${cacheWrite ?? 0} written_`;
+      }
     }
 
     return {
