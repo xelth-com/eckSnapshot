@@ -1,4 +1,4 @@
-# 📸 eckSnapshot v6.7.0 (AI-Native Edition)
+# 📸 eckSnapshot v6.8.0 (AI-Native Edition)
 
 A specialized, AI-native CLI tool that creates single-file text snapshots of entire Git repositories and feeds them directly into LLM context windows. Instead of letting AI agents guess which files to read, eckSnapshot force-feeds the complete project into the model's context — giving it a "university degree" in your codebase from the very first prompt.
 
@@ -89,6 +89,8 @@ For humans typing in the terminal, short commands work too:
 | 1 | `eck-snapshot snapshot` | Full project snapshot |
 | 2 | `eck-snapshot update` | Delta update (changed files only). Supports `--base <snapshot.md>` to compare against an old snapshot file. |
 | 3 | `eck-snapshot profile [name]` | Snapshot filtered by profile (no arg = list profiles) |
+| 3a | `eck-snapshot generate-profile-guide [0-9]` | Generate an LLM prompt-guide (tree + depth-scaled code) to design new profiles |
+| 3b | `eck-snapshot profile-import <file>` | Import `<profile>` tags from an LLM response back into `.eck/profiles.json` |
 | 4 | `eck-snapshot scout [0-9]` | Scout external repo (see depth scale below) |
 | 5 | `eck-snapshot fetch "src/**/*.rs"` | Fetch specific files by glob |
 | 6 | `eck-snapshot link [0-9]` | Linked companion snapshot |
@@ -117,6 +119,34 @@ Feedback is saved locally to `.eck/telemetry_queue.json` and will be sent to dev
 
 #### 🔒 Datenschutz / Privacy
 By default, eck-snapshot collects **anonymous usage counts** and **crash logs** to improve the tool. **NO source code or sensitive data is ever sent.** Each CLI instance is identified by a random UUID stored in `~/.eck/cli-config.json`. You can completely disable telemetry at any time with `eck-snapshot telemetry disable`.
+
+---
+
+## 🎯 Profiles: Slicing Monorepos (New in v6.8)
+
+For massive monorepos you rarely want the *whole* repository in context — you want just the backend, just the frontend, or just the mobile module. **Profiles** (`.eck/profiles.json`) define named include/exclude globs so you can snapshot a focused slice:
+
+```bash
+eck-snapshot profile              # list available profiles
+eck-snapshot profile backend      # snapshot only the backend slice
+eck-snapshot profile backend,api  # combine multiple profiles
+```
+
+### Letting an LLM build your profiles (round-trip)
+Don't hand-write glob lists. Let an LLM analyze the codebase and design the profiles for you:
+
+```bash
+# 1. Generate a prompt-guide: directory tree + depth-scaled code (default depth 5 = skeletons)
+eck-snapshot generate-profile-guide 5
+
+# 2. Paste the generated .eck/profile/generation_guide.md into a Web LLM.
+#    It replies with Eck-Protocol <profile name="..."> tags. Save that reply to a file.
+
+# 3. Import the tags straight into .eck/profiles.json
+eck-snapshot profile-import llm-response.md
+```
+
+The guide is written into the hidden `.eck/profile/` subdirectory (so it never pollutes a regular Architect snapshot) and reports its token cost on generation. The importer merges new profiles, updates existing ones, and warns about any profile whose include list matches nothing.
 
 ---
 
