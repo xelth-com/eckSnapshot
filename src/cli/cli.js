@@ -55,6 +55,7 @@ const HUMAN_SHORTHANDS = {
     return { name: 'eck_update_auto', arguments: { fail: args.includes('--fail') || args.includes('-f'), base } };
   },
   'snapshot':    (args) => ({ name: 'eck_snapshot', arguments: { ml: args.includes('--ml') } }),
+  'fable':       (args) => ({ name: 'eck_snapshot', arguments: { fable: true, ml: args.includes('--ml') } }),
   'update':      (args) => {
     const baseIdx = args.indexOf('--base');
     const base = baseIdx !== -1 && args[baseIdx + 1] ? args[baseIdx + 1] : undefined;
@@ -110,6 +111,8 @@ This CLI is designed to be operated by AI agents using JSON payloads.
 Ranked by frequency of use:
 
   1. eck-snapshot snapshot          Full project snapshot
+     eck-snapshot fable             Snapshot + Fable Architect workspace (Gemini delegates
+                                     <eck_task> to Fable, who supervises sonnet/opus workers)
   2. eck-snapshot update            Delta update (changed files only)
                                      --base <snapshot.md> : Compare against an old snapshot file
   3. eck-snapshot profile [name]    Snapshot filtered by profile (from .eck/profiles.json)

@@ -77,14 +77,18 @@ function getVisibleAgents(executionAgents, options) {
   if (options.jas) priorityAgentKey = 'jas';
   if (options.jao) priorityAgentKey = 'jao';
   if (options.jaz) priorityAgentKey = 'jaz';
+  if (options.fable) priorityAgentKey = 'fable';
 
   // 3. Build the list
   // If a JA is selected, add them FIRST with a note
   if (priorityAgentKey && executionAgents[priorityAgentKey]) {
     const ja = executionAgents[priorityAgentKey];
+    const delegationNote = priorityAgentKey === 'fable'
+      ? '(Supervises its own Claude worker ladder: sonnet-worker / opus-worker)'
+      : '(Delegates to GLM Z.AI)';
     visible[priorityAgentKey] = {
       ...ja,
-      description: `⭐ **PRIMARY AGENT** ⭐ ${ja.description} (Delegates to GLM Z.AI)`
+      description: `⭐ **PRIMARY AGENT** ⭐ ${ja.description} ${delegationNote}`
     };
   }
 
@@ -463,7 +467,10 @@ ${dynamicSection}
     const isJas = context.options && context.options.jas;
     const isJao = context.options && context.options.jao;
     const isJaz = context.options && context.options.jaz;
-    const isJaMode = isJas || isJao || isJaz;
+    const isFable = context.options && context.options.fable;
+    const isJaMode = isJas || isJao || isJaz || isFable;
+    const primaryId = isFable ? 'fable' : isJas ? 'jas' : isJao ? 'jao' : 'jaz';
+    const primaryTitle = isFable ? 'Project Architect (Fable)' : 'Junior Architect';
 
     // --- Determine Workflow Content based on JA Flag ---
     let hierarchicalWorkflow = '';
@@ -473,12 +480,12 @@ ${dynamicSection}
       // Instructions strictly for the Senior Architect on how to use the JA
       hierarchicalWorkflow = `### 👑 ROYAL COURT ARCHITECTURE (Active)
 
-You are the **Senior Architect**. You have a **Junior Architect** available to handle implementation.
+You are the **Senior Architect**. You have a **${primaryTitle}** available to handle implementation.
 
 **PROTOCOL:**
-1.  **Prefer Delegation:** Unless the task is trivial (1-2 file edits), assign it to the **Junior Architect** (ID: \`jas\`, \`jao\`, or \`jaz\` - see agents list above).
-2.  **Direct Execution:** Only use \`local_dev\` or \`production_server\` directly if the Junior Architect fails or for simple "hotfixes".
-3.  **No Micro-Management:** Do not tell the Junior Architect *how* to use GLM Z.AI or internal tools. Just give them the strategic objective.
+1.  **Prefer Delegation:** Unless the task is trivial (1-2 file edits), assign it to the **${primaryTitle}** (ID: \`${primaryId}\` - see agents list above).
+2.  **Direct Execution:** Only use \`local_dev\` or \`production_server\` directly if the ${primaryTitle} fails or for simple "hotfixes".
+3.  **No Micro-Management:** Do not tell the ${primaryTitle} *how* to use its internal workers or tools. Just give them the strategic objective.
 `;
 
       commandFormats = `### COMMAND FORMATS (Eck-Protocol)
@@ -507,7 +514,7 @@ const x = 1;
 
 ## Metadata
 \\\`\\\`\\\`json
-{ "target_agent": "jas", "task_id": "unique-id" }
+{ "target_agent": "${primaryId}", "task_id": "unique-id" }
 \\\`\\\`\\\`
 </eck_task id="{{repoName}}:short-task-description">
 \`\`\`\`

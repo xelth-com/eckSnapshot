@@ -644,6 +644,7 @@ export async function createRepoSnapshot(repoPath, options) {
     const isJas = options.jas;
     const isJao = options.jao;
     const isJaz = options.jaz;
+    const isFable = options.fable;
 
     // If NOT in Junior Architect mode, hide JA-specific documentation to prevent context pollution
     if (!options.withJa && !isJas && !isJao && !isJaz) {
@@ -872,7 +873,7 @@ export async function createRepoSnapshot(repoPath, options) {
             header += `*(Source code omitted due to linkDepth=0. Directory structure only.)*\n\n`;
           }
         } else {
-          const opts = { ...options, agent: false, jas: isJas, jao: isJao, jaz: isJaz };
+          const opts = { ...options, agent: false, jas: isJas, jao: isJao, jaz: isJaz, fable: isFable };
           header = await generateEnhancedAIHeader({ stats, repoName, mode: 'file', eckManifest, options: opts, repoPath: processedRepoPath }, isGitRepo);
         }
 
@@ -944,6 +945,8 @@ export async function createRepoSnapshot(repoPath, options) {
         architectFilePath = await writeSnapshot('_jao', true);
       } else if (isJaz) {
         architectFilePath = await writeSnapshot('_jaz', true);
+      } else if (isFable) {
+        architectFilePath = await writeSnapshot('_fable', true);
       } else {
         // Standard snapshot behavior
         architectFilePath = await writeSnapshot('', false);
@@ -977,9 +980,10 @@ export async function createRepoSnapshot(repoPath, options) {
       if (isJas) claudeMode = 'jas';
       if (isJao) claudeMode = 'jao';
       if (isJaz) claudeMode = 'jaz';
+      if (isFable) claudeMode = 'fable';
 
       // Claude Code exclusively uses CLAUDE.md
-      if (isJas || isJao || (!isJaz && !options.withJa)) {
+      if (isJas || isJao || isFable || (!isJaz && !options.withJa)) {
         await updateClaudeMd(processedRepoPath, claudeMode, directoryTree, confidentialFiles, { zh: options.zh });
         // Ensure .mcp.json with eck-core is present so Claude Code agents have MCP tools
         try {
@@ -993,7 +997,7 @@ export async function createRepoSnapshot(repoPath, options) {
       }
 
       // OpenCode exclusively uses AGENTS.md
-      if (isJaz || (!isJas && !isJao && !options.withJa)) {
+      if (isJaz || (!isJas && !isJao && !isFable && !options.withJa)) {
         await generateOpenCodeAgents(processedRepoPath, claudeMode, directoryTree, confidentialFiles, { zh: options.zh });
         // Ensure local opencode.json has eck-core MCP server
         try {
