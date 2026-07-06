@@ -7,7 +7,7 @@
 
 This guide covers how to use eckSnapshot with the available AI coding tools:
 
-1. **Claude Code** (Sonnet 4.5 / Opus 4.6) - Primary interactive coding agent
+1. **Claude Code** (Sonnet 5 / Opus 4.8) - Primary interactive coding agent
 2. **OpenCode** (GLM-4.7 Z.AI Coding Plan) - Alternative coding agent
 3. **GLM Z.AI Worker** (MCP) - Cost-effective worker for heavy coding tasks
 

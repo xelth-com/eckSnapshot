@@ -35,6 +35,7 @@ nul
 
 # Generated snapshot files
 *_rag_*.md
+.eckSnapshot.zip
 
 # Environment variables
 .env

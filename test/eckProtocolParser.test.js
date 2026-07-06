@@ -116,3 +116,68 @@ Some general introductory statement here.
     expect(validation.valid).toBe(true);
   });
 });
+
+/**
+ * extractMetadata (journal parsing) Verification Suite.
+ * Explains WHY it exists: extractMetadata() is an internal (non-exported) helper in
+ * eckProtocolParser.js that resolves an agent's journal entry from one of three shapes
+ * (## Metadata JSON block, <journal><json></journal>, or the simple <journal type=""
+ * scope="">summary</journal> tag) — it had no dedicated coverage; parseEckResponse().metadata
+ * is the only observable surface, so these tests drive it through that public API.
+ */
+describe('Eck-Protocol Journal Metadata Extraction', () => {
+  it('should parse a ## Metadata section containing a JSON block', () => {
+    const text = '# Analysis\nSome thought.\n\n## Metadata\n```json\n{"type": "feat", "scope": "core"}\n```\n';
+    const { metadata } = parseEckResponse(text);
+    expect(metadata).toEqual({ type: 'feat', scope: 'core' });
+  });
+
+  it('should parse a <journal> tag wrapping a JSON block', () => {
+    const text = '<journal>\n```json\n{"type": "fix", "scope": "parser", "summary": "fixed regex"}\n```\n</journal>';
+    const { metadata } = parseEckResponse(text);
+    expect(metadata.journal).toEqual({ type: 'fix', scope: 'parser', summary: 'fixed regex' });
+  });
+
+  it('should parse the simple <journal type="" scope="">summary</journal> shorthand', () => {
+    const text = '<journal type="feat" scope="tests">Added fixture coverage</journal>';
+    const { metadata } = parseEckResponse(text);
+    expect(metadata.journal).toEqual({ type: 'feat', scope: 'tests', summary: 'Added fixture coverage' });
+  });
+
+  it('should prefer a valid ## Metadata JSON block over a co-occurring <journal> tag (current precedence)', () => {
+    // Documents current actual behavior: extractMetadata() returns as soon as the ## Metadata
+    // JSON parses successfully, so a <journal> tag elsewhere in the same response is never
+    // even inspected - its data does not merge in.
+    const text = '## Metadata\n```json\n{"type": "feat", "scope": "core"}\n```\n\n<journal type="fix" scope="other">should be ignored</journal>';
+    const { metadata } = parseEckResponse(text);
+    expect(metadata).toEqual({ type: 'feat', scope: 'core' });
+    expect(metadata.journal).toBeUndefined();
+  });
+
+  it('should fall back to an empty object when the ## Metadata JSON is malformed, without throwing', () => {
+    const text = '## Metadata\n```json\n{"type": "feat", "scope": \n```\n';
+    let result;
+    expect(() => { result = parseEckResponse(text); }).not.toThrow();
+    expect(result.metadata).toEqual({});
+  });
+
+  it('should not populate journal when the simple tag is missing a required attribute (partial entry)', () => {
+    const text = '<journal type="feat">missing the scope attribute</journal>';
+    const { metadata } = parseEckResponse(text);
+    expect(metadata).toEqual({});
+    expect(metadata.journal).toBeUndefined();
+  });
+
+  it('should return an empty metadata object for plain text with no metadata/journal markers', () => {
+    const text = 'Just some analysis prose with no structured sections at all.';
+    const { metadata } = parseEckResponse(text);
+    expect(metadata).toEqual({});
+  });
+
+  it('should return an empty metadata object for empty input without invoking the parser', () => {
+    const result = parseEckResponse('');
+    expect(result.metadata).toEqual({});
+    expect(result.files).toEqual([]);
+    expect(result.thought).toBe('');
+  });
+});

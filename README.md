@@ -60,7 +60,7 @@ The Coder needs **tool access** (file editing, terminal, MCP) and works locally 
 
 | Tool | Engine | Best For |
 |------|--------|----------|
-| **Claude Code** | Claude Sonnet/Opus 4.6 | **Recommended.** Natively integrated into the `.claude/` architecture. Silent background context-syncing, native slash skills (`/eck-scout`), and native subagents. |
+| **Claude Code** | Claude Sonnet 5 / Opus 4.8 | **Recommended.** Natively integrated into the `.claude/` architecture. Silent background context-syncing, native slash skills (`/eck-scout`), and native subagents. |
 | **OpenCode** | GLM-4.7 / any model | **Solid alternative.** Budget-friendly with `AGENTS.md` support and GLM Z.AI worker swarm via MCP, but lacks the deep background hook integration of Claude Code. |
 | **Codex CLI** | GPT models | OpenAI's coding agent. Basic auto-configuration via `.codex/config.toml`. |
 
@@ -87,6 +87,7 @@ For humans typing in the terminal, short commands work too:
 | # | Command | Description |
 |---|---------|-------------|
 | 1 | `eck-snapshot snapshot` | Full project snapshot |
+| 1a | `eck-snapshot fable` | Snapshot + Fable Architect workspace (Gemini delegates `<eck_task>` to Fable, who supervises sonnet/opus workers) |
 | 2 | `eck-snapshot update` | Delta update (changed files only). Supports `--base <snapshot.md>` to compare against an old snapshot file. |
 | 3 | `eck-snapshot profile [name]` | Snapshot filtered by profile (no arg = list profiles) |
 | 3a | `eck-snapshot generate-profile-guide [0-9]` | Generate an LLM prompt-guide (tree + depth-scaled code) to design new profiles |
@@ -205,18 +206,20 @@ By analyzing Claude Code's internal architecture, eckSnapshot replaces the old m
 
 1. **Async Background Context Sync:** A native `PostToolUse` hook (`async: true`) is injected into Claude's `settings.json`. Every time Claude edits a file, `eck-snapshot update-auto` runs silently in the background — your snapshot context stays current without interrupting the chat flow.
 2. **Native Slash Skills:** Cross-repo exploration is built into Claude's UI. Type `/eck-scout path="../other-repo"` or `/eck-fetch` in the Claude CLI, and it executes the scout protocol as a first-class skill.
-3. **Native Subagents:** Junior Architects (`jas`, `jao`) are injected as native `.claude/agents/`. Claude can spawn them directly via the `AgentTool` for parallel task delegation.
-4. **Modular Rules:** Instructions, Swarm delegation protocols, and manifest loaders are split into `.claude/rules/`, loaded by the LLM only when relevant — no more context-polluting 1000-line `CLAUDE.md` files.
+3. **Native Subagents:** Two execution-tier workers — `sonnet-worker` (default tier: pattern-following work fully specified by the brief) and `opus-worker` (heavy tier: novel implementation, bug tracing, judgment-heavy refactors, or escalation from Sonnet) — are scaffolded into native `.claude/agents/`, written only if missing so per-repo hand-tuning survives regeneration. Claude can spawn them directly via the `AgentTool` for parallel task delegation. Stale `jas.md`/`jao.md` files from older versions are auto-deleted when they still match the old machine-generated signature.
+4. **Modular Rules:** Instructions, the supervisor/worker delegation ladder (`02-delegation.md`: Explore recon → `sonnet-worker` default → `opus-worker` heavy/escalation, main session reserved for architecture/security/fiscal/deploy decisions), and manifest loaders are split into `.claude/rules/`, loaded by the LLM only when relevant — no more context-polluting 1000-line `CLAUDE.md` files.
 
 ```
 .claude/
-├── rules/01-eck-protocol.md    # Role-specific protocol (coder/jas/jao)
+├── rules/
+│   ├── 01-eck-protocol.md      # Role-specific protocol (coder/jas/jao/fable)
+│   └── 02-delegation.md        # Supervisor/worker delegation ladder
 ├── skills/
 │   ├── eck-scout/SKILL.md      # Cross-repo exploration
 │   └── eck-fetch/SKILL.md      # Targeted file extraction
 ├── agents/
-│   ├── jas.md                  # Junior Architect (Sonnet)
-│   └── jao.md                  # Junior Architect (Opus)
+│   ├── sonnet-worker.md        # Default execution tier (Sonnet 5)
+│   └── opus-worker.md          # Heavy execution tier (Opus 4.8)
 └── settings.json               # PostToolUse async hook
 ```
 
@@ -316,8 +319,8 @@ For large projects, a single AI can't hold the full context AND write code effic
 ```
 Senior Architect (Gemini/Grok — Web LLM, huge context)
     │
-    ├── Junior Architect Sonnet (jas) — Claude Code with Sonnet 4.6
-    ├── Junior Architect Opus  (jao) — Claude Code with Opus 4.6
+    ├── Junior Architect Sonnet (jas) — Claude Code with Sonnet 5
+    ├── Junior Architect Opus  (jao) — Claude Code with Opus 4.8
     ├── Junior Architect GLM   (jaz) — OpenCode with GLM-4.7
     │       │
     │       └── GLM Z.AI Workers (MCP) — cheap bulk coding
@@ -334,7 +337,24 @@ eck-snapshot '{"name": "eck_snapshot", "arguments": {"jao": true}}'   # Opus mod
 eck-snapshot '{"name": "eck_snapshot", "arguments": {"jaz": true}}'   # GLM/OpenCode mode
 ```
 
-Each mode generates a snapshot with tailored AI headers. For Claude Code (`jas`/`jao`), it natively registers them as subagents in `.claude/agents/` so you can spawn them via Claude's `AgentTool`. For OpenCode (`jaz`), it updates the `AGENTS.md` manifest.
+Each mode generates a snapshot with tailored AI headers. For Claude Code (`jas`/`jao`), the orchestrator role is installed via `.claude/rules/01-eck-protocol.md`, while `.claude/agents/` always carries the `sonnet-worker`/`opus-worker` execution ladder. For OpenCode (`jaz`), it updates the `AGENTS.md` manifest.
+
+### Premium Alternative: The Fable Court
+For decision-heavy projects, `fable` replaces the flat `jas`/`jao`/`jaz` orchestrators with a three-tier court:
+
+```
+Senior Architect (Gemini, whole-repo context, human adapter)
+    │
+    └── Project Architect (Fable) — Claude Code, decisions + supervision
+            │
+            └── sonnet-worker / opus-worker — execution
+```
+
+Gemini (or you, directly) hands Fable an `<eck_task>`; Fable makes the architecture/security/design calls itself and delegates execution down its own worker ladder (`sonnet-worker` default, `opus-worker` heavy, `Explore` recon — see `.claude/rules/02-delegation.md`). It's a Claude-native mode: no `AGENTS.md` is generated. Reach for it over `jas`/`jao` when the work is decision-dense rather than bulk execution — Fable is the most capable, and most expensive, agent in the court.
+
+```bash
+eck-snapshot fable   # Snapshot + Fable Architect workspace
+```
 
 ---
 
