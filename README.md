@@ -1,4 +1,4 @@
-# 📸 eckSnapshot v6.8.0 (AI-Native Edition)
+# 📸 eckSnapshot v6.9.0 (AI-Native Edition)
 
 A specialized, AI-native CLI tool that creates single-file text snapshots of entire Git repositories and feeds them directly into LLM context windows. Instead of letting AI agents guess which files to read, eckSnapshot force-feeds the complete project into the model's context — giving it a "university degree" in your codebase from the very first prompt.
 
@@ -10,6 +10,8 @@ It also serves as the coordination hub for multi-agent AI coding workflows: gene
 ---
 
 > **v6.5.0 Breakthrough:** By analyzing Claude Code's internal source architecture, eckSnapshot now features **native integration** with Anthropic's flagship tool. It no longer generates a monolithic markdown file; it natively wires into Claude's `.claude/` topology — Async Hooks, Native Skills, and Subagents. Claude Code is the recommended environment for eckSnapshot.
+
+> **New in v6.9.0 — The Fable Court:** A new Claude-native command, `eck-snapshot fable`, introduces a three-tier delegation court. A Gemini/Grok **Senior Architect** hands `<eck_task>` briefs to a **Fable Project Architect**, who makes the architecture/security calls itself and delegates execution down a `sonnet-worker` / `opus-worker` ladder. Reach for it when the work is decision-dense rather than bulk execution — see [The Fable Court](#premium-alternative-the-fable-court-new-in-v69) below.
 
 ## 📦 Installation
 
@@ -339,7 +341,7 @@ eck-snapshot '{"name": "eck_snapshot", "arguments": {"jaz": true}}'   # GLM/Open
 
 Each mode generates a snapshot with tailored AI headers. For Claude Code (`jas`/`jao`), the orchestrator role is installed via `.claude/rules/01-eck-protocol.md`, while `.claude/agents/` always carries the `sonnet-worker`/`opus-worker` execution ladder. For OpenCode (`jaz`), it updates the `AGENTS.md` manifest.
 
-### Premium Alternative: The Fable Court
+### Premium Alternative: The Fable Court (New in v6.9)
 For decision-heavy projects, `fable` replaces the flat `jas`/`jao`/`jaz` orchestrators with a three-tier court:
 
 ```
