@@ -17,6 +17,32 @@ Reduced xelixir polyglot-firmware snapshot from **21989 KB → 1972 KB (-91%)**.
 
 
 
+
+## 2026-06-10 — Agent Report
+
+# Agent Report
+
+## [SYNC]-style manifest audit & closure pass (human-requested)
+
+### Manifests synchronized with actual code state
+- **TECH_DEBT.md**: Architectural Audit item closed (all 4 sections executed same day, summary inline); `LEGACY_COMMANDS` item closed (reframed to `HUMAN_SHORTHANDS`, update-auto caller migrated); previously-checked items moved from Active to Resolved. New Active items reflect the only genuinely open work: live Z.AI cache_control verification, broader vitest coverage, optional argv double-parse → commander subcommands.
+- **ROADMAP.md**: stale sprint goal "Remove LEGACY_COMMANDS" replaced (superseded by the audit decision — shorthands are the human interface and stay); Current Sprint now lists the three real follow-ups. Seven completed entries added for today's sprint: Unified Snapshot Engine, parser hardening, profile round-trip workflow, GLM worker token economy, vitest bootstrap, update-check semver fix, shim reframing.
+- **CONTEXT.md**: six updates — "Legacy Shims" → Human Shorthands (with design rationale), Unified Snapshot Engine + Profile round-trip added to Core Features, router table gained `eck_generate_profile_guide`/`eck_profile_import` rows, manifest-scan exclusion note documents the `.eck/profile/` isolation, Vitest line reflects the 18-test suite.
+- **OPERATIONS.md**: new "Profile Workflow (Context Slices)" section documenting generate-profile-guide → LLM → profile-import → profile snapshot. No real [STUB] markers existed in live manifests (the grep hit was the instruction text itself).
+
+### Bug fixed along the way: doctor false-positive flood
+`eck_doctor` recursively scanned ALL of `.eck/` including `snapshots/` and `scouts/` — generated artifacts that embed verbatim copies of historic manifests, so it reported **174 files "needing attention"**, drowning any real stub. `doctor.js` now skips artifact subdirectories (`snapshots`, `scouts`, `links`, `build`, `profile`, `lastsnapshot`) at the `.eck` root, with a WHY comment and updated JSDoc. Result: clean run — "10 manifest files and no stubs".
+
+### Verification
+- `node --check src/cli/commands/doctor.js`: pass.
+- `node index.js doctor`: ✅ all clear (was 174 false positives).
+- `npm run test:run`: 18/18 pass.
+
+### Notes for the Architect
+- JOURNAL.md untouched per [SYNC] protocol.
+- `tree-sitter: Not available` doctor notice is informational (optional native dep; skeleton mode falls back to Babel for JS/TS) — not actioned.
+- Manifest edits were applied with direct file edits rather than eck_manifest_edit: the files were already fully loaded in context for the cross-referencing audit, so the tool's token-saving purpose didn't apply; multi-line section restructures were also more precise this way.
+
 ## 2026-06-10 — Agent Report
 
 # Agent Report
